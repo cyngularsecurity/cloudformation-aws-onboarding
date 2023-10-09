@@ -26,7 +26,6 @@ Parameters:
   ClientRegions:
     Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2)
     Type: CommaDelimitedList
-    # Type: String
     AllowedValues:
       - us-east-1
       - us-east-2
@@ -62,16 +61,15 @@ Parameters:
     Type: String
 
 #   S3BucketURL:
-#     Description: The URL of the S3 bucket containing the Lambda function code.
+#     Description: The URL of the S3 bucket containing stacks templates & Lambda function code.
 #     Type: String
-  
-
 
 Resources:
 #------------------Cyngular Bucket-------------------
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
+    #   BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketName: !Join ['', ['cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]]
       BucketEncryption:
         ServerSideEncryptionConfiguration: 

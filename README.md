@@ -49,3 +49,9 @@ One Stack, to deploy another stack, and 2 StackSets
 * gaurd duty detector (lambda tags existing one with cyngular-guardduty, deletion lambda)
 * osinternals (auditd), eks & dns logs (lambda for creating[A] and one for deletion[D - dnslogs only])
 * vpc flow logs (lambda for creating[B] and one for deletion[C])
+
+### Client Off boarding
+
+1. run delete lambdas (del resources & del vpc flow logs) in all client accounts.
+2. delete stack-1.
+3. delete stacksets instances for all client accounts and regions.
