@@ -1,0 +1,196 @@
+Description: Cyngular organization managment stack template
+
+Parameters:
+  ClientName:
+    Description: The name of the client
+    Type: String
+    
+  CyngularAccountId:
+    Description: The cyngular account id
+    Type: String
+  
+  S3BucketArn:
+    Description: The Arn of the S3 Bucket.
+    Type: String
+  
+  ClientRegions:
+    Description: The regions where the stack will be deployed
+    Type: CommaDelimitedList 
+
+Resources:
+#------------------Cyngular KMS Key-------------------
+  CyngularKmsKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: cyngular_kms_key
+      KeyPolicy: {
+        "Id" : "key-consolepolicy-3",
+        "Version" : "2012-10-17",
+        "Statement" : [
+            {
+                "Sid" : "Enable IAM User Permissions",
+                "Effect" : "Allow",
+                "Principal" : {
+                    "AWS": [
+                        !Join [ '', ['arn:aws:iam::', !Ref CyngularAccountId, ':root']],
+                        !Join [ '', ['arn:aws:iam::', !Ref AWS::AccountId, ':root']] 
+                    ]
+                },
+                "Action" : "kms:*",
+                "Resource" : "*"
+            }
+        ]
+    }
+      Tags: 
+        - Key: Name
+          Value: cyngular-kms-key
+  
+  CyngularKmsAlias:
+    DependsOn: CyngularKmsKey
+    Type: AWS::KMS::Alias
+    Properties: 
+        AliasName: alias/cyngular-kms-key
+        TargetKeyId: !GetAtt  CyngularKmsKey.Arn
+  
+  # CyngularGuardDuty: 
+  #   Type: AWS::GuardDuty::Detector
+  #   Properties: 
+  #     DataSources: 
+  #         Kubernetes:
+  #           AuditLogs:
+  #             Enable: True
+  #         S3Logs:
+  #           Enable: True
+  #     Enable: True
+  #     FindingPublishingFrequency: FIFTEEN_MINUTES
+  #     Tags: 
+  #         - Key: Name
+  #           Value: cyngular-guardduty
+  
+  CyngularResolver:
+    Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
+    Properties: 
+      DestinationArn: !Ref S3BucketArn
+      Name: cyngular_dns
+
+
+#-----------------------GuarddutyDeletionLambdaRole----------------------------#
+  GuarddutyDeletionLambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CloudFormationPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:*"
+                  - "guardduty:TagResource"
+                  - "guardduty:ListDetectors"
+                  - "guardduty:CreateDetector"
+                  - "guardduty:DeleteDetector"
+                  - "guardduty:ListTagsForResource"
+                  - "sts:GetCallerIdentity"
+                Resource:
+                  - "*"
+#---------------------GuarddutyCreation--------------------
+  CyngularGuarddutyCreationLambda:
+    DependsOn: GuarddutyDeletionLambdaRole
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cyngular-guardduty-creation-lambda-function
+      Description: Created by Cyngular Security.
+      Code:
+        ZipFile: !Sub |
+            import boto3
+            import time
+            import os
+            import cfnresponse
+            import logging
+            def guardduty_exists(region):
+                client = boto3.client('guardduty', region)
+                response = client.list_detectors()
+                if len(response['DetectorIds']) == 0:
+                    return False
+                return True
+            def create_guardduty():
+                ClientRegionsList = os.environ['ClientRegions'].split(',')
+                for region in ClientRegionsList:
+                    if guardduty_exists(region):
+                        logging.info(f'guardduty found in {region}, adding cyngular tag')
+                        client = boto3.client('guardduty', region)
+                        response = client.list_detectors()
+                        detector_id = response['DetectorIds'][0]
+                        # add cyngular tag
+                        sts_client = boto3.client('sts')
+                        account_id = sts_client.get_caller_identity()['Account']
+                        response = client.tag_resource(Tags={'Value' : 'cyngular-guardduty'}, ResourceArn=f'arn:aws:guardduty:{region}:{account_id}:detector/{detector_id}')
+                    
+                    else:
+                        logging.info(f'creating guardduty in {region}')
+                        # create guard duties
+                        for region in ClientRegionsList:
+                            client = boto3.client('guardduty', region)
+                            detector_properties = {
+                                'Enable': True,
+                                'FindingPublishingFrequency': 'FIFTEEN_MINUTES',
+                                'DataSources': {
+                                    'S3Logs': {
+                                        'Enable': True
+                                    },
+                                    
+                                    # 'Kubernetes': {
+                                    #     'AuditLogs': {
+                                    #         'Enable': True
+                                    #     }
+                                    # }
+                                    
+                                },
+                                'Tags': [
+                                    {
+                                        'Value': 'cyngular-guardduty'
+                                    }
+                                ]
+                            }
+                            
+                            # Create the detector
+                            response = client.create_detector(
+                                Enable=True,
+                                FindingPublishingFrequency='FIFTEEN_MINUTES',
+                                DataSources=detector_properties['DataSources'],
+                                Tags=detector_properties['Tags'][0]
+                            )
+            def cyngular_function(event, context):
+              if event['RequestType'] == 'Create':
+                try:
+                  create_guardduty()
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Finished creating guarduties done'})
+                except Exception as e:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : str(e)})
+              else:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'skipping'})
+
+      Runtime: "python3.9"
+      Handler: index.cyngular_function
+      Timeout: 300
+      Environment:
+        Variables:
+            ClientRegions: !Join [",", !Ref ClientRegions]
+    
+      Role: !GetAtt GuarddutyDeletionLambdaRole.Arn
+
+  GuarddutyCreationTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt CyngularGuarddutyCreationLambda.Arn
