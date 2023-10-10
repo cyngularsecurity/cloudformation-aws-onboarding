@@ -21,9 +21,21 @@ One Stack, to deploy another stack, and 2 StackSets
 * Lambda D(Delete resources)
 * Lambda E(Update singular bucket)
 
-* Manager lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
+* Manager Lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
 * Admin & execution role for manager lambda, to run other stacks
-* Manager Lambda - deploy 3 other templates
+* Manager Lambda -
+  * create Gaurd duty detector in every region on managment acc if not exists
+  * create *stack-2* - including a stackset resource, when executed runs on all child acc -
+    * Guard duty lambda role
+    * Guard duty lambda
+    * Guard duty create trigger custom resource
+    * KMS Key & Alias
+    * R53 resolver QueryLoggingConfig
+  * create *stack-set-1* targets all child acc and client regions -
+    * Cyngular read only role
+    * Lambda (A) role
+    * Lambda A (create resources)
+    * Lambda A scheduled rule & premission
 * Manager lambda trigger {cr, stacks urls}
 * Lambda Create Admin & Exec role
 

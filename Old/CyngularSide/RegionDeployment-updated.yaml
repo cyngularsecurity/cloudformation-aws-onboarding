@@ -1,0 +1,1334 @@
+Description: Cyngular's new Region deployment
+
+Parameters:
+  VpcCIDR:
+    Description: IP range (CIDR notation) for the VPC
+    Type: String
+
+  UbuntuLatestAmiID:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Description: Retrives the latest ami id of the current Region.
+    Default: "/aws/service/canonical/ubuntu/server/jammy/stable/current/amd64/hvm/ebs-gp2/ami-id"
+
+  PrivateSubnet1CIDR:
+    Description: IP range (CIDR notation) for the VPC private Subnet 1.
+    Type: String
+
+  PublicSubnet1CIDR:
+    Description: IP range (CIDR notation) for the VPC public Subnet 1.
+    Type: String
+
+  PrivateSubnet2CIDR:
+    Description: IP range (CIDR notation) for the VPC private Subnet 2.
+    Type: String
+
+  PublicSubnet2CIDR:
+    Description: IP range (CIDR notation) for the VPC public Subnet 2.
+    Type: String
+
+  DbPassword:
+    Description: Master Password for the RDS. (min 8 characters)
+    Type: String
+
+  RegionName:
+    Description: underscore seperated region name (example- us_east_1)
+    Type: String
+
+Resources:
+  #------------------SecretManager-------------------
+  SecretManager:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Name: !Join ["-", ["secret_manager", !Ref AWS::Region]]
+      Description: Secret for Client
+      GenerateSecretString: { SecretStringTemplate: !Sub '
+            {
+            "AUTH0_DOMAIN": "",
+            "AUTH0_CLIENT_ID": "",
+            "AUTH0_CLIENT_SECRET": "",
+            "AUTH0_AUDIENCE": "",
+            "REACT_APP_CLIENT_ID": "",
+            "REACT_APP_DOMAIN": "",
+            "AWS_RDS_USER": "postgres",
+            "AWS_RDS_ENDPOINT": "",
+            "AWS_RDS_DBNAME": "db_cyngular_prod_${RegionName}",
+            "AWS_RDS_PASSWORD":"${DbPassword}",
+            "AWS_RDS_PORT": "5432"
+            }', PasswordLength: 30, GenerateStringKey: "cloudformationtest" }
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["secret_manager", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #-----Vpc------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "vpc"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---Internet-Gateway---
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "igw"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  #----Subnets----
+
+  #--Availability-Zone-1
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "subnet", "private1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "subnet", "public1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #--Availability-Zone-2
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "subnet", "private2"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "subnet", "public2"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---RouteTables---
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "rtb", "private1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "rtb", "private2"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "rtb", "public"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #-------Assosiate-Subnets-To-Route-Tables-------
+
+  PrivateRt1aToSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRt2aToSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  PublicRtaToSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicRtaToSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  #------------------Route------------------------
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  #------------------NAT-Gateway------------------------
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP1.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "nat1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  NatGatewayEIP1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "eip1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP2.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "nat", "eip1"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  NatGatewayEIP2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "nat", "eip2"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---------------------Backend Instance role-----------------------
+  BackendServiceRole:
+    Type: AWS::IAM::Role
+    DependsOn: [SecretManager]
+    Properties:
+      RoleName: !Join ["-", ["cyngular", "backend", "role", !Ref AWS::Region]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["cyngular", "backend", "role", !Ref AWS::Region]]
+
+  LinuxServicePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: BackendServiceRole
+    Properties:
+      ManagedPolicyName:
+        !Join ["-", ["cyngular", "backend", "role", "policy", !Ref AWS::Region]]
+      Roles:
+        - !Ref BackendServiceRole
+      PolicyDocument:
+        {
+          "Version": "2012-10-17",
+          "Statement":
+            [
+              {
+                "Sid": "VisualEditor1",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:GetSecretValue"],
+                "Resource": [!Ref SecretManager],
+              },
+              {
+                "Sid": "AllowPassRole",
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": [!GetAtt BackendInstanceProfile.Arn],
+              },
+            ],
+        }
+
+  BackendInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: [!Ref BackendServiceRole]
+  
+  #---------------------API Instance role-----------------------
+  ApiServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", ["cyngular", "api", "role", !Ref AWS::Region]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["cyngular", "api", "role", !Ref AWS::Region]]
+  
+  ApiServicePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: ApiServiceRole
+    Properties:
+      ManagedPolicyName:
+        !Join ["-", ["cyngular", "api", "role", "policy", !Ref AWS::Region]]
+      Roles:
+        - !Ref ApiServiceRole
+      PolicyDocument:
+        {
+          "Version": "2012-10-17",
+          "Statement":
+            [
+              {
+                "Sid": "AllowPassRole",
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": [!GetAtt ApiInstanceProfile.Arn],
+              },
+            ],
+        }
+  
+  ApiInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: [!Ref ApiServiceRole]
+
+  #---------------------Load Balancer Instance role-----------------------
+  LoadBalancerServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", ["cyngular", "load-balancer", "role", !Ref AWS::Region]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["cyngular", "load-balancer", "role", !Ref AWS::Region]]
+  
+  LoadBalancerServicePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: LoadBalancerServiceRole
+    Properties:
+      ManagedPolicyName:
+        !Join ["-", ["cyngular", "load-balancer", "role", "policy", !Ref AWS::Region]]
+      Roles:
+        - !Ref LoadBalancerServiceRole
+      PolicyDocument:
+        {
+          "Version": "2012-10-17",
+          "Statement":
+            [
+              {
+                "Sid": "AllowPassRole",
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": [!GetAtt LoadBalancerInstanceProfile.Arn],
+              },
+            ],
+        }
+  
+  LoadBalancerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: [!Ref LoadBalancerServiceRole]
+
+#---------------------Frontend Instance role-----------------------
+  FrontendServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", ["cyngular", "frontend", "role", !Ref AWS::Region]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["cyngular", "frontend", "role", !Ref AWS::Region]]
+  
+  FrontendServicePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: FrontendServiceRole
+    Properties:
+      ManagedPolicyName:
+        !Join ["-", ["cyngular", "frontend", "role", "policy", !Ref AWS::Region]]
+      Roles:
+        - !Ref FrontendServiceRole
+      PolicyDocument:
+        {
+          "Version": "2012-10-17",
+          "Statement":
+            [
+              {
+                "Sid": "AllowPassRole",
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": [!GetAtt FrontendInstanceProfile.Arn],
+              },
+            ],
+        }
+  
+  
+  FrontendInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: [!Ref FrontendServiceRole]
+
+
+  #----------------Linux security Group-------------------
+  LinuxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the linux Service.
+      GroupName: !Join ["", ["LinuxSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "linux", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #----------------Sqs Rds security Group-------------------
+  SqsRdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the sqs rds Service.
+      GroupName: !Join ["", ["SqsRdsSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              "-",
+              ["aws", "sqs", "rds", "service", "sg", !Ref AWS::Region],
+            ]
+        - Key: Region
+          Value: !Ref AWS::Region
+  #----------------Load Balancer Security Group-------------------
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the LoadBalancer Service.
+      GroupName: !Join ["", ["LoadBalancerSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "load-balancer", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+  #----------------Api security Group-------------------
+  ApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the Api Service.
+      GroupName: !Join ["", ["ApiSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "api", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #----------------Frontend security Group-------------------
+  FrontendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the Frontend Service.
+      GroupName: !Join ["", ["FrontendSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "frontend", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #----------------Backend security Group-------------------
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the Backend Service.
+      GroupName: !Join ["", ["BackendSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 8206
+          ToPort: 8206
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 81
+          ToPort: 81
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 82
+          ToPort: 82
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 83
+          ToPort: 83
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 84
+          ToPort: 84
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+        - IpProtocol: tcp
+          FromPort: 85
+          ToPort: 85
+          SourceSecurityGroupId: !Ref ApiSecurityGroup
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "backend", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #----------------Vpc-Endpoint-------------------
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      RouteTableIds:
+        - !Ref PrivateRouteTable1
+        - !Ref PrivateRouteTable2
+
+  #------------------Bastion-------------------
+  BastionKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName:
+        !Join ["-", ["aws", "bastion", "service", "key", !Ref AWS::Region]]
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "bastion", "service", "key", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the Bastion.
+      GroupName: !Join ["", ["BastionSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "bastion", "service", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  Bastion:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref BastionKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      ImageId: !Ref UbuntuLatestAmiID
+      InstanceType: t2.micro
+      PrivateDnsNameOptions:
+        EnableResourceNameDnsARecord: true
+        HostnameType: ip-name
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              "-",
+              ["aws", "bastion", "service", "instance", !Ref AWS::Region],
+            ]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  BastionEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref Bastion
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "bastion", "service", "eip", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+  #---------------------Load Balancer Instance-----------------------
+  LoadBalancerKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: !Join ["-", ["aws", "load-balancer", "service", "key", !Ref AWS::Region]]
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "load-balancer", "service", "key", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  LoadBalancer:
+    Type: AWS::EC2::Instance
+    DependsOn: [LoadBalancerKeyPair, LoadBalancerSecurityGroup]
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref LoadBalancerKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref LoadBalancerSecurityGroup
+      ImageId: !Ref UbuntuLatestAmiID
+      InstanceType: t3.medium
+      IamInstanceProfile: !Ref LoadBalancerInstanceProfile
+      PrivateDnsNameOptions:
+        EnableResourceNameDnsARecord: true
+        HostnameType: ip-name
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+            sudo apt update
+            sudo apt install nginx -y
+            sudo ufw allow 'Nginx Full'
+            mkdir /etc/ssl/cyngular
+            cd /etc/ssl/cyngular
+            openssl genrsa -out private.key 2048
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "load-balancer", "service", "instance", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  LoadBalancerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref LoadBalancer
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "load-balancer", "service", "eip", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---------------------Api Instance-----------------------
+  ApiKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: !Join ["-", ["aws", "api", "service", "key", !Ref AWS::Region]]
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "api", "service", "key", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  ApiMachine:
+    Type: AWS::EC2::Instance
+    DependsOn: [ApiKeyPair, ApiSecurityGroup]
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref ApiKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref ApiSecurityGroup
+      ImageId: !Ref UbuntuLatestAmiID
+      InstanceType: t3.medium
+      IamInstanceProfile: !Ref ApiInstanceProfile
+      PrivateDnsNameOptions:
+        EnableResourceNameDnsARecord: true
+        HostnameType: ip-name
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+            sudo apt update
+            sudo apt install nginx -y
+            sudo ufw allow 'Nginx Full'
+            mkdir /etc/ssl/cyngular
+            cd /etc/ssl/cyngular
+            openssl genrsa -out private.key 2048
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "api", "service", "instance", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  ApiEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref ApiMachine
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "api", "service", "eip", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---------------------Frontend Instance-----------------------
+  FrontendKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName:
+        !Join ["-", ["aws", "frontend", "service", "key", !Ref AWS::Region]]
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "frontend", "service", "key", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  FrontendMachine:
+    Type: AWS::EC2::Instance
+    DependsOn: [FrontendKeyPair, FrontendSecurityGroup]
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref FrontendKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref FrontendSecurityGroup
+      ImageId: !Ref UbuntuLatestAmiID
+      InstanceType: t3.large
+      IamInstanceProfile: !Ref FrontendInstanceProfile
+      PrivateDnsNameOptions:
+        EnableResourceNameDnsARecord: true
+        HostnameType: ip-name
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+            sudo apt update
+            curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt install nodejs -y
+            sudo apt install npm -y
+            sudo npm cache clean -f
+            sudo npm install -g n
+            sudo n stable
+            sudo n latest
+            mkdir /etc/ssl/cyngular
+            cd /etc/ssl/cyngular
+            openssl genrsa -out private.key 2048
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              "-",
+              ["aws", "frontend", "service", "instance", !Ref AWS::Region],
+            ]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  FrontendEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref FrontendMachine
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "frontend", "service", "eip", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---------------------Backend Instance-----------------------
+  BackendKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName:
+        !Join ["-", ["aws", "backend", "service", "key", !Ref AWS::Region]]
+      Tags:
+        - Key: Name
+          Value:
+            !Join ["-", ["aws", "backend", "service", "key", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  BackendMachine:
+    Type: AWS::EC2::Instance
+    DependsOn: [BackendKeyPair, BackendSecurityGroup]
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      KeyName: !Ref BackendKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref BackendSecurityGroup
+      ImageId: !Ref UbuntuLatestAmiID
+      InstanceType: t3.large
+      IamInstanceProfile: !Ref BackendInstanceProfile
+      PrivateDnsNameOptions:
+        EnableResourceNameDnsARecord: true
+        HostnameType: ip-name
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+            sudo apt update
+            curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt install nodejs -y
+            sudo apt install npm -y
+            sudo npm cache clean -f
+            sudo npm install -g typescript
+            sudo npm install -g n
+            sudo n stable
+            sudo n latest
+            mkdir /etc/ssl/cyngular
+            cd /etc/ssl/cyngular
+            openssl genrsa -out private.key 2048
+
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              "-",
+              ["aws", "backend", "service", "instance", !Ref AWS::Region],
+            ]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  #---------------------RDS-----------------------
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupName: !Join ["-", [!Ref AWS::Region, "db", "subnetgroup"]]
+      DBSubnetGroupDescription: db subnet group
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref AWS::Region, "db", "subnetgroup"]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of the DB.
+      GroupName: !Join ["", ["DbSecurityGroup-", !Ref AWS::Region]]
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          Description: "Accept postgress from sqs rds service lambda security group"
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref SqsRdsSecurityGroup
+
+        - IpProtocol: tcp
+          Description: "Accept postgress from backend security group"
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref BackendSecurityGroup
+
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["aws", "rds", "sg", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.r6i.2xlarge
+      StorageType: gp2
+      AllocatedStorage: 100
+      MaxAllocatedStorage: 1000
+      MultiAZ: false
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      EnableIAMDatabaseAuthentication: true
+      DBInstanceIdentifier:
+        !Join ["-", ["database", "instance", !Ref AWS::Region]]
+      DBName: !Join ["_", ["db", "cyngular", "prod", !Ref RegionName]]
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      StorageEncrypted: true
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: false
+      MasterUsername: postgres
+      MasterUserPassword: !Ref DbPassword
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["database", "instance", !Ref AWS::Region]]
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Secret
+          Value: !Join ["-", ["secret_manager", !Ref AWS::Region]]
+
+  #------------------Cyngular Lambda A Role-------------------  
+  LambdaARole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', ['cyngular-lambda-role-', !Ref AWS::Region]]
+      AssumeRolePolicyDocument:
+        {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+
+      Policies:
+        - PolicyName: "cyngular-lambda-policy"
+          PolicyDocument: {
+                              "Version": "2012-10-17",
+                              "Statement": [
+                                  {
+                                      "Sid": "VisualEditor0",
+                                      "Effect": "Allow",
+                                      "Action": [
+                                          "route53resolver:*",
+                                            "ec2:Describe*",
+                                            "organizations:ListAccounts",
+                                            "ec2:CreateFlowLogs",
+                                            "ec2:CreateTags",
+                                            "ec2:DeleteFlowLogs",
+                                            "ec2:DeleteTags",
+                                            "ssm:*",
+                                            "logs:*"
+                                      ],
+                                      "Resource": "*"
+                                  }
+                              ]
+                          }
+
+#------------------Cyngular Lambda A -------------------  
+  CyngularLambdaA:
+    DependsOn: LambdaARole
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cyngular-lambda-configure-resources
+      Description: Created by Cyngular Security.
+      Code:
+        ZipFile: !Sub | 
+            import boto3
+            import traceback
+            import os
+
+            def nginx(cur_region_name):
+                try:
+                    ngingx_conf_content = '''
+            user www-data;
+            worker_processes auto;
+            pid /run/nginx.pid;
+            include /etc/nginx/modules-enabled/*.conf;
+
+            events {
+              worker_connections 768;
+              # multi_accept on;
+            }
+
+            http {
+
+              ##
+              # Basic Settings
+              ##
+
+              sendfile on;
+              tcp_nopush on;
+              types_hash_max_size 2048;
+              # server_tokens off;
+
+              # server_names_hash_bucket_size 64;
+              # server_name_in_redirect off;
+
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+
+              ##
+              # SSL Settings
+              ##
+
+              ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+              ssl_prefer_server_ciphers on;
+
+              ##
+              # Logging Settings
+              ##
+
+              access_log /var/log/nginx/access.log;
+              error_log /var/log/nginx/error.log;
+
+              ##
+              # Gzip Settings
+              ##
+
+              gzip on;
+
+              # gzip_vary on;
+              # gzip_proxied any;
+              # gzip_comp_level 6;
+              # gzip_buffers 16 8k;
+              # gzip_http_version 1.1;
+              # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+              ##
+              # Virtual Host Configs
+              ##
+
+              include /etc/nginx/conf.d/*.conf;
+              include /etc/nginx/sites-enabled/*;
+
+              server {
+                
+                listen 443 ssl;
+                ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+              
+                ssl_certificate XXX;
+                ssl_certificate_key XXX;
+
+                server_name XXX;
+
+                location /api/v1/overview/ {
+                  proxy_pass http://%$IP$%:80/;
+                }
+                location /api/v1/incidents/ {
+                  proxy_pass http://%$IP$%:81/;
+                }
+                location /api/v1/investigation/ {
+                  proxy_pass http://%$IP$%:82/;
+                }
+                location /api/v1/visibility/ {
+                  proxy_pass http://%$IP$%:83/;
+                }
+                      location /api/v1/settings/ {
+                            proxy_pass http://%$IP$%:84/;
+                      }
+                      location /api/v1/general/ {
+                            proxy_pass http://%$IP$%:85/;
+                      }		
+              }
+            }
+                    '''
+                    print ('STARTING CONFIGURATING API SERVER...')
+                    ec2_client = boto3.client('ec2', region_name=cur_region_name)
+                    ssm_client = boto3.client('ssm', region_name=cur_region_name)
+                    
+                    print('GETTING BACKEND SERVER PRIVATE IP ADDRESS')
+                    all_instances = ec2_client.describe_instances(
+                            Filters=[
+                        {
+                            'Name': 'tag:Name',
+                            'Values': [f'aws-backend-service-instance-{cur_region_name}']
+                        },
+                        {
+                            'Name': 'instance-state-name',
+                            'Values': ['running']
+                        }
+                    ]
+                    )
+                    backend_private_ip = ''
+                    for reservation in all_instances['Reservations']:
+                        for instance in reservation['Instances']:
+                            backend_private_ip = instance['PrivateIpAddress']
+                    ngingx_conf_content = ngingx_conf_content.replace('%$IP$%', backend_private_ip)
+                    
+                    all_instances = ec2_client.describe_instances(
+                            Filters=[
+                        {
+                            'Name': 'tag:Name',
+                            'Values': [f'aws-api-service-instance-{cur_region_name}']
+                        }
+                    ]
+                    )
+                    
+                    instance_ids = []
+                    for reservation in all_instances['Reservations']:
+                        for instance in reservation['Instances']:
+                            instance_ids.append(instance['InstanceId'])
+                    
+                    for instance_id in instance_ids:
+                        try:
+                            print (f'CONFIGURING NGINX CONFIGURE ON INSTANCE-ID: {instance_id}')
+                            print(ssm_client.get_connection_status(Target=instance_id))
+                            response = ssm_client.send_command(
+                                        InstanceIds=[instance_id],
+                                        DocumentName="AWS-RunShellScript",
+                                        Parameters={'commands': [f'echo "{ngingx_conf_content}" > "/etc/nginx/nginx.conf"']
+                                                }
+                                        )
+                            print (f'COMMAND SUCCEEDED.')
+                        except Exception as e:
+                            print(str(e))
+                except Exception as e:
+                    print(str(e))
+
+            def cyngular_function(event, context):                
+                try:
+                    print ('STRATING CYNGULARS FUNCTION...')
+                    func_lst = [nginx]
+                    ec2_client = boto3.client('ec2')
+                    LAMBDA_REGION = os.environ['LAMBDA_REGION']
+                    
+                    for func in func_lst:
+                        try:
+                            func(LAMBDA_REGION)
+                        except Exception as e:
+                            print(str(e))
+                    print('DONE!')
+
+                except Exception as e:
+                    print(str(e))
+
+      Environment:
+        Variables:
+          LAMBDA_REGION: !Ref AWS::Region
+    
+      Runtime: "python3.9"
+      Handler: index.cyngular_function
+      Timeout: 300
+      Role: !GetAtt LambdaARole.Arn
+
+
+
+Outputs:
+  LinuxSecurityGroupOutput:
+    Description: The id of the linux security group
+    Value: !Ref LinuxSecurityGroup
+
+  PrivateSubnet1Output:
+    Description: the id of the private subnet 1
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2Output:
+    Description: the id of the private subnet 2
+    Value: !Ref PrivateSubnet2
+
+  VpcOutput:
+    Description: The id of the region vpc
+    Value: !Ref Vpc
+
+  SqsRdsSecurityGroupOutput:
+    Description: The id of the security group for the sqs rds lambda
+    Value: !Ref SqsRdsSecurityGroup
