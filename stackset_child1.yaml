@@ -21,7 +21,7 @@ Resources:
   ClientCyngularRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', ['cyngular-readonly-role-', !Ref ClientName]]
+      RoleName: !Join ['-', ['cyngular-readonly-role', !Ref ClientName]]
       AssumeRolePolicyDocument:
         {
     "Version": "2012-10-17",
@@ -29,7 +29,7 @@ Resources:
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": !Join ['', ["arn:aws:iam::", !Ref CyngularAccountId, ":root"]]
+                "AWS": !Join [':', ["arn:aws:iam:", !Ref CyngularAccountId, "root"]]
             },
             "Action": "sts:AssumeRole",
             "Condition": {}
@@ -110,8 +110,8 @@ Resources:
                 "Effect": "Allow",
                 "Action": "s3:GetObject*",
                 "Resource": [
-    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '-*-*-*']],
-    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '-*/*']]
+    !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId, '*-*-*']],
+    !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId, '*/*']]
     ]
             },
             {
@@ -142,7 +142,7 @@ Resources:
   LambdaARole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', ['cyngular-lambdas-role-', !Ref AWS::Region]]
+      RoleName: !Join ['-', ['cyngular-lambdas-role', !Ref AWS::Region]]
       AssumeRolePolicyDocument:
         {
     "Version": "2012-10-17",
@@ -195,7 +195,7 @@ Resources:
 
   #------------------Cyngular Lambda A -------------------  
   CyngularLambdaA:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-resources
@@ -369,7 +369,7 @@ Resources:
   
   #------------------Cyngular Lambda B-------------------
   CyngularLambdaB:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-vpcflowlogs 
@@ -486,7 +486,7 @@ Resources:
   
 #------------------Cyngular Lambda C-------------------
   CyngularLambdaC:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-delete-vpcflowlogs
@@ -566,7 +566,7 @@ Resources:
   
 #------------------Cyngular Lambda D-------------------
   CyngularLambdaD:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-delete-resources  
@@ -650,11 +650,9 @@ Resources:
       Timeout: 300
       Role: !GetAtt LambdaARole.Arn
   
-
-
   LambdaBTrigger:
     Type: AWS::CloudFormation::CustomResource
-    DependsOn: CyngularLambdaB
+    # DependsOn: CyngularLambdaB
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt CyngularLambdaB.Arn

@@ -46,7 +46,7 @@ Resources:
           Value: cyngular-kms-key
   
   CyngularKmsAlias:
-    DependsOn: CyngularKmsKey
+    # DependsOn: CyngularKmsKey
     Type: AWS::KMS::Alias
     Properties: 
         AliasName: alias/cyngular-kms-key
@@ -105,7 +105,7 @@ Resources:
                   - "*"
 #---------------------GuarddutyCreation--------------------
   CyngularGuarddutyCreationLambda:
-    DependsOn: GuarddutyDeletionLambdaRole
+    # DependsOn: GuarddutyDeletionLambdaRole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-guardduty-creation-lambda-function

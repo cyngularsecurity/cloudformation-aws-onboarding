@@ -27,25 +27,25 @@ Parameters:
     Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2)
     Type: CommaDelimitedList
     AllowedValues:
+      - me-south-1
       - us-east-1
       - us-east-2
       - us-west-1
       - us-west-2
-      - af-south-1
-      - ap-south-1
-      - ap-northeast-1
-      - ap-northeast-2
-      - ap-northeast-3
       - ap-southeast-1
       - ap-southeast-2
-      - ca-central-1
-      - eu-central-1
+      - af-south-1
+      - ap-south-1
       - eu-west-1
       - eu-west-2
       - eu-west-3
+      - ap-northeast-1
+      - ap-northeast-2
+      - ap-northeast-3
+      - ca-central-1
+      - eu-central-1
       - eu-north-1
       - eu-south-1
-      - me-south-1
       - sa-east-1
   
   Stack2URL:
@@ -69,8 +69,7 @@ Resources:
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-    #   BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
-      BucketName: !Join ['', ['cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]]
+      BucketName: !Join ['-', ['cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]]
       BucketEncryption:
         ServerSideEncryptionConfiguration: 
           - ServerSideEncryptionByDefault:
@@ -82,7 +81,7 @@ Resources:
         RestrictPublicBuckets: True
       Tags: 
         - Key: Name
-          Value: !Join ['', ['cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]]
+          Value: !Join ['-', ['cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]]
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -99,22 +98,7 @@ Resources:
                     "Resource": !GetAtt CyngularS3Bucket.Arn,
                     "Condition": {
                         "StringEquals": {
-                            "AWS:SourceArn": !Join ['',['arn:aws:cloudtrail:', !Ref AWS::Region, ':' , !Ref AWS::AccountId, ':trail/cyngular-cloudtrail' ]],
-                        }
-                    }
-                },
-                {
-                    "Sid": "AWSCloudTrailWrite20150319",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "cloudtrail.amazonaws.com"
-                    },
-                    "Action": "s3:PutObject",
-                    "Resource": !Join ['', [!GetAtt CyngularS3Bucket.Arn, '/AWSLogs/', !Ref AWS::AccountId, '/*']],
-                    "Condition": {
-                        "StringEquals": {
-                            "s3:x-amz-acl": "bucket-owner-full-control",
-                            "AWS:SourceArn": !Join ['',['arn:aws:cloudtrail:', !Ref AWS::Region, ':' , !Ref AWS::AccountId, ':trail/cyngular-cloudtrail' ]],
+                            "AWS:SourceArn": !Join [':',['arn:aws:cloudtrail', !Ref AWS::Region, !Ref AWS::AccountId, 'trail/cyngular-cloudtrail' ]],
                         }
                     }
                 },
@@ -125,14 +109,47 @@ Resources:
                         "Service": "cloudtrail.amazonaws.com"
                     },
                     "Action": "s3:PutObject",
-                    "Resource": !Join ['', [!GetAtt CyngularS3Bucket.Arn, '/AWSLogs/', !Ref OrganizationId, '/*']],
+                    "Resource": [
+                        !Join ['/', [!GetAtt CyngularS3Bucket.Arn, 'AWSLogs', !Ref OrganizationId, '*']],
+                        !Join ['/', [!GetAtt CyngularS3Bucket.Arn, 'AWSLogs', !Ref AWS::AccountId, '*']]
+                    ],
                     "Condition": {
                         "StringEquals": {
                             "s3:x-amz-acl": "bucket-owner-full-control",
-                            "AWS:SourceArn": !Join ['',['arn:aws:cloudtrail:', !Ref AWS::Region, ':' , !Ref AWS::AccountId, ':trail/cyngular-cloudtrail' ]],
+                            "AWS:SourceArn": !Join [':',['arn:aws:cloudtrail', !Ref AWS::Region, !Ref AWS::AccountId, 'trail/cyngular-cloudtrail' ]],
                         }
                     }
                 }
+                # {
+                #     "Sid": "AWSCloudTrailWrite20150319",
+                #     "Effect": "Allow",
+                #     "Principal": {
+                #         "Service": "cloudtrail.amazonaws.com"
+                #     },
+                #     "Action": "s3:PutObject",
+                #     "Resource": !Join ['/', [!GetAtt CyngularS3Bucket.Arn, 'AWSLogs', !Ref AWS::AccountId, '*']],
+                #     "Condition": {
+                #         "StringEquals": {
+                #             "s3:x-amz-acl": "bucket-owner-full-control",
+                #             "AWS:SourceArn": !Join [':',['arn:aws:cloudtrail', !Ref AWS::Region, !Ref AWS::AccountId, 'trail/cyngular-cloudtrail' ]],
+                #         }
+                #     }
+                # },
+                # {
+                #     "Sid": "AWSCloudTrailWrite20150319 2",
+                #     "Effect": "Allow",
+                #     "Principal": {
+                #         "Service": "cloudtrail.amazonaws.com"
+                #     },
+                #     "Action": "s3:PutObject",
+                #     "Resource": !Join ['/', [!GetAtt CyngularS3Bucket.Arn, 'AWSLogs', !Ref OrganizationId, '*']],
+                #     "Condition": {
+                #         "StringEquals": {
+                #             "s3:x-amz-acl": "bucket-owner-full-control",
+                #             "AWS:SourceArn": !Join [':',['arn:aws:cloudtrail', !Ref AWS::Region, !Ref AWS::AccountId, 'trail/cyngular-cloudtrail' ]],
+                #         }
+                #     }
+                # }
             ]
         }
     
@@ -166,7 +183,7 @@ Resources:
   ClientCyngularRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', ['cyngular-readonly-role-', !Ref ClientName]]
+      RoleName: !Join ['-', ['cyngular-readonly-role', !Ref ClientName]]
       AssumeRolePolicyDocument:
         {
     "Version": "2012-10-17",
@@ -174,7 +191,7 @@ Resources:
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": !Join ['', ["arn:aws:iam::", !Ref CyngularAccountId, ":root"]]
+                "AWS": !Join [':', ["arn:aws:iam:", !Ref CyngularAccountId, "root"]]
             },
             "Action": "sts:AssumeRole",
             "Condition": {}
@@ -216,35 +233,49 @@ Resources:
                 "Action": [
                     "kms:List*",
                     "kms:Describe*",
-                    "ecr:Describe*",
+
                     "iam:List*",
-                    "rds:List*",
-                    "s3:List*",
-                    "logs:List*",
                     "iam:Get*",
+
+                    "rds:List*",
+
+                    "s3:List*",
+                    "s3:Describe*",
+                    "s3:GetBucketLocation",
+
+                    "logs:List*",
+                    "logs:Describe*",
+                    "logs:Get*",
+                    "logs:FilterLogEvents",
+
                     "rds:Describe*",
+
+                    "ecr:Describe*",
+                    "ecr:List*",
+
                     "eks:Describe*",
                     "eks:List*",
-                    "s3:Describe*",
+
                     "ecs:List*",
+
                     "ec2:List*",
-                    "lambda:List*",
-                    "lambda:Get*",
                     "ec2:CreateTags",
                     "ecs:Describe*",
                     "ec2:Describe*",
-                    "logs:Describe*",
-                    "ecr:List*",
-                    "logs:Get*",
+
+                    "lambda:List*",
+                    "lambda:Get*",
+
                     "organizations:Describe*",
                     "organizations:List*",
+
                     "cloudformation:Describe*",
                     "cloudformation:List*",
                     "cloudformation:Get*",
-                    "s3:GetBucketLocation",
+
                     "guardduty:List*",
                     "guardduty:Get*",
-                    "logs:FilterLogEvents",
+
                     "ce:GetCostAndUsage",
                     "ce:GetDimensionValues"
                 ],
@@ -255,8 +286,9 @@ Resources:
                 "Effect": "Allow",
                 "Action": "s3:GetObject*",
                 "Resource": [
-    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]],
-    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
+    !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]],
+    !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
+    # !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
     ]
             },
             {
@@ -288,7 +320,7 @@ Resources:
   LambdaARole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', ['cyngular-lambda-role-', !Ref ClientName]]
+      RoleName: !Join ['-', ['cyngular-lambda-role', !Ref ClientName]]
       AssumeRolePolicyDocument:
         {
     "Version": "2012-10-17",
@@ -313,17 +345,23 @@ Resources:
                                       "Effect": "Allow",
                                       "Action": [
                                           "route53resolver:*",
-                                            "ec2:Describe*",
-                                            "organizations:ListAccounts",
-                                            "ec2:CreateFlowLogs",
-                                            "ec2:CreateTags",
-                                            "ec2:DeleteFlowLogs",
-                                            "ec2:DeleteTags",
-                                            "ssm:*",
-                                            "logs:*",
-                                            "eks:List*",
-                                            "eks:UpdateClusterConfig",
-                                            "guardduty:*"                                            
+
+                                          "organizations:ListAccounts",
+
+                                          "ec2:Describe*",
+                                          "ec2:CreateFlowLogs",
+                                          "ec2:CreateTags",
+                                          "ec2:DeleteFlowLogs",
+                                          "ec2:DeleteTags",
+
+                                          "ssm:*",
+
+                                          "logs:*",
+
+                                          "eks:List*",
+                                          "eks:UpdateClusterConfig",
+
+                                          "guardduty:*"                                            
                                       ],
                                       "Resource": "*"
                                   },
@@ -342,8 +380,9 @@ Resources:
                                           "s3:*"
                                       ],
                                       "Resource": [
-                                        !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]],
-                                        !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
+                                        !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]],
+                                        !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
+                                        # !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
                                       ]
                                   }
                               ]
@@ -351,7 +390,7 @@ Resources:
 
 #------------------Cyngular Lambda A -------------------  
   CyngularLambdaA:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-resources
@@ -510,8 +549,7 @@ Resources:
       ScheduleExpression: "cron(*/30 * * * ? *)"
       State: "ENABLED"
       Targets: 
-        - 
-          Arn: !GetAtt CyngularLambdaA.Arn
+        - Arn: !GetAtt CyngularLambdaA.Arn
           Id: "TargetFunctionV1"
 
   PermissionForEventsToInvokeLambdaA: 
@@ -524,7 +562,7 @@ Resources:
 
 #------------------Cyngular Lambda B-------------------
   CyngularLambdaB:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-vpcflowlogs 
@@ -623,8 +661,7 @@ Resources:
       ScheduleExpression: "cron(*/30 * * * ? *)"
       State: "DISABLED"
       Targets: 
-        - 
-          Arn: !GetAtt CyngularLambdaB.Arn
+        - Arn: !GetAtt CyngularLambdaB.Arn
           Id: "TargetFunctionV1"
 
   PermissionForEventsToInvokeLambdaB: 
@@ -637,7 +674,7 @@ Resources:
   
 #------------------Cyngular Lambda C-------------------
   CyngularLambdaC:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-delete-vpcflowlogs
@@ -718,7 +755,7 @@ Resources:
   
 #------------------Cyngular Lambda D-------------------
   CyngularLambdaD:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-delete-resources  
@@ -805,7 +842,7 @@ Resources:
   
 #------------------Cyngular Lambda E -------------------  
   CyngularLambdaE:
-    DependsOn: LambdaARole
+    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-update-cyngular-bucket
@@ -948,27 +985,35 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "cloudformation:DescribeStacks"
                   - "lambda:InvokeFunction"
                   - "lambda:InvokeAsync"
                   - "lambda:GetFunction"
+
                   - "logs:*"
-                  - "cloudformation:CreateStack"
-                  - "cloudformation:GetTemplateSummary"
-                  - "cloudformation:CreateStackSet"
+
+                  - "cloudformation:DescribeStacks"
                   - "cloudformation:DescribeStackSet"
-                  - "cloudformation:CreateStackInstances"
                   - "cloudformation:DescribeStackSetOperation"
-                  - "cloudformation:DeleteStackInstances"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:CreateStackSet"
+                  - "cloudformation:CreateStackInstances"
+                  - "cloudformation:GetTemplateSummary"
                   - "cloudformation:ListStackSetOperationResults"
+                  - "cloudformation:DeleteStackSet"
+                  - "cloudformation:DeleteStackInstances"
+
                   - "guardduty:TagResource"
                   - "guardduty:ListDetectors"
                   - "guardduty:CreateDetector"
+
                   - "iam:CreateRole"
+
                   - "organizations:ListAccounts"
+
                   - "sts:GetCallerIdentity"
-                  - "cloudformation:DeleteStackSet"
+
                   - "s3:GetObject"
+
                   - "iam:GetRole"
                   - "iam:DetachRolePolicy"
                   - "iam:AttachRolePolicy"
@@ -1013,16 +1058,20 @@ Resources:
                   - "cloudformation:DescribeStackEvents"
                   - "cloudformation:ExecuteChangeSet"
                   - "cloudformation:CreateChangSet"
+
                   - "organizations:ListAccounts"
+
                   - "s3:GetObject"
+                  
                   - "iam:GetRole"
+                  
                   - "logs:*"
                 Resource:
                   - "*"
 
 #-----------------------CyngularManagmentLambda-----------------
   CyngularManagerLambda:
-    DependsOn: [ManagerLambdaRole, CyngularLambdaE,CyngularS3Bucket, CreateAdminAndExecutionRoles]
+    DependsOn: [CyngularLambdaE, CreateAdminAndExecutionRoles] #ManagerLambdaRole, CyngularS3Bucket
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-manager-function
@@ -1265,27 +1314,27 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-            ClientName: !Ref ClientName
-            ClientRegions: !Join [",", !Ref ClientRegions]
-            CyngularAccountId: !Ref CyngularAccountId
-            S3BucketArn: !GetAtt CyngularS3Bucket.Arn
-            currentAccountId: !Ref AWS::AccountId
-            CreatedBucketArn: !GetAtt CyngularS3Bucket.Arn
+          ClientName: !Ref ClientName
+          ClientRegions: !Join [",", !Ref ClientRegions]
+          CyngularAccountId: !Ref CyngularAccountId
+          S3BucketArn: !GetAtt CyngularS3Bucket.Arn
+          currentAccountId: !Ref AWS::AccountId
+          CreatedBucketArn: !GetAtt CyngularS3Bucket.Arn
             
       Role: !GetAtt ManagerLambdaRole.Arn
 
   ManagerLambdaTrigger:
     Type: AWS::CloudFormation::CustomResource
-    DependsOn: [CyngularManagerLambda, CreateAdminAndExecutionRoles]
+    DependsOn: [CreateAdminAndExecutionRoles] #CyngularManagerLambda
     Version: "1.0"
     Properties:
-        ServiceToken: !GetAtt CyngularManagerLambda.Arn
-        Stack2URL: !Ref Stack2URL
-        StackSet1URL: !Ref StackSet1URL
-        StackSet2URL: !Ref StackSet2URL
+      ServiceToken: !GetAtt CyngularManagerLambda.Arn
+      Stack2URL: !Ref Stack2URL
+      StackSet1URL: !Ref StackSet1URL
+      StackSet2URL: !Ref StackSet2URL
 
   CreateAdminAndExecutionRolesLambda:
-    DependsOn: [CreateAdminAndExecutionRolesLambdaRole] 
+    # DependsOn: [CreateAdminAndExecutionRolesLambdaRole] 
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-admin-and-execution-roles
@@ -1518,9 +1567,7 @@ Resources:
           RootOUid: !Ref RootOUid
           currentAccountId: !Ref AWS::AccountId
           
-      Role: !GetAtt ManagerLambdaRole.Arn
-
-
+      Role: !GetAtt CreateAdminAndExecutionRolesLambdaRole.Arn #ManagerLambdaRole
 
   CreateAdminAndExecutionRoles:
     Type: AWS::CloudFormation::CustomResource

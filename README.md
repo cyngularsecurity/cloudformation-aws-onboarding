@@ -9,7 +9,7 @@ One Stack, to deploy another stack, and 2 StackSets
 
 * S3 Bucket & Policy for Cyngular.
 * CloudTrail Trail for Cyngular.
-* Cyngular Read Only IAM role{} delete , modify, create snapshots, kms decryption.
+* Cyngular Read Only IAM role{delete , modify, create snapshots, kms decryption}.
 
 * Lambda A (B, C, D, E) role {r53, ec2, org, ssm, logs, eks, gd }, events, Cyngular s3 bucket
 * Lambda A(create resources)
@@ -24,7 +24,7 @@ One Stack, to deploy another stack, and 2 StackSets
 * Manager Lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
 * Admin & execution role for manager lambda, to run other stacks
 * Manager Lambda -
-  * create Gaurd duty detector in every region on managment acc if not exists
+  * create Gaurd duty detector in every region on managment acc if none exists, if one or more exists, tag the first with 'cyngular-guardduty'
   * create *stack-2* - including a stackset resource, when executed runs on all child acc -
     * Guard duty lambda role
     * Guard duty lambda
