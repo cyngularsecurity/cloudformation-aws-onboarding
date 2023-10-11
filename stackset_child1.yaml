@@ -192,7 +192,6 @@ Resources:
                               ]
                           }
 
-
   #------------------Cyngular Lambda A -------------------  
   CyngularLambdaA:
     # DependsOn: LambdaARole
@@ -236,7 +235,6 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
 
-            
             def ekslogs(cur_region_name):
                 try:
                     logging.info ('STARTING EKSLOGS...')
@@ -331,8 +329,6 @@ Resources:
                         Description='LambdaBScheduledRule',
                         EventBusName='default'
                     )
-
-                    
 
                     logging.info('DONE!')
 

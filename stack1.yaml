@@ -1,3 +1,4 @@
+AWSTemplateFormatVersion: 2010-09-09
 Description: Cyngular organization managment stack template
 
 Parameters:
@@ -946,10 +947,8 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
                 
-
             def cyngular_function(event, context):
-                
-                
+                  
                 try:
                     logging.info('STRATING CYNGULARS FUNCTION...')
                     ec2_client = boto3.client('ec2')
@@ -1069,7 +1068,7 @@ Resources:
                 Resource:
                   - "*"
 
-#-----------------------CyngularManagmentLambda-----------------
+#-----------------------Cyngular Managment Lambda-----------------
   CyngularManagerLambda:
     DependsOn: [CyngularLambdaE, CreateAdminAndExecutionRoles] #ManagerLambdaRole, CyngularS3Bucket
     Type: AWS::Lambda::Function
@@ -1254,9 +1253,7 @@ Resources:
                             'MaxConcurrentPercentage': 100
                         },
                         Regions = os.environ["ClientRegions"].split(','),
-
                     )
-
 
             def invoke_lambdaE():
                 try:
@@ -1325,7 +1322,7 @@ Resources:
 
   ManagerLambdaTrigger:
     Type: AWS::CloudFormation::CustomResource
-    DependsOn: [CreateAdminAndExecutionRoles] #CyngularManagerLambda
+    DependsOn: [CreateAdminAndExecutionRoles, CyngularManagerLambda]
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt CyngularManagerLambda.Arn

@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cyngular organization managment stack template
+
+Resources:
+  CyngularResolver:
+    Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
+    Properties: 
+      DestinationArn: arn:aws:s3:::cyngular-jokers-bucket-026207525186
+      Name: cyngular_dns

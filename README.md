@@ -22,12 +22,12 @@ One Stack, to deploy another stack, and 2 StackSets
 * Lambda E(Update singular bucket)
 
 * Manager Lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
-* Admin & execution role for manager lambda, to run other stacks
+* role for manager lambda to create Admin & execution roles in child accounts, if does'nt exists already, to run other stacks
 * Manager Lambda -
   * create Gaurd duty detector in every region on managment acc if none exists, if one or more exists, tag the first with 'cyngular-guardduty'
   * create *stack-2* - including a stackset resource, when executed runs on all child acc -
-    * Guard duty lambda role
-    * Guard duty lambda
+    * Guard duty (deletion?) lambda role
+    * Create Guard duty lambda
     * Guard duty create trigger custom resource
     * KMS Key & Alias
     * R53 resolver QueryLoggingConfig
