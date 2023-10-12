@@ -10,11 +10,12 @@ Parameters:
     MaxLength: 55
   
   CyngularAccountId:
-    Description: The cyngular account id
+    Description: The cyngular account id #851565895544 #468159710337
     Type: String
     MinLength: 12
     MaxLength: 12
     AllowedPattern: "[0-9]*"
+    Default: 468159710337
 
   RootOUid:
     Description: the root ou id
@@ -287,10 +288,10 @@ Resources:
                 "Effect": "Allow",
                 "Action": "s3:GetObject*",
                 "Resource": [
-    !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]],
-    !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
-    # !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
-    ]
+                    !Join ['-', ['arn:aws:s3:::cyngular', !Ref ClientName, 'bucket', !Ref AWS::AccountId]],
+                    !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
+                    # !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
+                    ]
             },
             {
                 "Sid": "volumeDecrypt",
@@ -324,16 +325,16 @@ Resources:
       RoleName: !Join ['-', ['cyngular-lambda-role', !Ref ClientName]]
       AssumeRolePolicyDocument:
         {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "lambda.amazonaws.com"
-            },
-            "Action": "sts:AssumeRole"
-        }
-        ]
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
         }
 
       Policies:
@@ -434,7 +435,6 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
 
-            
             def ekslogs(cur_region_name):
                 try:
                     logging.info('STARTING EKSLOGS...')
@@ -768,7 +768,6 @@ Resources:
             import os
             import logging
             
-
             def dnslogs(cur_region_name):
                 try:
                     logging.info(f'DELETING DNSLOGS...')
@@ -992,11 +991,11 @@ Resources:
 
                   - "cloudformation:DescribeStacks"
                   - "cloudformation:DescribeStackSet"
-                  - "cloudformation:DescribeStackSetOperation"
                   - "cloudformation:CreateStack"
                   - "cloudformation:CreateStackSet"
                   - "cloudformation:CreateStackInstances"
                   - "cloudformation:GetTemplateSummary"
+                  - "cloudformation:DescribeStackSetOperation"
                   - "cloudformation:ListStackSetOperationResults"
                   - "cloudformation:DeleteStackSet"
                   - "cloudformation:DeleteStackInstances"
@@ -1004,8 +1003,6 @@ Resources:
                   - "guardduty:TagResource"
                   - "guardduty:ListDetectors"
                   - "guardduty:CreateDetector"
-
-                  - "iam:CreateRole"
 
                   - "organizations:ListAccounts"
 

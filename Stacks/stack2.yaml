@@ -15,7 +15,6 @@ Parameters:
     Description: The cyngular account id
     Type: String
   
-  
 Resources:
   StackSet:
     Type: AWS::CloudFormation::StackSet
@@ -44,7 +43,7 @@ Resources:
               - !Ref "AWS::AccountId"
           Regions: !Ref deployRegions
             
-      StackSetName: !Sub "cyngular-stack-${ClientName}"
+      StackSetName: !Sub "cyngular-stack-2-${ClientName}"
       TemplateBody: !Sub |
         AWSTemplateFormatVersion: 2010-09-09
         Description: Create a guardduty detector and route53 resolver
