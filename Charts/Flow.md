@@ -80,9 +80,9 @@
 ## Catches
   * replacing CDLs With spaces
   * event rules for lambdas, creation and deletion in the lambda and in the template:
-    * A - Enabled both, (D - Disabling) 
+    * A - Enabled both, (D - Disabling)
     * B - In lambda Enabled, (C - Disabling)
   * cyngular S3 Buckets store only logs from cyngular CT trail 
   * Checking for exec & admin roles only in mgmt acc
 
-  * kms key for gaurd duty (or volume encrypt decrypt)
+  * kms key used in client 'tenant' deployment on cyngular side, with linux service & lambda, to encrypt * decrypt volumes, snapshots 

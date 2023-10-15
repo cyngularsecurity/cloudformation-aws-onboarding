@@ -48,8 +48,8 @@ Resources:
   CyngularKmsAlias:
     Type: AWS::KMS::Alias
     Properties: 
-        AliasName: alias/cyngular-kms-key
-        TargetKeyId: !GetAtt  CyngularKmsKey.Arn
+      AliasName: alias/cyngular-kms-key
+      TargetKeyId: !GetAtt  CyngularKmsKey.Arn
   
   # CyngularGuardDuty: 
   #   Type: AWS::GuardDuty::Detector
@@ -145,13 +145,11 @@ Resources:
                                     'S3Logs': {
                                         'Enable': True
                                     },
-                                    
                                     # 'Kubernetes': {
                                     #     'AuditLogs': {
                                     #         'Enable': True
                                     #     }
                                     # }
-                                    
                                 },
                                 'Tags': [
                                     {
