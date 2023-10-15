@@ -28,7 +28,10 @@
           * os internals
 
       * Create admin-and-execution-roles lambda & role custom resource & trigger
-        * Create AdminAndExecutionRoles on mgmt account (Admin and Exec Stacks) and on child accounts (Exec stack as Stackset) in both one region per account
+        * Create AdminAndExecutionRoles 
+          * on mgmt account (Admin and Exec Stacks)
+          * on child accounts (Exec stack as Stackset) 
+          * both one region per account
 
       * Create ManagerLambda Lambda & Role & custom resource & trigger
         * manager lambda actions
@@ -43,12 +46,12 @@
               * create Stackset 2 
               * aplly to all regions in mgmt acc
                 * Actions
+                  * create r53 resolver query logs config
                   * create gaurd duty lambda & role & trigger
                     * gaurd duty lambda actions
                       * if Guard Duty Detector exist - tag it
                       * if not create it
                   * create kms key & alias
-                  * create r53 resolver query logs config
 
           * create_stackset child 1
             * aplly to all child accounts in one region
@@ -68,21 +71,11 @@
             * if not create it, (enable, data from s3 Logs)
 
           * create_stackset child 2
-            * run on all child accounts in all regions
+            * run on all regions in child accounts 
             * Parameters  
               * ClientRegions (?)
             * create_guardduty detector, if exist - tag it
         * create delete-custom-resource lambda & role
-            
-# Off Boarding
-0. Manualy Invoke deletion lambdas - in every account
-     * VFL & Resources
-
-0. Manualy delete Stacksets - in mgmgt account
-     * Stack-2
-     * StackSet-1 & StackSet-2
-       * Delete Instances from stacksets
-       * delete the stacksets
 
 ## Catches
   * replacing CDLs With spaces

@@ -1,85 +1,106 @@
 import boto3
 
-# account_id = '123456789012'
-# ou_id = 'ou-exam-ple1'
-
 client = boto3.client('organizations')
-root_id = client.list_roots()['Roots'][0]['Id']
 
-def list_ous(parent_id):
-    ou_paginator = client.get_paginator('list_organizational_units_for_parent')
-    for ou_page in ou_paginator.paginate(ParentId=parent_id):
-        for ou in ou_page['OrganizationalUnits']:
-            print(f"OU ID: {ou['Id']}, Name: {ou['Name']}")
-            list_ous(ou['Id'])
-            
 def get_org_id_by_account_id(account_id):
     response = client.describe_account(AccountId=account_id)
     return response['Account']['Arn'].split(":")[5].split("/")[1]
+# org_id = get_org_id_by_account_id("026207525186")
 
-def get_general_info_by_account_id(account_id):
-    response = client.describe_account(AccountId=account_id)
-    return response['Account']
+organization_info = []
+root_accounts = []
+OUIds = []
+AccIds = []
 
-def get_accounts_for_org():
-    accounts = []
-    paginator = client.get_paginator('list_accounts')
-    for page in paginator.paginate():
-        accounts.extend(page['Accounts'])
-    return accounts
+def list_ous_and_accounts(parent_id):
+    try:
+        acc_paginator = client.get_paginator('list_accounts_for_parent')
+        for acc_page in acc_paginator.paginate(ParentId=parent_id):
+            for account in acc_page['Accounts']:
+                root_accounts.append({'Account_ID': account['Id'], 'Account_Name': account['Name']})
+    except Exception as e:
+        print(f"An error occurred while fetching accounts under root: {e}")
 
-def get_accounts_for_ou(ou_id):
-    accounts = []
-    paginator = client.get_paginator('list_accounts_for_parent')
-    for page in paginator.paginate(ParentId=ou_id):
-        accounts.extend(page['Accounts'])
-    return accounts
+    try:
+        ou_paginator = client.get_paginator('list_organizational_units_for_parent')
+        for ou_page in ou_paginator.paginate(ParentId=parent_id):
+            for ou in ou_page['OrganizationalUnits']:
+                ou_info = {'OU_ID': ou['Id'], 'OU_Name': ou['Name']}
+                
+                # Fetch accounts under the current OU
+                accounts = []
+                acc_paginator = client.get_paginator('list_accounts_for_parent')
+                for acc_page in acc_paginator.paginate(ParentId=ou['Id']):
+                    for account in acc_page['Accounts']:
+                        accounts.append({'Account_ID': account['Id'], 'Account_Name': account['Name']})
 
-def list_ous_recursively(parent_id):
-    ous = []
-    paginator = client.get_paginator('list_organizational_units_for_parent')
-    for page in paginator.paginate(ParentId=parent_id):
-        for ou in page['OrganizationalUnits']:
-            ous.append(ou)
-            ous.extend(list_ous_recursively(ou['Id']))
-    return ous
+                ou_info['Accounts'] = accounts
+                
+                organization_info.append(ou_info)
+                list_ous_and_accounts(ou['Id'])
+    except Exception:
+        pass
 
 def lambda_handler():
-    root_response = client.list_roots()
-    if 'Roots' in root_response and len(root_response['Roots']) > 0:
-        root_id = root_response['Roots'][0]['Id']
-    else:
+    try:
+        root_response = client.list_roots()
+        if 'Roots' in root_response and len(root_response['Roots']) > 0:
+            root_id = root_response['Roots'][0]['Id']
+        else:
+            print("Could not fetch the root ID.")
+            exit(1)
+    except Exception:
         print("Could not fetch the root ID.")
-        exit(1)
-    list_ous(root_id)
-    # get_org_id_by_account_id(root_id)
-    # get_general_info_by_account_id(root_id)
-    accs = get_accounts_for_org()
-    print(f"{accs}")
+    
+    # populating ous and nested accs for root id
+    list_ous_and_accounts(root_id)
+    
+    all_accounts = []
+    
+    try:
+        acc_paginator = client.get_paginator('list_accounts')
+        for acc_page in acc_paginator.paginate():
+            for account in acc_page['Accounts']:
+                all_accounts.append({'Account_ID': account['Id'], 'Account_Name': account['Name']})
+    except Exception as e:
+        print(f"An error occurred while fetching all accounts: {e}")
+    
+    accounts_in_ous = [account for ou in organization_info for account in ou['Accounts']]
+    root_accounts = [account for account in all_accounts if account not in accounts_in_ous]
+    
+    if len(root_accounts) > 0:
+        organization_info.append({'OU_ID': root_id, 'OU_Name': 'Root', 'Accounts': root_accounts})
+
+    for ou_info in organization_info:
+        OUIds.append(ou_info['OU_ID'])
+    
+        for account in ou_info['Accounts']:
+            AccIds.append(account['Account_ID'])
+        
+    print("listing org info\n")
+
+    print(f"{organization_info}")
+
+    print("listing acc in ous\n")
+    print(f"{accounts_in_ous}")
+
+    print("listing acc under root\n")
+    print(f"{root_accounts}")
     
 lambda_handler()
-    
-# list_roots = org_client.list_roots()
-# root_id = list_roots['Roots'][0]['Id']
-# root_name = list_roots['Roots'][0]['Name']
-# oulist = org_client.list_organizational_units_for_parent(ParentId=root_id)
-# # aws_acc_ou_path = {}
+# ------------
+print("out of lambda")
 
-# for ou in oulist['OrganizationalUnits']:
-#     ou_id = ou['Id']
-#     ou_name = ou['Name']
-#     ou_path = root_name + "/" + ou_name
-#     org_unit_info = org_client.list_organizational_units_for_parent(ParentId=ou_id)
-
-#     while True:
-#           for oui in org_unit_info['OrganizationalUnits']:
-#               org_id = oui['Id']
-#               ou_path = ou_path + "/" + oui['Name']
-#           if 'NextToken' in org_unit_info:
-#              org_unit_info = org_client.list_organizational_units_for_parent(ParentId=ou_id, NextToken=org_unit_info['NextToken'])
-#           else:
-#              break
-#     #print (ou_path)
+# Debug print extracted OU information
+print(f"Extracted OU Information: {AccIds}{OUIds}")
+# def list_ous_recursively(parent_id):
+#     ous = []
+#     paginator = client.get_paginator('list_organizational_units_for_parent')
+#     for page in paginator.paginate(ParentId=parent_id):
+#         for ou in page['OrganizationalUnits']:
+#             ous.append(ou)
+#             ous.extend(list_ous_recursively(ou['Id']))
+#     return ous
     
 # def accounts_with_ou_path(org_client: boto3.client, ou_id: str, path: str) -> list:
 #     """ Return list of accounts at this OU as well as deeper """

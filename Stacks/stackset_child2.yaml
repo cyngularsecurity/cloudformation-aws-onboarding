@@ -1,16 +1,16 @@
 Description: Cyngular organization managment stack template
 
 Parameters:
-  ClientName:
-    Description: The name of the client
-    Type: String
+  # ClientName:
+  #   Description: The name of the client
+  #   Type: String
     
   CyngularAccountId:
     Description: The cyngular account id
     Type: String
   
   S3BucketArn:
-    Description: The Arn of the S3 Bucket.
+    Description: The Arn of cyngular S3 logs Bucket.
     Type: String
   
   ClientRegions:
@@ -46,7 +46,6 @@ Resources:
           Value: cyngular-kms-key
   
   CyngularKmsAlias:
-    # DependsOn: CyngularKmsKey
     Type: AWS::KMS::Alias
     Properties: 
         AliasName: alias/cyngular-kms-key
@@ -72,7 +71,6 @@ Resources:
     Properties: 
       DestinationArn: !Ref S3BucketArn
       Name: cyngular_dns
-
 
 #-----------------------GuarddutyDeletionLambdaRole----------------------------#
   GuarddutyDeletionLambdaRole:
@@ -105,7 +103,6 @@ Resources:
                   - "*"
 #---------------------GuarddutyCreation--------------------
   CyngularGuarddutyCreationLambda:
-    # DependsOn: GuarddutyDeletionLambdaRole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-guardduty-creation-lambda-function

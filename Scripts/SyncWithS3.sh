@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eux
+set -eu
 
 GREEN="\033[32m"
 BLUE="\033[34m"
