@@ -171,6 +171,7 @@ Resources:
     Properties: 
       S3BucketName: !Ref CyngularS3Bucket
       IsMultiRegionTrail: True
+      IsOrganizationTrail: True
       IncludeGlobalServiceEvents: True
       InsightSelectors: 
           - InsightType : ApiCallRateInsight
@@ -188,7 +189,6 @@ Resources:
       Tags: 
         - Key: Name
           Value: cyngular-cloudtrail
-      IsOrganizationTrail: True
 
 #------------------Cyngular Client Role-------------------
   ClientCyngularRole:
@@ -652,7 +652,7 @@ Resources:
                     logging.critical(str(e))
       Environment:
         Variables:
-          LAMBDA_REGIONS: !Join [",", !Ref ClientRegions]
+          LAMBDA_REGIONS: !Join [" ", !Ref ClientRegions]
 
       Runtime: "python3.9"
       Handler: index.cyngular_function
@@ -665,7 +665,7 @@ Resources:
       Name: cyngular-lambda-create-vpcflowlogs-rule
       Description: "LambdaBScheduledRule"
       ScheduleExpression: "cron(*/30 * * * ? *)"
-      State: "DISABLED"
+      State: "ENABLED"
       Targets: 
         - Arn: !GetAtt CyngularLambdaB.Arn
           Id: "TargetFunctionV1"

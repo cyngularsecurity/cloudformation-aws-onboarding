@@ -41,7 +41,7 @@
           * create_stack2 ()
             * Parameters
               * CyngularS3Bucket - created on client account
-              * deployRegions (?)
+              * deployRegions
             * Actions
               * create Stackset 2 
               * aplly to all regions in mgmt acc
