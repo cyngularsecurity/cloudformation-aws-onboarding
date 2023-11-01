@@ -54,7 +54,6 @@ One Stack, to deploy another stack, and 2 StackSets
 
 ## TODO
 
-1. use custom s3 bucket on client side to store stacks template files and lambdas code.
 2. add ResolverQueryLoggingConfigAssociation type, stack 2, for detaching vpcs on stack deletion.
 3. check for already existing resources and deletion options for:
 
@@ -67,3 +66,8 @@ One Stack, to deploy another stack, and 2 StackSets
 1. run delete lambdas (del resources & del vpc flow logs) in all client accounts.
 2. delete stack-1.
 3. delete stacksets instances for all client accounts and regions.
+
+# ---------------
+# quick create stack url:
+
+`https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/create/review?stackName=cyngular-onboarding&templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/stack1.yaml&CyngularAccountId=468159710337`

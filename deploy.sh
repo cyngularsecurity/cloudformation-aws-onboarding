@@ -6,7 +6,6 @@ YELLOW="\033[33m"
 BLUE="\033[34m"
 RESET="\033[0m"
 
-# brew install rain
 ClientRegions="eu-west-2,eu-west-1"
 CyngularAccountId="468159710337"
 OrganizationId="o-6lc0p6io84" # 418853915347,781158784220
@@ -25,9 +24,16 @@ echo -e "${BLUE}Starting CloudFormation Stack Deployment with Rain...${RESET}"
 echo -e "\n${YELLOW}Press Enter to continue with creating the stack, or Ctrl+C to cancel.${RESET}"
 read -r
 
-rain deploy \
-  --params "ClientName=$ClientName,ClientRegions=$ClientRegions,CyngularAccountId=$CyngularAccountId,OrganizationId=$OrganizationId" \
-  Stacks/stack1.yaml "$STACK_NAME_PREFIX-$ClientName" -y --debug
+rain deploy Stacks/stack1.yaml "$STACK_NAME_PREFIX-$ClientName" -y --debug \
+  --params "ClientName=$ClientName,ClientRegions=$ClientRegions,CyngularAccountId=$CyngularAccountId,OrganizationId=$OrganizationId"
 echo -e "${GREEN}Stack created successfully.${RESET}"
+
 # rain fmt
 # rain log --chart
+
+
+
+# ---------------
+# quick create stack url:
+
+https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/create/review?stackName=cyngular-onboarding&templateURL=s3://cyngular-onboarding-templates/stack1.yaml&CyngularAccountId=468159710337
