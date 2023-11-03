@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Cyngular organization managment stack template
 
 Parameters:
+
   ClientName:
     Description: The name of the client. (must be lowercase, can contain letters, numbers and dashes)
     Type: String
@@ -9,9 +10,39 @@ Parameters:
     MinLength: 3
     MaxLength: 55
 
-  OrganizationId:
-    Description: the client Organization ID
+  Org:
+    Description: Specify whether the client is using an organization
     Type: String
+    Default: "0"
+    AllowedValues: ["0", "{org-id}"]
+    ConstraintDescription: Must specify "0" or the client organization ID
+
+  DeployList: # check if empty, and others are not, concat
+    Description: Comma-separated list of account IDs or OUs to include
+    Type: String
+    Default: "0"
+
+  AccountList:
+    Description: Comma-separated list of account IDs or OUs to include
+    Type: String
+    Default: "0"
+
+  OUList:
+    Description: Comma-separated list of OUs to include
+    Type: String
+    Default: "0"
+
+  EnableGuardDuty:
+    Description: Whether to create GuardDuty Detector
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+  EnableResolver:
+    Description: Whether to create Route 53 Resolver, for logging vpc flows
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
 
   CyngularAccountId:
     Description: "The cyngular Account ID to assume read only role"
@@ -24,28 +55,7 @@ Parameters:
   ClientRegions:
     Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts
     Type: CommaDelimitedList
-    AllowedValues:
-      - me-south-1
-      - us-east-1
-      - us-east-2
-      - us-west-1
-      - us-west-2
-      - ap-southeast-1
-      - ap-southeast-2
-      - ap-south-1
-      - ap-northeast-1
-      - ap-northeast-2
-      - ap-northeast-3
-      - af-south-1
-      - eu-west-1
-      - eu-west-2
-      - eu-west-3
-      - eu-central-1
-      - eu-north-1
-      - eu-south-1
-      - ca-central-1
-      - sa-east-1
-      - il-central-1
+    AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
   
   Stack2URL:
     Description: 'The link to the stack2 template url'
@@ -61,6 +71,31 @@ Parameters:
     Description: 'The link to the stackset2 template url'
     Type: String
     Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml'
+
+Conditions:
+  IsOrg: !Not [!Equals [!Ref Org, "0"]]
+  EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
+  EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
+  EnableGuardDutyForOrg: !And [!Condition IsOrg, !Condition EnableGuardDutyCondition]
+  EnableResolverForOrg: !And [!Condition IsOrg, !Condition EnableResolverCondition]
+
+  #GuardDuty for accounts
+  DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+
+  # GuardDuty for OUs
+  DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+
+  # Resolver for accounts
+  DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+
+  # Resolver for OUs
+  DeployResolverForOUs: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+
+  # if DeployList is empty and others are not
+  CheckDeployList: !And
+    - !Equals [!Ref DeployList, "0"]
+    - !Not [!Equals [!Ref AccountList, "0"]]
+    - !Not [!Equals [!Ref OUList, "0"]]
 
 Resources:
   #------------------Cyngular Bucket-------------------
@@ -331,20 +366,16 @@ Resources:
   LambdasRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', ['cyngular-lambda-role-', !Ref ClientName]]
+      RoleName: !Join ['-', ['cyngular-lambda-role', !Ref ClientName]]
       AssumeRolePolicyDocument:
-        {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        }
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+            Service: 
+              - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
 
       Policies:
         - PolicyName: "cyngular-lambda-policy"
@@ -401,6 +432,7 @@ Resources:
 #------------------Cyngular Lambda A -------------------  
   CyngularLambdaA:
     Type: AWS::Lambda::Function
+    Condition: !Ref EnableResolver
     Properties:
       FunctionName: cyngular-lambda-create-resources
       Description: Created by Cyngular Security.
@@ -551,7 +583,7 @@ Resources:
   
   LambdaAScheduledRule: 
     Type: AWS::Events::Rule
-    Properties: 
+    Properties: EnableResolver
       Name: cyngular-lambda-create-resources-rule
       Description: "LambdaAScheduledRule"
       ScheduleExpression: "cron(*/30 * * * ? *)"
@@ -571,6 +603,7 @@ Resources:
 #------------------Cyngular Lambda B-------------------
   CyngularLambdaB:
     Type: AWS::Lambda::Function
+    Condition: !Ref EnableResolver
     Properties:
       FunctionName: cyngular-lambda-create-vpcflowlogs 
       Description: Created by Cyngular Security.
@@ -616,7 +649,7 @@ Resources:
 
                 except Exception as e:
                     if 'FlowLogAlreadyExists' in str(e):
-                        pass
+                        continue
                     else:
                         logging.critical(str(e))
 
@@ -762,6 +795,7 @@ Resources:
 #------------------Cyngular Lambda D-------------------
   CyngularLambdaD:
     Type: AWS::Lambda::Function
+    Condition: !Ref EnableResolver
     Properties:
       FunctionName: cyngular-lambda-delete-resources  
       Description: Created by Cyngular Security.
@@ -858,14 +892,14 @@ Resources:
             import logging
             import json
 
-            def trigger_manager_lambda():
-                lambda_client = boto3.client('lambda')
-                response = lambda_client.invoke(
-                    FunctionName='cyngular-lambda-manager-function',
-                    InvocationType = 'RequestResponse',
-                    LogType='Tail',
-                    ClientContext='',
-                )
+            # def trigger_manager_lambda():
+            #     lambda_client = boto3.client('lambda')
+            #     response = lambda_client.invoke(
+            #         FunctionName='cyngular-lambda-manager-function',
+            #         InvocationType = 'RequestResponse',
+            #         LogType='Tail',
+            #         ClientContext='',
+            #     )
             def get_account_ids_lst_by_organization():
                 account_ids_lst = []
 
@@ -1020,6 +1054,12 @@ Resources:
                   - "iam:getRolePolicy"
                 Resource:
                   - "*"
+                  - "arn:aws:lambda:*:*:function:*"
+                  - "arn:aws:logs:*:*:*"
+                  - "arn:aws:cloudformation:*:*:*/*/*"
+                  - "arn:aws:guardduty:*:*:*"
+                  - "arn:aws:organizations::*:account/*"
+           
 
 #--------------Admin And Execution Roles Lambda Role------------------
   CreateAdminAndExecutionRolesLambdaRole:
@@ -1075,7 +1115,7 @@ Resources:
 
 #-----------------------Cyngular Managment Lambda-----------------
   CyngularManagerLambda:
-    DependsOn: [ManagerLambdaRole, CyngularLambdaE,CyngularS3Bucket, CreateAdminAndExecutionRoles]
+    DependsOn: [ManagerLambdaRole, CyngularLambdaE, CyngularS3Bucket, CreateAdminAndExecutionRoles]
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-manager-function
@@ -1089,23 +1129,13 @@ Resources:
             import logging
 
             def get_child_accounts(management_account_id):
-                """
-                Gets a list of all child accounts in the organization from a management account.
-                """
                 org_client = boto3.client('organizations')
-                
-                # Get a list of all accounts in the organization
                 account_list = org_client.list_accounts()
-                
-                # Create a list to store the child accounts
                 child_accounts = []
-                
-                # Loop through each account in the list and check if it is a child account
                 for account in account_list['Accounts']:
                     if account['Id'] != management_account_id:
                         child_accounts.append(account['Id'])
                 
-                # Return the list of child accounts
                 return child_accounts
 
             def guardduty_exists(region):
@@ -1114,22 +1144,22 @@ Resources:
                 if len(response['DetectorIds']) == 0:
                     return False
                 return True
+
             def create_guardduty():
                 ClientRegionsList = os.environ['ClientRegions'].split(',')
                 for region in ClientRegionsList:
                     if guardduty_exists(region):
                         logging.info(f'guardduty found in {region}, adding cyngular tag')
                         client = boto3.client('guardduty', region)
-                        response = client.list_detectors()
-                        detector_id = response['DetectorIds'][0]
-                        # add cyngular tag
                         sts_client = boto3.client('sts')
+
+                        detectors = client.list_detectors()
+                        detector_id = detectors['DetectorIds'][0]
                         account_id = sts_client.get_caller_identity()['Account']
                         response = client.tag_resource(Tags={'Value' : 'cyngular-guardduty'}, ResourceArn=f'arn:aws:guardduty:{region}:{account_id}:detector/{detector_id}')
                     
                     else:
                         logging.info(f'creating guardduty in {region}')
-                        # create guard duties
                         client = boto3.client('guardduty', region)
                         detector_properties = {
                             'Enable': True,
@@ -1146,13 +1176,13 @@ Resources:
                             ]
                         }
                         
-                        # Create the detector
                         response = client.create_detector(
-                            Enable=True,
-                            FindingPublishingFrequency='FIFTEEN_MINUTES',
+                            Enable=detector_properties['Enable'],
+                            FindingPublishingFrequency=detector_properties['FindingPublishingFrequency'],
                             DataSources=detector_properties['DataSources'],
                             Tags=detector_properties['Tags'][0]
                         )
+
             def create_stack2(url):
                 stack_client = boto3.client('cloudformation')
                 stack_client.create_stack(
@@ -1320,7 +1350,23 @@ Resources:
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
           currentAccountId: !Ref AWS::AccountId
-        #   CreatedBucketArn: !GetAtt CyngularS3Bucket.Arn
+
+          IsOrg: !Ref Org
+          EnableGuardDuty: !Ref EnableGuardDuty
+          EnableResolver: !Ref EnableResolver
+          DeployList: !Ref DeployList
+          AccountList: !Ref AccountList
+          OUList: !Ref OUList
+          IsOrgCondition: !Condition IsOrg
+          EnableGuardDutyCondition: !Condition EnableGuardDutyCondition
+          EnableResolverCondition: !Condition EnableResolverCondition
+          EnableGuardDutyForOrgCondition: !Condition EnableGuardDutyForOrg
+          EnableResolverForOrgCondition: !Condition EnableResolverForOrg
+          DeployGuardDutyForAccountsCondition: !Condition DeployGuardDutyForAccounts
+          DeployGuardDutyForOUsCondition: !Condition DeployGuardDutyForOUs
+          DeployResolverForAccountsCondition: !Condition DeployResolverForAccounts
+          DeployResolverForOUsCondition: !Condition DeployResolverForOUs
+          CheckDeployListCondition: !Condition CheckDeployList
             
       Role: !GetAtt ManagerLambdaRole.Arn
 

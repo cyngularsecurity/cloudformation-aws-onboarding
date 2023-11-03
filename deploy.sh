@@ -30,10 +30,3 @@ echo -e "${GREEN}Stack created successfully.${RESET}"
 
 # rain fmt
 # rain log --chart
-
-
-
-# ---------------
-# quick create stack url:
-
-https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/create/review?stackName=cyngular-onboarding&templateURL=s3://cyngular-onboarding-templates/stack1.yaml&CyngularAccountId=468159710337

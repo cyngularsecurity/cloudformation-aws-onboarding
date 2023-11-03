@@ -1,0 +1,70 @@
+Parameters:
+
+
+
+Resources:
+  StackSetResource:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      TemplateURL: "s3://your-bucket-name/stack_set_template.yaml"
+      Parameters:
+        IsOrg: !If
+          - OrgIdCondition
+          - !Ref IsOrg
+          - !Ref "AWS::NoValue"
+        AccountList: !If
+          - IsOrgCondition
+          - !Ref AccountList
+          - !Ref "AWS::NoValue"
+        OUList: !If
+          - IsOrgCondition
+          - !Ref OUList
+          - !Ref "AWS::NoValue"
+      Conditions:
+        IsOrgCondition: !Condition IsOrgCondition
+
+  Stack2:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      TemplateURL: "S3TemplateURL"
+      Parameters:
+        IsOrg: !Ref IsOrg
+        EnableGuardDuty: !Ref EnableGuardDuty
+        EnableResolver: !Ref EnableResolver
+    Condition: !And [!Condition IsOrgCondition, !Condition EnableOnOrg, !Condition EnableResolverOnOrg]
+        # IsOrgCondition: !Condition IsOrgCondition
+        # EnableOnOrgCondition: !Condition EnableOnOrg
+        # EnableResolverOnOrgCondition: !Condition EnableResolverOnOrg
+
+  StackChild1:
+    Type: AWS::CloudFormation::StackSet
+    Condition:
+      IsOrgCondition: !Condition IsOrgCondition
+      EnableOnOrgCondition: !Condition EnableOnOrg
+      EnableResolverOnOrgCondition: !Condition EnableResolverOnOrg
+    Properties:
+      TemplateURL: "S3TemplateURL2"
+      Parameters:
+        IsOrg: !Ref IsOrg
+        EnableGuardDuty: !Ref EnableGuardDuty
+        EnableResolver: !Ref EnableResolver
+
+  StackChild2:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      TemplateURL: "S3TemplateURL3"
+      Parameters:
+        IsOrg: !Ref IsOrg
+        EnableGuardDuty: !Ref EnableGuardDuty
+        EnableResolver: !Ref EnableResolver
+    Condition:
+      IsOrgCondition: !Condition IsOrgCondition
+      EnableOnOrgCondition: !Condition EnableOnOrg
+      EnableResolverOnOrgCondition: !Condition EnableResolverOnOrg
+
+  LambdaFunctionResource:
+
+Outputs:
+  StackSetOutput:
+    Value: !Ref StackSetResource
+    Description: "StackSet created based on conditions and parameters provided."

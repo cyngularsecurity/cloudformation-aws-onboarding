@@ -39,6 +39,7 @@
             * Update Cyngular Buckey policy with dynamic list of organization_accounts_ids
 
           * create_stack2 ()
+            * apply to all regions in mgmt account
             * Parameters
               * CyngularS3Bucket - created on client account
               * deployRegions
