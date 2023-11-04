@@ -1,28 +1,6 @@
 Parameters:
 
-
-
 Resources:
-  StackSetResource:
-    Type: AWS::CloudFormation::StackSet
-    Properties:
-      TemplateURL: "s3://your-bucket-name/stack_set_template.yaml"
-      Parameters:
-        IsOrg: !If
-          - OrgIdCondition
-          - !Ref IsOrg
-          - !Ref "AWS::NoValue"
-        AccountList: !If
-          - IsOrgCondition
-          - !Ref AccountList
-          - !Ref "AWS::NoValue"
-        OUList: !If
-          - IsOrgCondition
-          - !Ref OUList
-          - !Ref "AWS::NoValue"
-      Conditions:
-        IsOrgCondition: !Condition IsOrgCondition
-
   Stack2:
     Type: AWS::CloudFormation::StackSet
     Properties:

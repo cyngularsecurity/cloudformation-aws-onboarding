@@ -23,7 +23,7 @@ Parameters:
     Default: "0"
 
   AccountList:
-    Description: Comma-separated list of account IDs or OUs to include
+    Description: Comma-separated list of account IDs to include
     Type: String
     Default: "0"
 
@@ -74,21 +74,11 @@ Parameters:
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref Org, "0"]]
-  EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
-  EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
-  EnableGuardDutyForOrg: !And [!Condition IsOrg, !Condition EnableGuardDutyCondition]
-  EnableResolverForOrg: !And [!Condition IsOrg, !Condition EnableResolverCondition]
-
-  #GuardDuty for accounts
+#   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
+#   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
   DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
-
-  # GuardDuty for OUs
   DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
-
-  # Resolver for accounts
   DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
-
-  # Resolver for OUs
   DeployResolverForOUs: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref OUList, "0"]]]
 
   # if DeployList is empty and others are not
@@ -1121,252 +1111,29 @@ Resources:
       FunctionName: cyngular-lambda-manager-function
       Description: Created by Cyngular Security.
       Code:
+        # S3Bucket: !Ref BucketName
+        # S3Key:
+        #   !Join ["", ["lambda/", !Join [".", ["CloudService_Lambda_C", "zip"]]]]
         ZipFile: !Sub |
-            import boto3
-            import time
-            import os
-            import cfnresponse
-            import logging
 
-            def get_child_accounts(management_account_id):
-                org_client = boto3.client('organizations')
-                account_list = org_client.list_accounts()
-                child_accounts = []
-                for account in account_list['Accounts']:
-                    if account['Id'] != management_account_id:
-                        child_accounts.append(account['Id'])
-                
-                return child_accounts
-
-            def guardduty_exists(region):
-                client = boto3.client('guardduty', region)
-                response = client.list_detectors()
-                if len(response['DetectorIds']) == 0:
-                    return False
-                return True
-
-            def create_guardduty():
-                ClientRegionsList = os.environ['ClientRegions'].split(',')
-                for region in ClientRegionsList:
-                    if guardduty_exists(region):
-                        logging.info(f'guardduty found in {region}, adding cyngular tag')
-                        client = boto3.client('guardduty', region)
-                        sts_client = boto3.client('sts')
-
-                        detectors = client.list_detectors()
-                        detector_id = detectors['DetectorIds'][0]
-                        account_id = sts_client.get_caller_identity()['Account']
-                        response = client.tag_resource(Tags={'Value' : 'cyngular-guardduty'}, ResourceArn=f'arn:aws:guardduty:{region}:{account_id}:detector/{detector_id}')
-                    
-                    else:
-                        logging.info(f'creating guardduty in {region}')
-                        client = boto3.client('guardduty', region)
-                        detector_properties = {
-                            'Enable': True,
-                            'FindingPublishingFrequency': 'FIFTEEN_MINUTES',
-                            'DataSources': {
-                                'S3Logs': {
-                                    'Enable': True
-                                },
-                            },
-                            'Tags': [
-                                {
-                                    'Value': 'cyngular-guardduty'
-                                }
-                            ]
-                        }
-                        
-                        response = client.create_detector(
-                            Enable=detector_properties['Enable'],
-                            FindingPublishingFrequency=detector_properties['FindingPublishingFrequency'],
-                            DataSources=detector_properties['DataSources'],
-                            Tags=detector_properties['Tags'][0]
-                        )
-
-            def create_stack2(url):
-                stack_client = boto3.client('cloudformation')
-                stack_client.create_stack(
-                    StackName='cyngular-stack2',
-                    TemplateURL=url,
-                    Parameters=[
-                        {
-                            'ParameterKey': 'ClientName',
-                            'ParameterValue': os.environ['ClientName']
-                        },
-                        {
-                            'ParameterKey': 'deployRegions',
-                            'ParameterValue': os.environ['ClientRegions']
-                        },
-                        {
-                            'ParameterKey': 'S3ManagementBucketArn',
-                            'ParameterValue': os.environ['S3BucketArn']
-                        },
-                        {
-                            'ParameterKey': 'CyngularAccountId',
-                            'ParameterValue': os.environ['CyngularAccountId']
-                        }
-                    ],
-                    Capabilities=['CAPABILITY_IAM']
-                )
-            def create_stackset1(child_accounts,url):
-                stack_client = boto3.client('cloudformation')
-                client = boto3.client('s3') # example client, could be any
-                stack_client.create_stack_set(
-                StackSetName='cyngular-stackset-1',
-                PermissionModel='SELF_MANAGED',
-                TemplateURL=url,
-                Parameters = [
-
-                    {
-                        'ParameterKey': 'ClientName',
-                        'ParameterValue': os.environ['ClientName']
-                    },
-                    {
-                        'ParameterKey': 'CyngularAccountId',
-                        'ParameterValue': os.environ['CyngularAccountId']
-                    },
-                    {
-                        'ParameterKey': 'S3BucketArn',
-                        'ParameterValue': os.environ['S3BucketArn']
-                    },
-                    {
-                        'ParameterKey': 'ClientRegions',
-                        'ParameterValue': (os.environ['ClientRegions']).replace(',',' ')
-                    }
-                ],
-                    Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"]
-                
-                )
-                stack_client.create_stack_instances(
-                        StackSetName = 'cyngular-stackset-1',
-                        DeploymentTargets = {
-                            "Accounts": child_accounts
-                        },
-                        OperationPreferences = {
-                            'RegionConcurrencyType': 'PARALLEL',
-                            'FailureTolerancePercentage': 100,
-                            'MaxConcurrentPercentage': 100
-                        },
-                        Regions = [client.meta.region_name],
-                    
-                )
-            def create_stackset2(child_accounts,url):
-                stack_client = boto3.client('cloudformation')
-                stack_client.create_stack_set(
-                StackSetName='cyngular-stackset-2',
-                PermissionModel='SELF_MANAGED',
-                TemplateURL=url,
-                Parameters=[
-                    # {
-                    #     'ParameterKey': 'ClientName',
-                    #     'ParameterValue': os.environ['ClientName']
-                    # },
-                    {
-                        'ParameterKey': 'CyngularAccountId',
-                        'ParameterValue': os.environ['CyngularAccountId']
-                    },
-                    {
-                        'ParameterKey': 'S3BucketArn',
-                        'ParameterValue': os.environ['S3BucketArn']
-                    },
-                    {
-                        'ParameterKey': 'ClientRegions',
-                        'ParameterValue': os.environ['ClientRegions']
-                    }
-                ],
-                    Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"]
-                )
-                stack_client.create_stack_instances(
-                        StackSetName = 'cyngular-stackset-2',
-                        DeploymentTargets = {
-                            "Accounts": child_accounts
-                        }
-                        ,OperationPreferences = {
-                            'RegionConcurrencyType': 'PARALLEL',
-                            'FailureTolerancePercentage': 100,
-                            'MaxConcurrentPercentage': 100
-                        },
-                        Regions = os.environ["ClientRegions"].split(','),
-                    )
-
-            def invoke_lambdaE():
-                try:
-                    lambda_client = boto3.client('lambda')
-                    response = lambda_client.invoke(
-                        FunctionName='cyngular-lambda-update-cyngular-bucket',
-                        InvocationType = 'RequestResponse',
-                        LogType='Tail',
-                    )
-                    logging.info('lmbada E invoked!')
-                    if response['StatusCode'] != 200:
-                        logging.critical(f"Error {response}")
-                except Exception as e:
-                    logging.critical(str(e))
-
-            def cyngular_function(event, context):
-                try:
-                    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-                    logger = logging.getLogger()
-                    logger.setLevel(logging.INFO)
-                    logging.info('STARTING CYNGULAR\'S FUNCTION...')
-
-                    #printing event for responseurl
-                    logging.info(f"copy this to manually delete the custom resource: \n{event}")
-
-                    # if the stack is being created
-                    if event['RequestType'] == 'Create':        
-                        try:
-                            stack2_url = event['ResourceProperties']['Stack2URL']
-                            stackset1_url = event['ResourceProperties']['StackSet1URL']
-                            stackset2_url = event['ResourceProperties']['StackSet2URL']
-                            child_accounts = get_child_accounts(os.environ['currentAccountId'])
-                            invoke_lambdaE()
-                            logging.info("CREATING CYNGULAR STACK2")
-                            create_stack2(stack2_url)
-                            logging.info("STARING CYNGULAR STACKSET1")
-                            create_stackset1(child_accounts,stackset1_url)
-                            logging.info("Creating GuardDuties")
-                            create_guardduty()
-                            logging.info("STARING CYNGULAR STACKSET2")
-                            create_stackset2(child_accounts,stackset2_url)
-                            logging.info("DONE WITH ALL CYNGULAR STACKS!")
-                            cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
-
-                        except Exception as e:
-                            logging.critical(str(e))
-                            cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
-                    else:
-                        cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'No error'})
-                except Exception as e:
-                    logging.critical(str(e))
-                    cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
       Runtime: "python3.9"
       Handler: index.cyngular_function
       Timeout: 300
       Environment:
         Variables:
           ClientName: !Ref ClientName
-          ClientRegions: !Join [",", !Ref ClientRegions]
-          CyngularAccountId: !Ref CyngularAccountId
-          S3BucketArn: !GetAtt CyngularS3Bucket.Arn
-          currentAccountId: !Ref AWS::AccountId
-
+          MgmtAccountId: !Ref AWS::AccountId
           IsOrg: !Ref Org
           EnableGuardDuty: !Ref EnableGuardDuty
           EnableResolver: !Ref EnableResolver
-          DeployList: !Ref DeployList
+
+          DeployRegions: !Join [",", !Ref ClientRegions]
           AccountList: !Ref AccountList
           OUList: !Ref OUList
-          IsOrgCondition: !Condition IsOrg
-          EnableGuardDutyCondition: !Condition EnableGuardDutyCondition
-          EnableResolverCondition: !Condition EnableResolverCondition
-          EnableGuardDutyForOrgCondition: !Condition EnableGuardDutyForOrg
-          EnableResolverForOrgCondition: !Condition EnableResolverForOrg
-          DeployGuardDutyForAccountsCondition: !Condition DeployGuardDutyForAccounts
-          DeployGuardDutyForOUsCondition: !Condition DeployGuardDutyForOUs
-          DeployResolverForAccountsCondition: !Condition DeployResolverForAccounts
-          DeployResolverForOUsCondition: !Condition DeployResolverForOUs
-          CheckDeployListCondition: !Condition CheckDeployList
+
+          CyngularAccountId: !Ref CyngularAccountId
+          S3BucketArn: !GetAtt CyngularS3Bucket.Arn
+          CheckDeployList: !Condition CheckDeployList
             
       Role: !GetAtt ManagerLambdaRole.Arn
 

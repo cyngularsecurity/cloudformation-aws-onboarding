@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: manager stack, dynamic creation of aws Guard Duty Detectors, R53 Reslovers - over Specified Regions in Selected Accounts [, OUs, Organization/s]
+
+Parameters:
+  ClientName:
+    Type: String
+    Description: The name of the client
+
+  deployRegions:
+    Type: CommaDelimitedList
+    Description: The regions in which the client operates (use ,)
+
+  S3ManagementBucketArn:
+    Description: The Arn of the created S3 bucket.
+    Type: String
+
+  CyngularAccountId:
+    Description: The cyngular account id
+    Type: String
+  
+Resources:
+  MgmtMultiRegion:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      Description: Multiple route53 resolvers and guardduty detectors in multiple regions
+      StackSetName: !Sub "cyngular-stack-2-${ClientName}"
+      TemplateURL: "0"
+
+      PermissionModel: SELF_MANAGED
+      ManagedExecution:
+        Active: true
+      Capabilities: ['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"]
+      OperationPreferences:
+        MaxConcurrentPercentage: 100
+        FailureTolerancePercentage: 100
+        RegionConcurrencyType: "PARALLEL"
+      # AutoDeployment: 
+      #   Enabled: False
+      Parameters:
+        - ParameterKey: ClientName
+          ParameterValue: !Ref ClientName
+        - ParameterKey: S3ManagementBucketArn
+          ParameterValue: !Ref S3ManagementBucketArn
+        - ParameterKey: CyngularAccountId
+          ParameterValue: !Ref CyngularAccountId
+        - ParameterKey: deployRegions
+          ParameterValue: !Join [",", !Ref deployRegions]
+
+      StackInstancesGroup:
+        - DeploymentTargets:
+            Accounts:
+              - !Ref "AWS::AccountId"
+          Regions: !Ref deployRegions
+
+  ChildsPerAcc:
+    Type: AWS::CloudFormation::StackSet
+    DependsOn: [MgmtMultiRegion]
+
+    Properties:
+      Description:  "deploys lambdas, role, etc for each account in deploy list (org, ou, accounts)"
+      StackSetName: !Sub "cyngular-stack-child-1-${ClientName}"
+      TemplateURL: 
+
+      PermissionModel: SELF_MANAGED
+      Capabilities: ['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"]
+      OperationPreferences:
+        MaxConcurrentPercentage: 100
+        FailureTolerancePercentage: 100
+        RegionConcurrencyType: "PARALLEL"
+      # AutoDeployment: 
+      #   Enabled: False
+
+      Parameters:
+        - ParameterKey: ClientName
+          ParameterValue: !Ref ClientName
+        - ParameterKey: S3ManagementBucketArn
+          ParameterValue: !Ref S3ManagementBucketArn
+        - ParameterKey: CyngularAccountId
+          ParameterValue: !Ref CyngularAccountId
+        - ParameterKey: deployRegions
+          ParameterValue: !Join [",", !Ref deployRegions]
+
+      StackInstancesGroup:
+        - DeploymentTargets:
+            Accounts:
+              - !Ref child_accounts
+          Regions: !Ref AWS::Region
+
+  ChildsMultiRegion:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      Description: 
+      StackSetName: !Sub "cyngular-stack-child-2-${ClientName}"
+      TemplateURL:
+
+      PermissionModel: SELF_MANAGED
+      Capabilities: ['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"]
+      OperationPreferences:
+        MaxConcurrentPercentage: 100
+        FailureTolerancePercentage: 100
+        RegionConcurrencyType: "PARALLEL"
+      # AutoDeployment: 
+      #   Enabled: False
+
+      Parameters:
+        - ParameterKey: ClientName
+          ParameterValue: !Ref ClientName
+        - ParameterKey: S3ManagementBucketArn
+          ParameterValue: !Ref S3ManagementBucketArn
+        - ParameterKey: CyngularAccountId
+          ParameterValue: !Ref CyngularAccountId
+        - ParameterKey: deployRegions
+          ParameterValue: !Join [",", !Ref deployRegions]
+
+      StackInstancesGroup:
+        - DeploymentTargets:
+            Accounts:
+              - !Ref child_accounts
+          Regions: !Ref deployRegions

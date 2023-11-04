@@ -1,10 +1,6 @@
 Description: Cyngular organization managment stack template
 
 Parameters:
-  # ClientName:
-  #   Description: The name of the client
-  #   Type: String
-    
   CyngularAccountId:
     Description: The cyngular account id
     Type: String
@@ -109,12 +105,14 @@ Resources:
             import os
             import cfnresponse
             import logging
+
             def guardduty_exists(region):
                 client = boto3.client('guardduty', region)
                 response = client.list_detectors()
                 if len(response['DetectorIds']) == 0:
                     return False
                 return True
+
             def create_guardduty():
                 ClientRegionsList = os.environ['ClientRegions'].split(',')
                 for region in ClientRegionsList:
@@ -184,3 +182,76 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt CyngularGuarddutyCreationLambda.Arn
+
+  # #-----------------------GuarddutyDeletionLambda--------------------------
+  # CyngularGuarddutyDeletionLambda:
+  #   DependsOn: GuarddutyLambdaRole
+  #   Type: AWS::Lambda::Function
+  #   Properties:
+  #     FunctionName: cyngular-guardduty-deletion-lambda-function
+  #     Description: Created by Cyngular Security.
+  #     Code:
+  #       ZipFile: !Sub |
+  #           import boto3
+  #           import time
+  #           import os
+  #           import cfnresponse
+  #           import logg
+  #           def cyngular_function(event, context): 
+  #               logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+  #               logger = logging.getLogger()
+  #               logger.setLevel(logging.INFO)
+  #               #if the stack is deleted
+  #               if event['RequestType'] == 'Delete':
+  #                   logging.info('deleting cyngular guardduties')
+  #                   try:
+  #                       deployRegionsList = os.environ['deployRegions'].split(',')
+  #                       for region in deployRegionsList:
+  #                           client = boto3.client('guardduty', region)
+  #                           response = client.list_detectors()
+  #                           if len(response['DetectorIds']) != 0:
+  #                               for DetectorId in response['DetectorIds']:
+  #                                   DetectorArn=f'arn:aws:guardduty:{region}:026207525186:detector/{DetectorId}'
+  #                                   response = client.list_tags_for_resource(ResourceArn=DetectorArn)
+  #                                   if 'Tags' in response:
+  #                                       tags = response['Tags']
+  #                                       for tag_key, value in tags.items():
+  #                                           if value == 'cyngular-guardduty':
+  #                                               response = client.delete_detector(DetectorId=DetectorId)
+  #                   except Exception as e:
+  #                       logging.critical(e)
+  #                       cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
+  #               cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Finished deleting guarduties done
+  #     Runtime: "python3.9"
+  #     Handler: index.cyngular_function
+  #     Timeout: 300
+  #     Environment:
+  #       Variables:
+  #           deployRegions: !Ref deployRegions
+    
+  #     Role: !GetAtt GuarddutyLambdaRole.
+  # GuarddutyDeletion:
+  #   Type: AWS::CloudFormation::CustomResource
+  #   Version: "1.0"
+  #   Properties:
+  #     ServiceToken: !GetAtt CyngularGuarddutyDeletionLambda.
+  # CyngularGuardDuty:
+  #   Type: AWS::GuardDuty::Detector
+  #   Properties: 
+  #     DataSources: 
+  #         Kubernetes:
+  #           AuditLogs:
+  #             Enable: True
+  #         S3Logs:
+  #           Enable: True
+  #     Enable: True
+  #     FindingPublishingFrequency: FIFTEEN_MINUTES
+  #     Tags: 
+  #         - Key: Name
+  #           Value: cyngular-guardduty
+
+  # CyngularResolverAssociation:
+  #   Type: AWS::Route53Resolver::ResolverQueryLoggingConfigAssociation
+  #   Properties: 
+  #     ResolverQueryLogConfigId: !GetAtt CyngularResolver.Id
+  #     ResourceId: !Ref VpcId
