@@ -66,8 +66,3 @@ One Stack, to deploy another stack, and 2 StackSets
 1. run delete lambdas (del resources & del vpc flow logs) in all client accounts.
 2. delete stack-1.
 3. delete stacksets instances for all client accounts and regions.
-
-# ---------------
-# quick create stack url:
-
-`https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack1.yaml&stackName=cyngular-onboarding`

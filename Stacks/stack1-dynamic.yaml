@@ -10,82 +10,82 @@ Parameters:
     MinLength: 3
     MaxLength: 55
 
-  Org:
-    Description: Specify whether the client is using an organization
-    Type: String
-    Default: "0"
-    AllowedValues: ["0", "{org-id}"]
-    ConstraintDescription: Must specify "0" or the client organization ID
+#   Org:
+#     Description: Specify whether the client is using an organization
+#     Type: String
+#     Default: "0"
+#     AllowedValues: ["0", "{org-id}"]
+#     ConstraintDescription: Must specify "0" or the client organization ID
 
-  DeployList: # check if empty, and others are not, concat
-    Description: Comma-separated list of account IDs or OUs to include
-    Type: String
-    Default: "0"
+#   DeployList: # check if empty, and others are not, concat
+#     Description: Comma-separated list of account IDs or OUs to include
+#     Type: String
+#     Default: "0"
 
-  AccountList:
-    Description: Comma-separated list of account IDs to include
-    Type: String
-    Default: "0"
+#   AccountList:
+#     Description: Comma-separated list of account IDs to include
+#     Type: String
+#     Default: "0"
 
-  OUList:
-    Description: Comma-separated list of OUs to include
-    Type: String
-    Default: "0"
+#   OUList:
+#     Description: Comma-separated list of OUs to include
+#     Type: String
+#     Default: "0"
 
-  EnableGuardDuty:
-    Description: Whether to create GuardDuty Detector
-    Type: String
-    AllowedValues: ["true", "false"]
-    Default: "false"
+#   EnableGuardDuty:
+#     Description: Whether to create GuardDuty Detector
+#     Type: String
+#     AllowedValues: ["true", "false"]
+#     Default: "false"
 
-  EnableResolver:
-    Description: Whether to create Route 53 Resolver, for logging vpc flows
-    Type: String
-    AllowedValues: ["true", "false"]
-    Default: "false"
+#   EnableResolver:
+#     Description: Whether to create Route 53 Resolver, for logging vpc flows
+#     Type: String
+#     AllowedValues: ["true", "false"]
+#     Default: "false"
 
-  CyngularAccountId:
-    Description: "The cyngular Account ID to assume read only role"
-    Type: String
-    MinLength: 12
-    MaxLength: 12
-    AllowedPattern: "[0-9]*"
-    Default: 851565895544
+#   CyngularAccountId:
+#     Description: "The cyngular Account ID to assume read only role"
+#     Type: String
+#     MinLength: 12
+#     MaxLength: 12
+#     AllowedPattern: "[0-9]*"
+#     Default: 851565895544
 
-  ClientRegions:
-    Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts
-    Type: CommaDelimitedList
-    AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
+#   ClientRegions:
+#     Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts
+#     Type: CommaDelimitedList
+#     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
   
-  Stack2URL:
-    Description: 'The link to the stack2 template url'
-    Type: String
-    Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack2.yaml'
+#   Stack2URL:
+#     Description: 'The link to the stack2 template url'
+#     Type: String
+#     Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack2.yaml'
 
-  StackSet1URL:
-    Description: 'The link to the stackset1 template url'
-    Type: String
-    Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child1.yaml'
+#   StackSet1URL:
+#     Description: 'The link to the stackset1 template url'
+#     Type: String
+#     Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child1.yaml'
 
-  StackSet2URL:
-    Description: 'The link to the stackset2 template url'
-    Type: String
-    Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml'
+#   StackSet2URL:
+#     Description: 'The link to the stackset2 template url'
+#     Type: String
+#     Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml'
 
-Conditions:
-  IsOrg: !Not [!Equals [!Ref Org, "0"]]
-#   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
-#   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
-  DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
-  DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
-  DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
-  DeployResolverForOUs: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+# Conditions:
+#   IsOrg: !Not [!Equals [!Ref Org, "0"]]
+# #   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
+# #   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
+#   # DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+#   # DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+#   # DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+#   # DeployResolverForOUs: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref OUList, "0"]]]
 
-  # if DeployList is empty and others are not
-  CheckDeployList: !And
-    - !Equals [!Ref DeployList, "0"]
-    - !Not [!Equals [!Ref AccountList, "0"]]
-    - !Not [!Equals [!Ref OUList, "0"]]
+#   # if DeployList is empty and others are not
+#   CheckDeployList: !And
+#     - !Equals [!Ref DeployList, "0"]
+#     - !Not [!Equals [!Ref AccountList, "0"]]
+#     - !Not [!Equals [!Ref OUList, "0"]]
 
 Resources:
   #------------------Cyngular Bucket-------------------
@@ -574,11 +574,11 @@ Resources:
   LambdaAScheduledRule: 
     Type: AWS::Events::Rule
     Properties: EnableResolver
-      Name: cyngular-lambda-create-resources-rule
+      Name: "cyngular-lambda-create-resources-rule"
       Description: "LambdaAScheduledRule"
       ScheduleExpression: "cron(*/30 * * * ? *)"
       State: "ENABLED"
-      Targets: 
+      Targets:
         - Arn: !GetAtt CyngularLambdaA.Arn
           Id: "TargetFunctionV1"
 
@@ -1124,16 +1124,16 @@ Resources:
           ClientName: !Ref ClientName
           MgmtAccountId: !Ref AWS::AccountId
           IsOrg: !Ref Org
-          EnableGuardDuty: !Ref EnableGuardDuty
-          EnableResolver: !Ref EnableResolver
+          # EnableGuardDuty: !Ref EnableGuardDuty
+          # EnableResolver: !Ref EnableResolver
 
-          DeployRegions: !Join [",", !Ref ClientRegions]
-          AccountList: !Ref AccountList
-          OUList: !Ref OUList
+          # DeployRegions: !Join [",", !Ref ClientRegions]
+          # AccountList: !Ref AccountList
+          # OUList: !Ref OUList
 
-          CyngularAccountId: !Ref CyngularAccountId
-          S3BucketArn: !GetAtt CyngularS3Bucket.Arn
-          CheckDeployList: !Condition CheckDeployList
+          # CyngularAccountId: !Ref CyngularAccountId
+          # S3BucketArn: !GetAtt CyngularS3Bucket.Arn
+          # CheckDeployList: !Condition CheckDeployList
             
       Role: !GetAtt ManagerLambdaRole.Arn
 
@@ -1392,8 +1392,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CreateAdminAndExecutionRolesLambda.Arn
 
-#------------------------CustomResourceDeletionLambda------------------------------------
-
+  #------------------------CustomResourceDeletionLambda------------------------------------
   DeleteCustomResourceLambdaRole:
     Type: "AWS::IAM::Role"
     Properties:

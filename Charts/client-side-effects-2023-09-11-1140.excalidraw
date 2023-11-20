@@ -1,7 +1,7 @@
 {
   "type": "excalidraw",
   "version": 2,
-  "source": "https://excalidraw.com",
+  "source": "https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor",
   "elements": [
     {
       "type": "rectangle",
@@ -34,8 +34,8 @@
     },
     {
       "type": "text",
-      "version": 398,
-      "versionNonce": 2030981201,
+      "version": 401,
+      "versionNonce": 568911850,
       "isDeleted": false,
       "id": "9R2GSkHhvqbgNjSWOU4jR",
       "fillStyle": "hachure",
@@ -55,7 +55,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806228,
       "link": null,
       "locked": false,
       "fontSize": 46.553251529783445,
@@ -66,7 +66,7 @@
       "containerId": null,
       "originalText": "EKS Cluster",
       "lineHeight": 1.25,
-      "baseline": 41
+      "baseline": 40
     },
     {
       "type": "ellipse",
@@ -99,8 +99,8 @@
     },
     {
       "type": "text",
-      "version": 361,
-      "versionNonce": 1415716401,
+      "version": 364,
+      "versionNonce": 2070504374,
       "isDeleted": false,
       "id": "6m4xftmAgirmveB58p79I",
       "fillStyle": "hachure",
@@ -120,7 +120,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806228,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -131,7 +131,7 @@
       "containerId": null,
       "originalText": "RDS",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "diamond",
@@ -169,8 +169,8 @@
     },
     {
       "type": "text",
-      "version": 416,
-      "versionNonce": 331427857,
+      "version": 419,
+      "versionNonce": 1427659434,
       "isDeleted": false,
       "id": "F94ITOB9iAK-zpmQnH0Zn",
       "fillStyle": "hachure",
@@ -190,7 +190,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806229,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -201,7 +201,7 @@
       "containerId": null,
       "originalText": "Secret Manager",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "rectangle",
@@ -243,8 +243,8 @@
     },
     {
       "type": "text",
-      "version": 646,
-      "versionNonce": 488834545,
+      "version": 649,
+      "versionNonce": 1798274294,
       "isDeleted": false,
       "id": "fgqH0biQAgt2RXLdkNocy",
       "fillStyle": "hachure",
@@ -264,7 +264,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806229,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -275,7 +275,7 @@
       "containerId": null,
       "originalText": "External secret\nOperator",
       "lineHeight": 1.25,
-      "baseline": 60
+      "baseline": 59
     },
     {
       "type": "rectangle",
@@ -308,8 +308,8 @@
     },
     {
       "type": "text",
-      "version": 674,
-      "versionNonce": 730800081,
+      "version": 677,
+      "versionNonce": 1061909866,
       "isDeleted": false,
       "id": "JoIwCKxRx12_QH2OLJuzT",
       "fillStyle": "hachure",
@@ -329,7 +329,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806229,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -340,7 +340,7 @@
       "containerId": null,
       "originalText": "ArgoCD",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "rectangle",
@@ -640,8 +640,8 @@
     },
     {
       "type": "text",
-      "version": 667,
-      "versionNonce": 439216703,
+      "version": 670,
+      "versionNonce": 1163947574,
       "isDeleted": false,
       "id": "fBIT2IExZz92TqjrlfA2a",
       "fillStyle": "hachure",
@@ -661,7 +661,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806230,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -672,12 +672,12 @@
       "containerId": null,
       "originalText": "Settings",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "text",
-      "version": 378,
-      "versionNonce": 1470897457,
+      "version": 381,
+      "versionNonce": 298661930,
       "isDeleted": false,
       "id": "0Omc3k9sY0ab7S-UdAcXd",
       "fillStyle": "hachure",
@@ -697,7 +697,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465245,
+      "updated": 1700388806230,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -708,7 +708,7 @@
       "containerId": null,
       "originalText": "Visibility",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "arrow",
@@ -1252,8 +1252,8 @@
     },
     {
       "type": "text",
-      "version": 684,
-      "versionNonce": 1761639231,
+      "version": 687,
+      "versionNonce": 652294006,
       "isDeleted": false,
       "id": "3_5ZME1LVcPFWkMNaPsHY",
       "fillStyle": "hachure",
@@ -1273,7 +1273,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465246,
+      "updated": 1700388806230,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -1284,12 +1284,12 @@
       "containerId": null,
       "originalText": "general",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "text",
-      "version": 377,
-      "versionNonce": 29826097,
+      "version": 380,
+      "versionNonce": 478716650,
       "isDeleted": false,
       "id": "t71Y1VeJE12nGlyigjah4",
       "fillStyle": "hachure",
@@ -1309,7 +1309,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465246,
+      "updated": 1700388806230,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -1320,7 +1320,7 @@
       "containerId": null,
       "originalText": "Investigation",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "arrow",
@@ -1642,8 +1642,8 @@
     },
     {
       "type": "text",
-      "version": 824,
-      "versionNonce": 846238687,
+      "version": 827,
+      "versionNonce": 1207359670,
       "isDeleted": false,
       "id": "WO9Dfuv53PPfWMRgeWtc5",
       "fillStyle": "hachure",
@@ -1663,7 +1663,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465246,
+      "updated": 1700388806230,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -1674,7 +1674,7 @@
       "containerId": null,
       "originalText": "Incidents",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "rectangle",
@@ -2656,8 +2656,8 @@
     },
     {
       "type": "text",
-      "version": 719,
-      "versionNonce": 179285009,
+      "version": 722,
+      "versionNonce": 2047391146,
       "isDeleted": false,
       "id": "tMoDGqvffhE_Q5Y00vV6q",
       "fillStyle": "hachure",
@@ -2677,7 +2677,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465247,
+      "updated": 1700388806232,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -2688,7 +2688,7 @@
       "containerId": null,
       "originalText": "Auth",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "rectangle",
@@ -2962,8 +2962,8 @@
     },
     {
       "type": "text",
-      "version": 455,
-      "versionNonce": 1589943185,
+      "version": 458,
+      "versionNonce": 273043958,
       "isDeleted": false,
       "id": "GTJKr6H0q6Oi55I38okOf",
       "fillStyle": "hachure",
@@ -2983,7 +2983,7 @@
       "frameId": null,
       "roundness": null,
       "boundElements": [],
-      "updated": 1696630465247,
+      "updated": 1700388806232,
       "link": null,
       "locked": false,
       "fontSize": 28,
@@ -2994,7 +2994,7 @@
       "containerId": null,
       "originalText": "Overview",
       "lineHeight": 1.25,
-      "baseline": 25
+      "baseline": 24
     },
     {
       "type": "rectangle",
@@ -4435,7 +4435,7 @@
       "containerId": null,
       "originalText": "Stack - 1",
       "lineHeight": 1.15,
-      "baseline": 26
+      "baseline": 25
     },
     {
       "type": "rectangle",
@@ -4529,7 +4529,7 @@
       "containerId": "SOLQmgNiAutNh_aF9rD_W",
       "originalText": "Lambda A\nCreate Resources",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -4611,7 +4611,7 @@
       "containerId": "T0DB3Bz38xabrCm_YZKkN",
       "originalText": "Lambda B\nCreate VFL",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -4689,7 +4689,7 @@
       "containerId": "R5bEcn14gNljeFJindMxn",
       "originalText": "Lambda C\nDelete VFL",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -4763,7 +4763,7 @@
       "containerId": "L1WMiolesbtNJJMh5ZSwV",
       "originalText": "Lambda D\nDelete Resources",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -4837,7 +4837,7 @@
       "containerId": "lonMa9GMDcRY0hPYh3DNS",
       "originalText": "Lambda E\nUpdate Bucket",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -5067,7 +5067,7 @@
       "containerId": null,
       "originalText": "Lambda (A) IAM Role",
       "lineHeight": 1.15,
-      "baseline": 33
+      "baseline": 32
     },
     {
       "type": "arrow",
@@ -5467,7 +5467,7 @@
       "containerId": null,
       "originalText": "Admin & Exec\niam role",
       "lineHeight": 1.15,
-      "baseline": 49
+      "baseline": 48
     },
     {
       "type": "rectangle",
@@ -5611,7 +5611,7 @@
       "containerId": null,
       "originalText": "delete custom resource\niam role",
       "lineHeight": 1.15,
-      "baseline": 49
+      "baseline": 48
     },
     {
       "type": "rectangle",
@@ -6018,7 +6018,7 @@
       "containerId": null,
       "originalText": "Client Side AWS Mgmt Account",
       "lineHeight": 1.15,
-      "baseline": 26
+      "baseline": 25
     },
     {
       "type": "diamond",
@@ -6092,7 +6092,7 @@
       "containerId": "BjOqUCRcR2IznQKm20rRv",
       "originalText": "Apllly cfn Url",
       "lineHeight": 1.15,
-      "baseline": 26
+      "baseline": 25
     },
     {
       "type": "arrow",
@@ -6222,7 +6222,7 @@
       "containerId": "eieN9SevcGQXCHdskB5d7",
       "originalText": "Dns Logs\n (Assign VPCs to r53 Resolver)",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -6296,7 +6296,7 @@
       "containerId": "2KdqUzOqR67coaaRQpNNC",
       "originalText": "EKS Logs\n (Update EKS Clusters Configs)",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -6370,7 +6370,7 @@
       "containerId": "eYpWvGo2l32O8s7bbWATc",
       "originalText": "Dns Logs\n (Assign VPCs to r53 Resolver)",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "text",
@@ -6640,7 +6640,7 @@
       "containerId": "dIikwSRt-52SBBZg9V98P",
       "originalText": "Enable Guard Duty\n ()",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "rectangle",
@@ -6718,7 +6718,7 @@
       "containerId": "K0D4z_XeA5iYrTDskvG6v",
       "originalText": "Dns  VPC Flow Logs\n (Assign VPCs to r53 Resolver)",
       "lineHeight": 1.15,
-      "baseline": 58
+      "baseline": 57
     },
     {
       "type": "arrow",
