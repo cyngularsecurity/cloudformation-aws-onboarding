@@ -2,13 +2,12 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Cyngular organization managment stack template
 
 Parameters:
-
   ClientName:
     Description: The name of the client. (must be lowercase, can contain letters, numbers and dashes)
     Type: String
     AllowedPattern: "^[a-z0-9](?:[a-z0-9\\-\\.]*[a-z0-9])?$"
     MinLength: 3
-    MaxLength: 55
+    MaxLength: 10
 
 #   Org:
 #     Description: Specify whether the client is using an organization
@@ -72,10 +71,53 @@ Parameters:
 #     Type: String
 #     Default: 'https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml'
 
-# Conditions:
+  DNSEnabled:
+    Description: Should DNS resources be created
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  VPCFlowLogsEnabled:
+    Description: Should VPC Flow Logs be enabled
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  GuardDutyEnabled:
+    Description: Should GuardDuty be enabled
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  CloudTrailEnabled:
+    Description: Should CloudTrail be enabled
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  RegionList:
+    Description: Comma-delimited list of regions for stack sets
+    Type: CommaDelimitedList
+  AccountList:
+    Description: Comma-delimited list of accounts for stack sets
+    Type: CommaDelimitedList
+
+Conditions:
+  CreateDNSResources: !Equals [ !Ref DNSEnabled, "true" ]
+  EnableVPCFlowLogs: !Equals [ !Ref VPCFlowLogsEnabled, "true" ]
+  EnableGuardDuty: !Equals [ !Ref GuardDutyEnabled, "true" ]
+  EnableCloudTrail: !Equals [ !Ref CloudTrailEnabled, "true" ]
+
+  EnableCloudTrail: !Equals [ !Ref CloudTrailEnabled, "true" ]
+
 #   IsOrg: !Not [!Equals [!Ref Org, "0"]]
-# #   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
-# #   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
+#   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
+#   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
 #   # DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
 #   # DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
 #   # DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
@@ -110,6 +152,21 @@ Resources:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref CyngularS3Bucket
+
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AWSCloudTrailAclCheck20150319'
+            Effect: 'Allow'
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Action:
+              - 's3:GetBucketAcl'
+            Resource: !GetAtt CyngularS3Bucket.Arn
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Join [':',['arn:aws:cloudtrail', !Ref AWS::Region, !Ref AWS::AccountId, 'trail/cyngular-cloudtrail' ]]
+
       PolicyDocument: {"Version": "2012-10-17",
         "Statement": [
                 {
@@ -221,7 +278,17 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join ['-', ['cyngular-readonly-role', !Ref ClientName]]
+
       AssumeRolePolicyDocument:
+
+        # Version: "2012-10-17"
+        # Statement:
+        #   - Effect: Allow
+        #     Action: sts:AssumeRole
+        #     Principal:
+        #       Service:
+        #         - eks.amazonaws.com
+
         {
     "Version": "2012-10-17",
     "Statement": [
@@ -429,7 +496,7 @@ Resources:
       Code:
         # S3Bucket: !Ref S3BucketURL
         # S3Key: path/to/code.zip
-        ZipFile: !Sub | 
+        ZipFile: !Sub |
             import boto3
             import traceback
             import os
@@ -468,15 +535,15 @@ Resources:
                 try:
                     logging.info('STARTING EKSLOGS...')
                     wanted_cluster_logging_config = {
-                                                'clusterLogging': [
-                                                    {
-                                                        'types': [
-                                                            'audit', 'authenticator'
-                                                        ],
-                                                        'enabled': True
-                                                    }
-                                                ]
-                                            }
+                          'clusterLogging': [
+                              {
+                                  'types': [
+                                      'audit', 'authenticator'
+                                  ],
+                                  'enabled': True
+                              }
+                          ]
+                      }
 
                     eks_client = boto3.client('eks', region_name = cur_region_name)
                     clusters = eks_client.list_clusters()['clusters']
@@ -1437,3 +1504,149 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Role: !GetAtt DeleteCustomResourceLambdaRole.Arn
+
+
+  # KMSKey:
+  #   Type: AWS::KMS::Key
+  #   Properties:
+  #     Description: Default KMS key
+  #     KeyPolicy:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Sid: Enable IAM User Permissions
+  #           Effect: Allow
+  #           Principal:
+  #             AWS: "*"
+  #           Action: kms:*
+  #           Resource: "*"
+
+  # DNSStack:
+  #   Condition: CreateDNSResources
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: https://my-s3-bucket/path/to/dns-stack.yaml
+  #     Parameters:
+  #       RegionList: !Ref RegionList
+  #       AccountList: !Ref AccountList
+
+  # VPCFlowLogsStack:
+  #   Condition: EnableVPCFlowLogs
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: https://my-s3-bucket/path/to/vpc-flow-logs-stack.yaml
+
+  # GuardDutyStack:
+  #   Condition: EnableGuardDuty
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: https://my-s3-bucket/path/to/guardduty-stack.yaml
+
+  # CloudTrailStack:
+  #   Condition: EnableCloudTrail
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: https://my-s3-bucket/path/to/cloudtrail-stack.yaml
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template with CloudTrail check
+
+Parameters:
+  CloudTrailEnabled:
+    Description: Should CloudTrail be enabled
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  S3BucketName:
+    Description: S3 bucket name for CloudTrail logs
+    Type: String
+    Default: my-cloudtrail-bucket
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaCloudTrailPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudtrail:DescribeTrails
+                  - s3:ListBucket
+                Resource: "*"
+
+  CheckCloudTrailFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import cfnresponse
+
+          def handler(event, context):
+              cloudtrail = boto3.client('cloudtrail')
+              response_data = {}
+              try:
+                  trails = cloudtrail.describe_trails()['trailList']
+                  for trail in trails:
+                      if trail.get('S3BucketName'):
+                          response_data['TrailExists'] = 'true'
+                          response_data['S3BucketName'] = trail['S3BucketName']
+                          break
+                  else:
+                      response_data['TrailExists'] = 'false'
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+              except Exception as e:
+                  print(f"Failed to describe trails: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
+
+      Runtime: python3.8
+      Timeout: 300
+
+  CheckCloudTrail:
+    Type: Custom::CheckCloudTrail
+    Properties:
+      ServiceToken: !GetAtt CheckCloudTrailFunction.Arn
+
+  # CloudTrailStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Condition: EnableCloudTrail
+  #   Properties:
+  #     TemplateURL: https://my-s3-bucket/path/to/cloudtrail-stack.yaml
+  #     Parameters:
+  #       S3BucketName: !Ref S3BucketName
+  #       TrailExists: !GetAtt CheckCloudTrail.TrailExists
+
+Outputs:
+  DNSResourcesStatus:
+    Description: Indicates whether DNS resources were created
+    Value: !If [ CreateDNSResources, "DNS Resources Created", "DNS Resources Not Created" ]
+  VPCFlowLogsStatus:
+    Description: Indicates whether VPC Flow Logs were enabled
+    Value: !If [ EnableVPCFlowLogs, "VPC Flow Logs Enabled", "VPC Flow Logs Not Enabled" ]
+  GuardDutyStatus:
+    Description: Indicates whether GuardDuty was enabled
+    Value: !If [ EnableGuardDuty, "GuardDuty Enabled", "GuardDuty Not Enabled" ]
+  CloudTrailStatus:
+    Description: Indicates whether CloudTrail was enabled
+    Value: !If [ EnableCloudTrail, "CloudTrail Enabled", "CloudTrail Not Enabled" ]
+
+  # CloudTrailStatus:
+  #   Description: Indicates whether CloudTrail was enabled
+  #   Value: !If [ EnableCloudTrail, "CloudTrail Enabled", "CloudTrail Not Enabled" ]
+  # ExistingTrailInfo:
+  #   Description: Information about existing CloudTrail trail
+  #   Value: !Sub "Trail exists: ${CheckCloudTrail.TrailExists}, Bucket: ${CheckCloudTrail.S3BucketName}"

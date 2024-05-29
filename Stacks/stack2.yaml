@@ -120,7 +120,7 @@ Resources:
                             else:
                                 logging.info(f'creating guardduty in {region}')
                                 # create guard duties
-                                for region in deployRegionsList:
+                                for region in deployRegionsList: #TODO extra for loop on regions, remarked k8s config
                                     client = boto3.client('guardduty', region)
                                     detector_properties = {
                                         'Enable': True,
@@ -155,7 +155,7 @@ Resources:
                       if event['RequestType'] == 'Create':
                         try:
                           create_guardduty()
-                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Finished creating guarduties done'})
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Finished creating guarduties'})
                         except Exception as e:
                           cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : str(e)})
                       else:

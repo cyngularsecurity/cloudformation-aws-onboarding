@@ -19,7 +19,7 @@ One Stack, to deploy another stack, and 2 StackSets
 
 * Lambda C(delete VFL)
 * Lambda D(Delete resources)
-* Lambda E(Update singular bucket)
+* Lambda E(Update cyngular bucket)
 
 * Manager Lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
 * role for manager lambda to create Admin & execution roles in child accounts, if does'nt exists already, to run other stacks
