@@ -1,0 +1,290 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Cyngular organization managment stack template"
+
+Parameters:
+  ClientName:
+    Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
+    Type: String
+    AllowedPattern: ^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$
+    MinLength: 3
+    MaxLength: 10
+
+  OrganizationId:
+    Description: "Specify whether the client is using an Organization { empty / 'ID' }"
+    Type: String
+    Default: ""
+
+  CyngularAccountId:
+    Description: "The cyngular Account ID to assume read only role"
+    Type: String
+    MinLength: 12
+    MaxLength: 12
+    AllowedPattern: ^[0-9]{12}$
+    ConstraintDescription: Must be exactly 12 digits.
+    Default: 851565895544
+
+  ClientRegions:
+    Description: "The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts"
+    Type: CommaDelimitedList
+    AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
+
+  Stack2URL:
+    Description: "The link to the stack2 template url"
+    Type: String
+    Default: https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack2.yaml
+
+  StackSet1URL:
+    Description: "The link to the stackset1 template url"
+    Type: String
+    Default: https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child1.yaml
+
+  StackSet2URL:
+    Description: "The link to the stackset2 template url"
+    Type: String
+    Default: https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml
+
+#   OUList:
+#   AccountList:
+#   DeployList: # check if empty, and others are not, concat
+
+  CloudTrailBucket:
+    Description: "if exist a bucket in the client account that logs an existing cloudtrail trail | leave empty if not"
+    Type: String
+    Default: ""
+
+  # EnableCloudTrail:
+  #   Description: "CloudTrail Service - Whether to Create CloudTrail Trail, for logging account entities actions over time, or use existing bucket for logs"
+  #   Type: String
+  #   AllowedValues: ["true", "false"]
+  #   Default: "true"
+
+#   EnableGuardDuty:
+#     Description: "GuardDuty Service - Create GuardDuty Detector"
+#     Type: String
+#     AllowedValues: ["true", "false"]
+#     Default: "true"
+
+#   EnableDNS:
+#     Description: "DNS Service - Whether to Create Route 53 Resolver, for logging vpc flows"
+#     Type: String
+#     AllowedValues: ["true", "false"]
+#     Default: "true"
+
+
+Conditions:
+  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
+
+#   CreateDNSResources: !Equals [ !Ref DNSEnabled, "true" ]
+#   EnableVPCFlowLogs: !Equals [ !Ref VPCFlowLogsEnabled, "true" ]
+#   EnableGuardDuty: !Equals [ !Ref GuardDutyEnabled, "true" ]
+
+#   EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, "true"]
+#   EnableResolverCondition: !Equals [!Ref EnableResolver, "true"]
+#   # DeployGuardDutyForAccounts: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+#   # DeployGuardDutyForOUs: !And [!Condition EnableGuardDutyForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+#   # DeployResolverForAccounts: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref AccountList, "0"]]]
+#   # DeployResolverForOUs: !And [!Condition EnableResolverForOrg, !Not [!Equals [!Ref OUList, "0"]]]
+
+#   # if DeployList is empty and others are not
+#   CheckDeployList: !And
+#     - !Equals [!Ref DeployList, "0"]
+#     - !Not [!Equals [!Ref AccountList, "0"]]
+#     - !Not [!Equals [!Ref OUList, "0"]]
+
+Resources:
+  #------------------Cyngular Bucket-------------------
+  CyngularS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CyngularS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'LambdaRead'
+            Effect: Allow
+            Principal: 
+              Service: "lambda.amazonaws.com"
+            Action:
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:ListMultipartUploadParts'
+              - 's3:AbortMultipartUpload'
+            Resource: 
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
+              - !If 
+                - IsOrg
+                - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
+                - !Ref "AWS::NoValue"
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${CyngularAccountId}:function:*${ClientName}*"
+                # aws:SourceArn: !Sub "arn:aws:lambda:*:${CyngularAccountId}:function:*${ClientName}*"
+
+          - !If 
+            - EnableCloudTrail
+            - - Sid: CloudTrailAclCheck
+                Effect: Allow
+                Principal:
+                  Service: cloudtrail.amazonaws.com
+                Action: s3:GetBucketAcl
+                Resource: !GetAtt CyngularS3Bucket.Arn
+                Condition:
+                  StringEquals:
+                    AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+              - Sid: 'CloudTrailWrite'
+                Effect: 'Allow'
+                Principal: 
+                  Service: "cloudtrail.amazonaws.com"
+                Action: s3:PutObject
+                Resource: 
+                  - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
+                  - !If 
+                    - IsOrg
+                    - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
+                    - !Ref "AWS::NoValue"
+                Condition:
+                  StringEquals:
+                    s3:x-amz-acl: "bucket-owner-full-control"
+                    AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+            - !Ref "AWS::NoValue"
+
+  ClientCloudTrail:
+    DependsOn: S3BucketPolicy
+    Condition: CreateCloudTrail
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: cyngular-cloudtrail
+      S3BucketName: !Ref CyngularS3Bucket
+
+      InsightSelectors:
+        - InsightType: ApiCallRateInsight
+        - InsightType: ApiErrorRateInsight
+      EventSelectors:
+        - IncludeManagementEvents: true
+          ExcludeManagementEventSources:
+            - kms.amazonaws.com
+          DataResources:
+            - Type: AWS::Lambda::Function
+              Values:
+                - arn:aws:lambda
+
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IsOrganizationTrail: true
+      IncludeGlobalServiceEvents: true
+
+      Tags:
+        - Key: Name
+          Value: cyngular-cloudtrail
+
+  ClientCyngularRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-readonly-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: cyngular-readonly-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ec2CyngularSnapshot
+                Effect: Allow
+                Action:
+                  - ec2:DeleteSnapshot
+                  - ec2:ModifySnapshotAttribute
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*
+              - Sid: ec2CreateSnapshot
+                Effect: Allow
+                Action:
+                  - ec2:CopySnapshot
+                  - ec2:CreateSnapshot
+                  - ec2:CreateSnapshots
+                Resource: '*'
+              - Sid: readOnly
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:List*
+                  - kms:Describe*
+                  - iam:List*
+                  - iam:Get*
+                  - iam:GenerateServiceLastAccessedDetails
+                  - rds:List*
+                  - rds:Describe*
+                  - s3:List*
+                  - s3:Describe*
+                  - s3:GetBucketLocation
+                  - logs:List*
+                  - logs:Describe*
+                  - logs:Get*
+                  - logs:FilterLogEvents
+                  - ecr:Describe*
+                  - ecr:List*
+                  - eks:Describe*
+                  - eks:List*
+                  - ecs:List*
+                  - ecs:Describe*
+                  - ec2:List*
+                  - ec2:CreateTags
+                  - ec2:Describe*
+                  - lambda:List*
+                  - lambda:Get*
+                  - organizations:Describe*
+                  - organizations:List*
+                  - cloudformation:Describe*
+                  - cloudformation:List*
+                  - cloudformation:Get*
+                  - guardduty:List*
+                  - guardduty:Get*
+                  - ce:GetCostAndUsage
+                  - ce:GetDimensionValues
+              - Sid: s3GetObject
+                Effect: Allow
+                Action: s3:GetObject*
+                Resource:
+                  - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
+              - Sid: volumeDecrypt
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:Decrypt
+                  - kms:CreateGrant
+              - Sid: cyngularKmsKey
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:*
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*

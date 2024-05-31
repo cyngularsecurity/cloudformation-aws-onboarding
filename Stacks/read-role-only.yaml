@@ -1,0 +1,187 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cyngular organization managment stack template
+
+Parameters:
+  ClientName:
+    Description: The name of the client. (must be lowercase, can contain letters, numbers and dashes)
+    Type: String
+    AllowedPattern: "^[a-z0-9](?:[a-z0-9\\-\\.]*[a-z0-9])?$"
+    MinLength: 3
+    MaxLength: 10
+
+  OrganizationId:
+    Description: "Specify whether the client is using an Organization { '0' / 'ID' }"
+    Type: String
+
+  CyngularAccountId:
+    Description: "The cyngular Account ID to assume read only role"
+    Type: String
+    MinLength: 12
+    MaxLength: 12
+    AllowedPattern: '^[0-9]{12}$'
+    ConstraintDescription: "Must be exactly 12 digits."
+    Default: 851565895544
+
+  ClientRegions:
+    Description: The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts
+    Type: CommaDelimitedList
+    # AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
+    AllowedValues:
+      - me-south-1
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - us-west-2
+      - ap-southeast-1
+      - ap-southeast-2
+      - ap-south-1
+      - ap-northeast-1
+      - ap-northeast-2
+      - ap-northeast-3
+      - af-south-1
+      - eu-west-1
+      - eu-west-2
+      - eu-west-3
+      - eu-central-1
+      - eu-north-1
+      - eu-south-1
+      - ca-central-1
+      - sa-east-1
+      - il-central-1
+  
+Resources:
+#------------------Cyngular Client Role-------------------
+  ClientCyngularRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', ['cyngular-readonly-role', !Ref ClientName]]
+      AssumeRolePolicyDocument:
+        {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": !Join ['', ["arn:aws:iam::", !Ref CyngularAccountId, ":root"]]
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {}
+        }
+    ]
+    }
+      Policies:
+        - PolicyName: "cyngular-readonly-policy"
+          PolicyDocument: {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "ec2CyngularSnapshot",
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:DeleteSnapshot",
+                    "ec2:ModifySnapshotAttribute"
+                ],
+                "Resource": "*",
+                "Condition": {
+                    "StringLike": {
+                        "aws:ResourceTag/Name": "cyngular*"
+                    }
+                }
+            },
+            {
+                "Sid": "ec2CreateSnapshot",
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:CopySnapshot",
+                    "ec2:CreateSnapshot",
+                    "ec2:CreateSnapshots"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Sid": "readOnly",
+                "Effect": "Allow",
+                "Action": [
+                    "kms:List*",
+                    "kms:Describe*",
+
+                    "iam:List*",
+                    "iam:Get*",
+
+                    "rds:List*",
+
+                    "s3:List*",
+                    "s3:Describe*",
+                    "s3:GetBucketLocation",
+
+                    "logs:List*",
+                    "logs:Describe*",
+                    "logs:Get*",
+                    "logs:FilterLogEvents",
+
+                    "rds:Describe*",
+
+                    "ecr:Describe*",
+                    "ecr:List*",
+
+                    "eks:Describe*",
+                    "eks:List*",
+
+                    "ecs:List*",
+
+                    "ec2:List*",
+                    "ec2:CreateTags",
+                    "ecs:Describe*",
+                    "ec2:Describe*",
+
+                    "lambda:List*",
+                    "lambda:Get*",
+
+                    "organizations:Describe*",
+                    "organizations:List*",
+
+                    "cloudformation:Describe*",
+                    "cloudformation:List*",
+                    "cloudformation:Get*",
+
+                    "guardduty:List*",
+                    "guardduty:Get*",
+
+                    "ce:GetCostAndUsage",
+                    "ce:GetDimensionValues"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Sid": "s3GetObject",
+                "Effect": "Allow",
+                "Action": "s3:GetObject*",
+                "Resource": [
+                    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId]],
+                    !Join ['', ['arn:aws:s3:::cyngular-', !Ref ClientName, '-bucket-', !Ref AWS::AccountId, '/*']]
+                ]
+            },
+            {
+                "Sid": "volumeDecrypt",
+                "Effect": "Allow",
+                "Action": [
+                    "kms:Decrypt",
+                    "kms:CreateGrant"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Sid": "cyngularKmsKey",
+                "Effect": "Allow",
+                "Action": [
+                    "kms:*"
+                ],
+                "Resource": "*",
+                "Condition": {
+                    "StringLike": {
+                        "aws:ResourceTag/Name": "cyngular*"
+                    }
+                }
+            }
+        ]
+    }

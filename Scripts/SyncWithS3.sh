@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
 set -eu
 
-GREEN="\033[32m"
-# BLUE="\033[34m"
-RESET="\033[0m"
-
-aws_region="$(aws configure list | grep region | tr -s " " | cut -d" " -f3)"
-
-PROD_BUCKET_NAME="cyngular-onboarding-templates"
-DEV_BUCKET_NAME="cyngular-onboarding-templates-dev"
-LOCAL_FILE_PATH="../Stacks"
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+BLUE=$(tput setaf 4)
+RESET=$(tput sgr0)
 
 BRANCH=$(git branch --show-current)
+BUCKET_NAME="cyngular-onboarding-templates"
+LOCAL_FILE_PATH="Stacks"
 
-aws s3 sync "$LOCAL_FILE_PATH" "s3://$PROD_BUCKET_NAME/stacks" --profile "prod"
-echo -e "${GREEN}successfully synced with s3://$PROD_BUCKET_NAME/${RESET}"
 
-aws s3 sync "$LOCAL_FILE_PATH" "s3://$DEV_BUCKET_NAME/stacks" --profile "prod" --region il-central-1
-echo -e "${GREEN}successfully synced with s3://$DEV_BUCKET_NAME/${RESET}"
+aws s3 sync "$LOCAL_FILE_PATH" "s3://$BUCKET_NAME/$BRANCH/stacks" --profile prod
+echo -e "${GREEN}synced new On Boarding files with  ----> s3://${BLUE}$BUCKET_NAME/${RED}$BRANCH/${RESET}stacks"

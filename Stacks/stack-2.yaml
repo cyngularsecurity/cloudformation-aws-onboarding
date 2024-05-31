@@ -21,7 +21,7 @@ Resources:
     Properties: 
       Description: cyngular_kms_key
       KeyPolicy:
-        Id: key-consolepolicy-3
+        Id: cyngular-default-1
         Version: "2012-10-17"
         Statement:
           - Sid: Enable IAM User Permissions
