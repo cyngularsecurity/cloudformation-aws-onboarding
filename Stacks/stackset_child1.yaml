@@ -194,11 +194,19 @@ Resources:
 
   #------------------Cyngular Lambda A -------------------  
   CyngularLambdaA:
-    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-resources
       Description: Created by Cyngular Security.
+      Role: !GetAtt LambdaARole.Arn
+
+      Environment:
+        Variables:
+          LAMBDA_REGIONS: !Ref ClientRegions
+    
+      Runtime: "python3.9"
+      Handler: index.cyngular_function
+      Timeout: 300
       Code:
         ZipFile: !Sub | 
             import boto3
@@ -334,14 +342,6 @@ Resources:
 
                 except Exception as e:
                     logging.critical(str(e))
-      Environment:
-        Variables:
-          LAMBDA_REGIONS: !Ref ClientRegions
-    
-      Runtime: "python3.9"
-      Handler: index.cyngular_function
-      Timeout: 300
-      Role: !GetAtt LambdaARole.Arn
   
   LambdaAScheduledRule: 
     Type: AWS::Events::Rule
@@ -365,11 +365,19 @@ Resources:
   
   #------------------Cyngular Lambda B-------------------
   CyngularLambdaB:
-    # DependsOn: LambdaARole
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-create-vpcflowlogs 
       Description: Created by Cyngular Security.
+      Role: !GetAtt LambdaARole.Arn
+
+      Environment:
+        Variables:
+          LAMBDA_REGIONS: !Ref ClientRegions
+
+      Runtime: "python3.9"
+      Handler: index.cyngular_function
+      Timeout: 300
       Code:
         ZipFile: !Sub | 
             import boto3
@@ -451,14 +459,6 @@ Resources:
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
 
                     logging.critical(str(e))
-      Environment:
-        Variables:
-          LAMBDA_REGIONS: !Ref ClientRegions
-
-      Runtime: "python3.9"
-      Handler: index.cyngular_function
-      Timeout: 300
-      Role: !GetAtt LambdaARole.Arn
   
   LambdaBScheduledRule: 
     Type: AWS::Events::Rule

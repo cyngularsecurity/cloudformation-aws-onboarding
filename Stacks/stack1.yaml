@@ -1347,14 +1347,14 @@ Resources:
             
       Role: !GetAtt ManagerLambdaRole.Arn
 
-#   ManagerLambdaTrigger:
-#     Type: AWS::CloudFormation::CustomResource
-#     Version: "1.0"
-#     Properties:
-#       ServiceToken: !GetAtt CyngularManagerLambda.Arn
-#       Stack2URL: !Ref Stack2URL
-#       StackSet1URL: !Ref StackSet1URL
-#       StackSet2URL: !Ref StackSet2URL
+  ManagerLambdaTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt CyngularManagerLambda.Arn
+      Stack2URL: !Ref Stack2URL
+      StackSet1URL: !Ref StackSet1URL
+      StackSet2URL: !Ref StackSet2URL
 
   CreateAdminAndExecutionRolesLambda:
     Type: AWS::Lambda::Function

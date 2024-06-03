@@ -14,17 +14,28 @@ Parameters:
   CyngularAccountId:
     Description: The cyngular account id
     Type: String
-  
+
 Resources:
   StackSet:
     Type: AWS::CloudFormation::StackSet
     Properties:
-      Description: Multiple route53 resolvers and guardduty detectors in multiple regions
+      StackSetName: !Sub "cyngular-stack-2-${ClientName}"
+      Description: "Multiple route53 resolvers and guardduty detectors in multiple regions"
+
       PermissionModel: SELF_MANAGED
-      Capabilities: ['CAPABILITY_IAM']
+      Capabilities: ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM']
+
       OperationPreferences:
         MaxConcurrentPercentage: 100
         RegionConcurrencyType: "PARALLEL"
+        # FailureTolerancePercentage: 100
+
+      StackInstancesGroup:
+        - DeploymentTargets:
+            Accounts:
+              - !Ref "AWS::AccountId"
+          Regions: !Ref deployRegions
+
       # AutoDeployment: 
       #   Enabled: False
       Parameters:
@@ -35,21 +46,13 @@ Resources:
         - ParameterKey: CyngularAccountId
           ParameterValue: !Ref CyngularAccountId
         - ParameterKey: deployRegions
-          ParameterValue: !Join [",", !Ref deployRegions]
+          ParameterValue: !Ref deployRegions
+          # ParameterValue: !Join [",", !Ref deployRegions]
 
-      StackInstancesGroup:
-        - DeploymentTargets:
-            Accounts:
-              - !Ref "AWS::AccountId"
-          Regions: !Ref deployRegions
-            
-      StackSetName: !Sub "cyngular-stack-2-${ClientName}"
       TemplateBody: !Sub |
         AWSTemplateFormatVersion: 2010-09-09
         Description: Create a guardduty detector and route53 resolver
         Parameters:
-          ClientName:
-            Type: String
           deployRegions:
             Type: CommaDelimitedList
           S3ManagementBucketArn:
@@ -58,7 +61,46 @@ Resources:
             Description: The cyngular account id
             Type: String
         Resources:
-          #-----------------------GuarddutyLambdaRole----------------------------#
+          #------------------Cyngular KMS Key-------------------
+          CyngularKmsKey:
+            Type: AWS::KMS::Key
+            Properties: 
+              Description: cyngular_kms_key
+              KeyPolicy:
+                Id: key-policy-1
+                Version: "2012-10-17"
+                Statement:
+                  - Sid: Enable IAM User Permissions
+                    Effect: Allow
+                    Principal:
+                      AWS:
+                        - !Sub "arn:aws:iam::${CyngularAccountId}:root"
+                        - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+                    Action: "kms:*"
+                    Resource: "*"              
+                    
+              Tags: 
+                - Key: Name
+                  Value: cyngular-kms-key
+
+          CyngularKmsAlias:
+            Type: AWS::KMS::Alias
+            Properties: 
+              AliasName: alias/cyngular-kms-key
+              TargetKeyId: !GetAtt CyngularKmsKey.Arn
+
+          CyngularResolver:
+            Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
+            Properties: 
+              DestinationArn: !Ref S3ManagementBucketArn
+              Name: cyngular_dns
+
+          # CyngularResolverAssociation:
+          #   Type: AWS::Route53Resolver::ResolverQueryLoggingConfigAssociation
+          #   Properties: 
+          #     ResolverQueryLogConfigId: !GetAtt CyngularResolver.Id
+          #     ResourceId: !Ref VpcId
+
           GuarddutyLambdaRole:
             Type: "AWS::IAM::Role"
             Properties:
@@ -88,11 +130,11 @@ Resources:
                           - "*"
           #---------------------GuarddutyCreation--------------------
           CyngularGuarddutyCreationLambda:
-            DependsOn: GuarddutyLambdaRole
             Type: AWS::Lambda::Function
             Properties:
               FunctionName: cyngular-guardduty-creation-lambda-function
               Description: Created by Cyngular Security.
+              Role: !GetAtt GuarddutyLambdaRole.Arn
               Code:
                 ZipFile: !Sub |
                     import boto3
@@ -168,7 +210,6 @@ Resources:
                 Variables:
                     deployRegions: !Join [",", !Ref deployRegions]
             
-              Role: !GetAtt GuarddutyLambdaRole.Arn
 
           GuarddutyCreationTrigger:
             Type: AWS::CloudFormation::CustomResource
@@ -178,11 +219,11 @@ Resources:
           
           # #-----------------------GuarddutyDeletionLambda--------------------------
           # CyngularGuarddutyDeletionLambda:
-          #   DependsOn: GuarddutyLambdaRole
           #   Type: AWS::Lambda::Function
           #   Properties:
           #     FunctionName: cyngular-guardduty-deletion-lambda-function
           #     Description: Created by Cyngular Security.
+          #     Role: !GetAtt GuarddutyLambdaRole.Arn
           #     Code:
           #       ZipFile: !Sub |
           #           import boto3
@@ -223,8 +264,6 @@ Resources:
           #     Environment:
           #       Variables:
           #           deployRegions: !Ref deployRegions
-            
-          #     Role: !GetAtt GuarddutyLambdaRole.Arn
 
           # GuarddutyDeletion:
           #   Type: AWS::CloudFormation::CustomResource
@@ -246,47 +285,3 @@ Resources:
           #     Tags: 
           #         - Key: Name
           #           Value: cyngular-guardduty
-          #------------------Cyngular KMS Key-------------------
-          CyngularKmsKey:
-            Type: AWS::KMS::Key
-            Properties: 
-              Description: cyngular_kms_key
-              KeyPolicy: {
-                "Id" : "key-consolepolicy-3",
-                "Version" : "2012-10-17",
-                "Statement" : [
-                    {
-                        "Sid" : "Enable IAM User Permissions",
-                        "Effect" : "Allow",
-                        "Principal" : {
-                            "AWS": [
-                                !Join [ '', ['arn:aws:iam::', !Ref CyngularAccountId, ':root']],
-                                !Join [ '', ['arn:aws:iam::', !Ref AWS::AccountId, ':root']] 
-                            ]
-                        },
-                        "Action" : "kms:*",
-                        "Resource" : "*"
-                    }
-                ]
-            }
-              Tags: 
-                - Key: Name
-                  Value: cyngular-kms-key
-          
-          CyngularKmsAlias:
-            DependsOn: CyngularKmsKey
-            Type: AWS::KMS::Alias
-            Properties: 
-                AliasName: alias/cyngular-kms-key
-                TargetKeyId: !GetAtt  CyngularKmsKey.Arn
-          CyngularResolver:
-            # DeletionPolicy: Retain
-            Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
-            Properties: 
-              DestinationArn: !Ref S3ManagementBucketArn
-              Name: cyngular_dns
-          # CyngularResolverAssociation:
-          #   Type: AWS::Route53Resolver::ResolverQueryLoggingConfigAssociation
-          #   Properties: 
-          #     ResolverQueryLogConfigId: !GetAtt CyngularResolver.Id
-          #     ResourceId: !Ref VpcId

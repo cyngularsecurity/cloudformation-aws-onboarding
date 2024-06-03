@@ -1,15 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Create a guardduty detector and route53 resolver
 Parameters:
-
   deployRegions:
     Type: CommaDelimitedList
     Description: The regions in which the client operates (use ,)
-
   S3ManagementBucketArn:
     Type: String
     Description: The Arn of the created S3 bucket.
-
   CyngularAccountId:
     Description: The cyngular account id
     Type: String

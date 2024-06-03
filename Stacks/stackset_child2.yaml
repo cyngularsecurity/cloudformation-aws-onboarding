@@ -1,14 +1,13 @@
-Description: Cyngular organization managment stack template
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a guardduty detector and route53 resolver
 
 Parameters:
   CyngularAccountId:
     Description: The cyngular account id
     Type: String
-  
   S3BucketArn:
     Description: The Arn of cyngular S3 logs Bucket.
     Type: String
-  
   ClientRegions:
     Description: The regions where the stack will be deployed
     Type: CommaDelimitedList 
@@ -20,7 +19,7 @@ Resources:
     Properties: 
       Description: cyngular_kms_key
       KeyPolicy:
-        Id: key-consolepolicy-3
+        Id: key-policy-1
         Version: "2012-10-17"
         Statement:
           - Sid: Enable IAM User Permissions
@@ -40,7 +39,7 @@ Resources:
     Type: AWS::KMS::Alias
     Properties: 
       AliasName: alias/cyngular-kms-key
-      TargetKeyId: !GetAtt  CyngularKmsKey.Arn
+      TargetKeyId: !GetAtt CyngularKmsKey.Arn
 
   CyngularResolver:
     Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
