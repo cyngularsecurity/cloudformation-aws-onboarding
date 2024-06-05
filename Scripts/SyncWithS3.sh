@@ -8,7 +8,7 @@ RESET=$(tput sgr0)
 
 BRANCH=$(git branch --show-current)
 BUCKET_NAME="cyngular-onboarding-templates"
-LOCAL_FILE_PATH="Stacks"
+LOCAL_FILE_PATH="CFN"
 
 
 aws s3 sync "$LOCAL_FILE_PATH" "s3://$BUCKET_NAME/$BRANCH/stacks" --profile prod
