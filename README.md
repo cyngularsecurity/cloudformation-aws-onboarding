@@ -28,11 +28,7 @@ One Stack, to deploy another stack, and 2 StackSets
 * Manager Lambda role (cfn, lambda, logs, gd, iam, org, sts, s3)
 * role for manager lambda to create Admin & execution roles in child accounts, if does'nt exists already, to run other stacks
 * Manager Lambda -
-  * create Gaurd duty detector in every region on managment acc if none exists, if one or more exists, tag the first with 'cyngular-guardduty'
   * create *stack-2* - including a stackset resource, when executed runs on all child acc -
-    * Guard duty (deletion?) lambda role
-    * Create Guard duty lambda
-    * Guard duty create trigger custom resource
     * KMS Key & Alias
     * R53 resolver QueryLoggingConfig
   * create *stack-set-1* targets all child acc and client regions -
@@ -48,22 +44,9 @@ One Stack, to deploy another stack, and 2 StackSets
 
 ### Stack 2
 
-* Stack set - deploy R53 resolver & guard duty detector in every region of a client account.
-* Guard duty lambda role, logs
-* Create guard duty Lambda
-* Guard duty lambda trigger cfn cr.
-* (guard duty delete lambda)
+* Stack set - deploy R53 resolver in every region of a client account.
 * Kms key with cyngular access in key policy
 * Kms alias
-
-## TODO
-
-2. add ResolverQueryLoggingConfigAssociation type, stack 2, for detaching vpcs on stack deletion.
-3. check for already existing resources and deletion options for:
-
-* gaurd duty detector (lambda tags existing one with cyngular-guardduty, deletion lambda)
-* osinternals (auditd), eks & dns logs (lambda for creating[A] and one for deletion[D - dnslogs only])
-* vpc flow logs (lambda for creating[B] and one for deletion[C])
 
 ### Client Off boarding
 
