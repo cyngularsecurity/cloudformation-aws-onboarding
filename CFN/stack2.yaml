@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Multiple route53 resolvers in multiple regions
-
+Description: >-
+  Stack - 2
+  Applied on Management account per region
+  
 Parameters:
   CyngularAccountId:
     Description: The cyngular account id
@@ -32,7 +34,7 @@ Resources:
                 - !Sub "arn:aws:iam::${CyngularAccountId}:root"
                 - !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: "kms:*"
-            Resource: "*"              
+            Resource: "*"
 
       Tags: 
         - Key: Name
