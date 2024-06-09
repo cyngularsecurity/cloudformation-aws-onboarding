@@ -1697,7 +1697,7 @@ Resources:
                             lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
                             invoke_lambda(lambda_E_name)
-                            time.sleep(20)
+                            time.sleep(60)
                             logging.info("STARING CYNGULAR STACK2")
                             create_stack2(mgmt_acc_id, regions, stack2_url)
 

@@ -2,15 +2,13 @@
 
 
 ##LINK - 
-https://ap-south-1.console.aws.amazon.com/cloudformation/home?region=ap-south-1#/stacks/quickcreate?templateURL=https%3A%2F%2Fs3.ap-south-1.amazonaws.com%2Fcf-templates-156u5xsrratlp-ap-south-1%2F2024-06-06T072622.997Zup1-CyngularOnBoarding.yaml&stackName=cyngular-onboarding-visa&param_EnableEKS=false&param_ClientName=visa&param_VPCFlowLogsBucket=&param_CyngularAccountId=851565895544&param_OrganizationId=&param_ClientRegions=ap-south-1%2Cap-northeast-3&param_CloudTrailBucket=&param_EnableDNS=false&param_DNSBucket=&param_EnableVPCFlowLogs=false
+https://ap-south-1.console.aws.amazon.com/cloudformation/home?region=ap-south-1#/stacks/quickcreate?templateURL=https%3A%2F%2Fs3.ap-south-1.amazonaws.com%2Fcf-templates-2onq32kajxxk-ap-south-1%2F2024-06-09T103513.376Zckv-CyngularOnBoarding.yaml&stackName=cyngular-onboarding&param_EnableEKS=true&param_ClientName=asos&param_CyngularAccountId=851565895544&param_OrganizationId=o-6lc0p6io84&param_ClientRegions=ap-south-1%2Cap-northeast-3%2Cap-northeast-2&param_CloudTrailBucket=&param_EnableDNS=false&param_EnableVPCFlowLogs=true
 
-## Getting started
-
+<!-- ## Getting started
 Send On Boarding cfn stacks to the client with necessary parameters, to create in their aws root account.
 One Stack, to deploy another stack, and 2 StackSets
 
 ### Stack 1
-
 * S3 Bucket & Policy for Cyngular.
 * CloudTrail Trail for Cyngular.
 * Cyngular Read Only IAM role{delete , modify, create snapshots, kms decryption}.
@@ -43,13 +41,11 @@ One Stack, to deploy another stack, and 2 StackSets
 * Delete cr lambda
 
 ### Stack 2
-
 * Stack set - deploy R53 resolver in every region of a client account.
 * Kms key with cyngular access in key policy
 * Kms alias
 
 ### Client Off boarding
-
 1. run delete lambdas (del resources & del vpc flow logs) in all client accounts.
 2. delete stack-1.
-3. delete stacksets instances for all client accounts and regions.
+3. delete stacksets instances for all client accounts and regions. -->
