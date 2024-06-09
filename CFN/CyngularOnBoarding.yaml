@@ -815,7 +815,7 @@ Resources:
                             logger.error('Error updating the EventBridge rule: %s', str(e))
                             raise
 
-                    logger.info('STARTING VPCFLOWLOGS...')                    
+                    logger.info('STARTING VPCFLOWLOGS...')
                     for curr_region in REGIONS.split(' '):
                         logging.info(f'AWS REGION: {curr_region}')
                         try:
@@ -827,7 +827,7 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
   
-  ScheduledRuleLambdaVFL: 
+  ScheduledRuleLambdaVFL:
     Type: AWS::Events::Rule
     DependsOn: [StackSetManagerTrigger]
     Condition: ServiceVFL
@@ -979,12 +979,13 @@ Resources:
                     logging.critical(str(e))
 
             def cyngular_function(event, context):
+                logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                logger = logging.getLogger()
+                logger.setLevel(logging.INFO)
                 try:
-                    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-                    logger = logging.getLogger()
-                    logger.setLevel(logging.INFO)
                     logger.info ('STRATING CYNGULARS FUNCTION...')
                     logger.info(f'DELETING DNSLOGS...')
+                    events_client = boto3.client('events')
                     REGIONS = os.environ['CLIENT_REGIONS']
 
                     for curr_region in REGIONS.split(' '):
@@ -1185,7 +1186,7 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - !Sub "arn:aws:s3:::cyngular-onboarding-templates/v2/stacks/*"
+                  - !Sub "arn:aws:s3:::cyngular-onboarding-templates/v3/stacks/*"
                 Action:
                   - "s3:GetObject"
 
@@ -1484,9 +1485,9 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
-      Stack2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v2/stacks/stack2.yaml"
-      StackSet1URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v2/stacks/stackset_child1.yaml"
-      StackSet2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v2/stacks/stackset_child2.yaml"
+      Stack2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stack2.yaml"
+      StackSet1URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stackset_child1.yaml"
+      StackSet2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stackset_child2.yaml"
 
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
