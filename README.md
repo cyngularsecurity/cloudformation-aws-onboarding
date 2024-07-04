@@ -2,7 +2,9 @@
 
 
 ##LINK - 
-https://ap-south-1.console.aws.amazon.com/cloudformation/home?region=ap-south-1#/stacks/quickcreate?templateURL=https%3A%2F%2Fs3.ap-south-1.amazonaws.com%2Fcf-templates-2onq32kajxxk-ap-south-1%2F2024-06-09T103513.376Zckv-CyngularOnBoarding.yaml&stackName=cyngular-onboarding&param_EnableEKS=true&param_ClientName=asos&param_CyngularAccountId=851565895544&param_OrganizationId=o-6lc0p6io84&param_ClientRegions=ap-south-1%2Cap-northeast-3%2Cap-northeast-2&param_CloudTrailBucket=&param_EnableDNS=false&param_EnableVPCFlowLogs=true
+
+https://eu-west-3.console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/CyngularOnBoarding.yaml&stackName=CyngularOnBoarding&param_ClientName=tesla&param_OrganizationId=o-6lc0p6io84&param_ClientRegions=eu-west-3,eu-north-1&param_EnableDNS=false
+
 
 <!-- ## Getting started
 Send On Boarding cfn stacks to the client with necessary parameters, to create in their aws root account.

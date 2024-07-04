@@ -53,7 +53,7 @@ Parameters:
   CyngularAccountId:
     Description: "The cyngular Account ID to assume read only role"
     Type: String
-    AllowedValues: ["851565895544"]
+    AllowedValues: ["851565895544", "468159710337"]
     Default: 851565895544
 
   OrganizationId:
@@ -100,8 +100,8 @@ Conditions:
 Resources:
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
+    # DeletionPolicy: Retain
+    # UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketEncryption:
@@ -296,7 +296,7 @@ Resources:
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
-                  - !Sub ["${bucket_arn}}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
+                  - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                   # - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
                 Action:
                   - "s3:*"
@@ -367,7 +367,7 @@ Resources:
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
-                  - !Sub ["${bucket_arn}}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
+                  - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
 
