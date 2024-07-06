@@ -763,6 +763,7 @@ Resources:
                         TrafficType='ALL',
                         LogDestinationType = 's3',
                         LogDestination = f"arn:aws:s3:::{bucket_name}",
+                        LogFormat='${region} ${instance-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${tcp-flags} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}',
                         TagSpecifications=[
                             {
                                 'ResourceType': 'vpc-flow-log',
