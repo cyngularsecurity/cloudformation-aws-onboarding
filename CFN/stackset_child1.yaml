@@ -194,7 +194,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
             import boto3
             import traceback
             import os
@@ -306,7 +306,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
             import boto3
             import traceback
             import os
@@ -420,7 +420,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
             import boto3
             import traceback
             import os
@@ -542,7 +542,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub | 
+        ZipFile: | 
             import boto3
             import traceback
             import os
@@ -668,7 +668,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub | 
+        ZipFile: | 
             import boto3
             import traceback
             import os
@@ -741,7 +741,7 @@ Resources:
       Handler: index.cyngular_function
       Timeout: 300
       Code:
-        ZipFile: !Sub | 
+        ZipFile: | 
             import boto3
             import traceback
             import os
@@ -787,6 +787,8 @@ Resources:
                     logger.setLevel(logging.INFO)
                     logger.info ('STRATING CYNGULARS FUNCTION...')
                     logger.info(f'DELETING DNSLOGS...')
+
+                    events_client = boto3.client('events')
                     REGIONS = os.environ['CLIENT_REGIONS']
 
                     for curr_region in REGIONS.split(','):

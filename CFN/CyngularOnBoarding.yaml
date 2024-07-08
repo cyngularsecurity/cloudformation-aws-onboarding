@@ -28,7 +28,7 @@ Metadata:
       ClientName:
         default: "Client Company Name"
       ClientRegions:
-        default: "Regions the company operate in"
+        default: "Company Regions"
       OrganizationId:
         default: "Organization Id"
       CloudTrailBucket:
@@ -45,8 +45,8 @@ Metadata:
 Parameters:
   ClientName:
     Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
-    Type: String
-    AllowedPattern: ^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$
+    Type: "String"
+    AllowedPattern: "^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$"
     MinLength: 3
     MaxLength: 10
 
@@ -57,17 +57,17 @@ Parameters:
     Default: 851565895544
 
   OrganizationId:
-    Description: "Specify whether the client is using an Organization | leave empty if not"
+    Description: "Specify the company Organization id | leave empty if not"
     Type: String
     Default: ""
 
   ClientRegions:
-    Description: "The regions in which the client operates (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts"
+    Description: "The regions in which the company operate in (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts"
     Type: CommaDelimitedList
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
 
   CloudTrailBucket:
-    Description: "fill the bucket name, If you already configured CloudTrail To Send Logs to | leave empty if not"
+    Description: "If you already configured CloudTrail To Send Logs to s3, enter its name | leave empty if not"
     Type: String
     Default: ""
 
@@ -84,7 +84,7 @@ Parameters:
     Default: "true"
 
   EnableVPCFlowLogs:
-    Description: "VFL Service - Whether to log flow logs from vpcs in client regions"
+    Description: "VFL Service - Whether to log flow logs from vpcs"
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
