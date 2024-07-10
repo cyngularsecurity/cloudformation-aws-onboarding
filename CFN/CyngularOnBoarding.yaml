@@ -127,7 +127,7 @@ Resources:
           - Sid: 'LambdaRead'
             Effect: Allow
             Principal: 
-              Service: "lambda.amazonaws.com"
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action:
               - 's3:GetBucketLocation'
               - 's3:GetObject'
@@ -135,6 +135,7 @@ Resources:
               - 's3:ListBucketMultipartUploads'
               - 's3:ListMultipartUploadParts'
               - 's3:AbortMultipartUpload'
+
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
@@ -142,9 +143,11 @@ Resources:
                 - IsOrg
                 - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
                 - !Ref "AWS::NoValue"
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${CyngularAccountId}:function:*${ClientName}*"
+            # Principal: 
+            #   Service: "lambda.amazonaws.com"
+            # Condition:
+            #   ArnLike:
+            #     aws:SourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${CyngularAccountId}:function:*${ClientName}*"
 
           - !If 
             - CreateCloudTrail
@@ -228,6 +231,7 @@ Resources:
                   - iam:List*
                   - iam:Get*
                   - iam:GenerateServiceLastAccessedDetails
+
                   - organizations:Describe*
                   - organizations:List*
                   - organizations:EnableAWSServiceAccess
@@ -241,15 +245,17 @@ Resources:
                   - kms:Describe*
                   - s3:List*
                   - s3:Describe*
-                  - s3:GetObject
+                  # - s3:GetObject
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
-                  - s3:ListAllMyBuckets
+                  # - s3:ListAllMyBuckets
+                  # - s3:ListBucket
+
                   - s3:GetAccountPublicAccessBlock
                   - s3:GetBucketPublicAccessBlock
-                  - s3:ListAttachedUserPolicies
+                  # - s3:ListAttachedUserPolicies # not valid
 
                   - logs:List*
                   - logs:Describe*
@@ -734,6 +740,8 @@ Resources:
           FIRST_RUN: "true"
           CYNGULAR_BUCKET: !Ref CyngularS3Bucket
 
+                        # LogFormat='${region} ${instance-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${tcp-flags} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}',
+
       Runtime: "python3.12"
       Handler: index.cyngular_function
       Timeout: 300
@@ -763,7 +771,6 @@ Resources:
                         TrafficType='ALL',
                         LogDestinationType = 's3',
                         LogDestination = f"arn:aws:s3:::{bucket_name}",
-                        LogFormat='${region} ${instance-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${tcp-flags} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}',
                         TagSpecifications=[
                             {
                                 'ResourceType': 'vpc-flow-log',
