@@ -46,7 +46,7 @@ Parameters:
   ClientName:
     Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
     Type: "String"
-    AllowedPattern: "^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$"
+    # AllowedPattern: "^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$"
     MinLength: 3
     MaxLength: 10
 
@@ -127,7 +127,10 @@ Resources:
           - Sid: 'LambdaRead'
             Effect: Allow
             Principal: 
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              AWS: [
+                !Sub "arn:aws:iam::${AWS::AccountId}:root",
+                !Sub "arn:aws:iam::${CyngularAccountId}:root"                
+              ]
             Action:
               - 's3:GetBucketLocation'
               - 's3:GetObject'
@@ -1704,6 +1707,7 @@ Resources:
                             stackset2_url = event['ResourceProperties']['StackSet2URL']
                             lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
+                            logging.info("Updating Bucket Policy")
                             invoke_lambda(lambda_E_name)
                             time.sleep(60)
                             logging.info("STARING CYNGULAR STACK2")
