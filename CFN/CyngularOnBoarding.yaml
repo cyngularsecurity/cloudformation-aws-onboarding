@@ -284,6 +284,8 @@ Resources:
                   - cloudformation:Describe*
                   - cloudformation:List*
                   - cloudformation:Get*
+                  
+                  - tag:GetResources
 
               - Sid: ec2CyngularSnapshot
                 Effect: Allow
@@ -1130,7 +1132,7 @@ Resources:
                     logger.critical(str(e))
 
   ManagerLambdaRole:
-    Type: "AWS::IAM::Role"
+    Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "cyngular-manager-lambda-role-${ClientName}"
       MaxSessionDuration: 43200
@@ -1202,7 +1204,7 @@ Resources:
                   - "s3:GetObject"
 
   LambdaAdminAndExecRole:
-    Type: "AWS::IAM::Role"
+    Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
       AssumeRolePolicyDocument:

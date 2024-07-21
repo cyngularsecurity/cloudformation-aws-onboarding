@@ -3,7 +3,7 @@
 
 ##LINK - 
 
-https://eu-west-3.console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/CyngularOnBoarding.yaml&stackName=CyngularOnBoarding&param_ClientName=tesla&param_OrganizationId=o-6lc0p6io84&param_ClientRegions=eu-west-3,eu-north-1&param_EnableDNS=false
+https://eu-west-3.console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/CyngularOnBoarding.yaml&stackName=CyngularOnBoarding
 
 
 <!-- ## Getting started
