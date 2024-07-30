@@ -26,7 +26,7 @@ Metadata:
 
     ParameterLabels:
       ClientName:
-        default: "Client Company Name"
+        default: "Company Name"
       ClientRegions:
         default: "Company Regions"
       OrganizationId:
@@ -53,8 +53,8 @@ Parameters:
   CyngularAccountId:
     Description: "The cyngular Account ID to assume read only role"
     Type: String
-    AllowedValues: ["851565895544", "468159710337"]
-    Default: 851565895544
+    AllowedValues: ["851565895544"]
+    Default: "851565895544"
 
   OrganizationId:
     Description: "Specify the company Organization id | leave empty if not"
@@ -67,41 +67,40 @@ Parameters:
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
 
   CloudTrailBucket:
-    Description: "If you already configured CloudTrail To Send Logs to s3, enter its name | leave empty if not"
+    Description: "If you already configured CloudTrail To Send Logs to an s3 bucket, provide bucket name. leave empty if not"
     Type: String
     Default: ""
 
   EnableDNS:
-    Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc Query Logging"
+    Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc Query Logging & log to cyngular bucket"
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
   EnableEKS:
-    Description: "EKS Service - Whether to Configure EKS Audit & authenticator Logging for kubernetes Clusters"
+    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters & log to cyngular bucket"
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
   EnableVPCFlowLogs:
-    Description: "VFL Service - Whether to log flow logs from vpcs"
+    Description: "VFL Service - Whether to log flow logs from vpcs & log to cyngular bucket"
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
 Conditions:
+  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
+
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
   ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
   ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
 
   CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
-  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
 
 Resources:
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
-    # DeletionPolicy: Retain
-    # UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketEncryption:
@@ -116,6 +115,26 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+
+        - Key: cyngular-os
+          Value: true
+        - Key: cyngular-visibility
+          Value: true
+        - !If
+            - CreateCloudTrail
+            - Key: cyngular-cloudtrail
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceDNS
+            - Key: cyngular-dnslogs
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceVFL
+            - Key: cyngular-vpcflowlogs
+              Value: true
+            - !Ref AWS::NoValue
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
