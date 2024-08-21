@@ -53,7 +53,7 @@ Parameters:
   CyngularAccountId:
     Description: "The cyngular Account ID to assume read only role"
     Type: String
-    AllowedValues: ["851565895544"]
+    AllowedValues: ["851565895544", "468159710337"]
     Default: "851565895544"
 
   OrganizationId:
@@ -135,6 +135,11 @@ Resources:
             - Key: cyngular-vpcflowlogs
               Value: true
             - !Ref AWS::NoValue
+        # - !If
+        #     - ServiceEKS
+        #     - Key: cyngular-ekslogs
+        #       Value: true
+        #     - !Ref AWS::NoValue
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -160,7 +165,7 @@ Resources:
 
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
-              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/*"
               - !If 
                 - IsOrg
                 - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
@@ -171,7 +176,7 @@ Resources:
             #   ArnLike:
             #     aws:SourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${CyngularAccountId}:function:*${ClientName}*"
 
-          - !If 
+          - !If
             - CreateCloudTrail
             - Sid: 'CloudTrailAclCheck'
               Effect: Allow
@@ -1218,7 +1223,7 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - !Sub "arn:aws:s3:::cyngular-onboarding-templates/v3/stacks/*"
+                  - "arn:aws:s3:::cyngular-onboarding-templates/v3/stacks/*"
                 Action:
                   - "s3:GetObject"
 
@@ -1792,6 +1797,6 @@ Resources:
   #         If it truly is stuck, copy the event json from the logs and paste them below.
   #         Then run the function and confirm that the resource was successfully deleted.
   #         '''
-  #         def lambda_handler(event, context):
+  #         def cyngular_function(event, context):
   #           event = {} # copy and paste event from manager lambda logs to here
   #           cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : 'Custom resource manually deleted'})

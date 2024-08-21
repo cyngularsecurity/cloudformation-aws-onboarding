@@ -5,7 +5,7 @@ Resources:
   AdministrationRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: AWSCloudFormationStackSetAdministrationRole
+      RoleName: AWSCloudFormationStackSetAdministrationRole  # Cyngular
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -24,4 +24,4 @@ Resources:
                 Action:
                   - sts:AssumeRole
                 Resource:
-                  - "arn:*:iam::*:role/AWSCloudFormationStackSetExecutionRole"
+                  - "arn:*:iam::*:role/AWSCloudFormationStackSetExecutionRole"  # Cyngular
