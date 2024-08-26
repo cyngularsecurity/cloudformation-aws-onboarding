@@ -7,8 +7,8 @@
   * CloudTrail
 
 * Click on the provided URL to open the AWS CloudFormation console.
-* Switch to Preferred Region.
-* Fill in the required parameters.
+  * Switch to Preferred Region.
+  * Fill in the required parameters.
 
 For services parameters:
 provide true, for cyngular to collect logs
@@ -20,9 +20,6 @@ Vpc dns logs - {key: cyngular-dnslogs, value: true}
 Vpc flow logs - {key: cyngular-vpcflowlogs, value: true}
 
 --
-
-Review the stack details and click on "Create Stack" to initiate the process.
-Monitor Stack status up to status CREATE_COMPLETE.
 
 ## LINK
 

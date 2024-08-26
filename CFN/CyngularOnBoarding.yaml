@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular: v3.0.0 -
+  Cyngular: v3.0 -
   Main OnBoarding stack template
 
 Metadata:
@@ -23,6 +23,7 @@ Metadata:
           default: Cyngular Info
         Parameters:
           - CyngularAccountId
+          - CFNVersion
 
     ParameterLabels:
       ClientName:
@@ -44,20 +45,11 @@ Metadata:
 
 Parameters:
   ClientName:
-    Description: |-
-      The name of the client.
-      (must be lowercase, can contain letters, numbers and dashes)
+    Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
     Type: "String"
-    # AllowedPattern: "^[a-z0-9](?:[a-z0-9\-\.]*[a-z0-9])?$"
+    AllowedPattern: "^[a-z0-9]+$" # "^[a-z0-9](?:[a-z0-9\\-\\.]*[a-z0-9])?$"
     MinLength: 3
     MaxLength: 10
-
-  CyngularAccountId:
-    Description: "The cyngular Account ID to assume read only role"
-    Type: String
-    AllowedValues: ["851565895544"]
-    # AllowedValues: ["851565895544", "468159710337"]
-    Default: "851565895544"
 
   OrganizationId:
     Description: "Specify the company Organization id | leave empty if not"
@@ -99,6 +91,18 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
+
+  CFNVersion:
+    Description: "Cloud Formation Template version for path in s3 internal bucket"
+    Type: String
+    Default: "v3.0"
+
+  CyngularAccountId:
+    Description: "The cyngular Account ID to assume the read only role"
+    Type: String
+    # AllowedValues: ["851565895544"]
+    AllowedValues: ["851565895544", "468159710337"]
+    Default: "851565895544"
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
@@ -1230,7 +1234,7 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates/v3/stacks/*"
+                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
                 Action:
                   - "s3:GetObject"
 
@@ -1295,9 +1299,9 @@ Resources:
       Description: Created by Cyngular Security.
 
       Role: !GetAtt LambdaAdminAndExecRole.Arn
-      Runtime: "python3.9"
+      Runtime: python3.12
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 600
       Environment:
         Variables:
           CLIENT_REGIONS: !Join [",", !Ref ClientRegions]
@@ -1529,9 +1533,9 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
-      Stack2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stack2.yaml"
-      StackSet1URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stackset_child1.yaml"
-      StackSet2URL: "https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/stackset_child2.yaml"
+      Stack2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stack2.yaml"
+      StackSet1URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child1.yaml"
+      StackSet2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child2.yaml"
 
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
@@ -1540,9 +1544,9 @@ Resources:
       Description: Created by Cyngular Security.
       Role: !GetAtt ManagerLambdaRole.Arn
 
-      Runtime: "python3.9"
+      Runtime: python3.12
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 600
       Environment:
         Variables:
           ClientName: !Ref ClientName
@@ -1763,47 +1767,3 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
-
-  # DeleteCustomResourceLambdaRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Sub "cyngular-delete-cfn-cr-role-${ClientName}"
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: "Allow"
-  #           Principal:
-  #             Service: "lambda.amazonaws.com"
-  #           Action: "sts:AssumeRole"
-  #     Policies:
-  #       - PolicyName: "CloudFormationPolicy"
-  #         PolicyDocument:
-  #           Version: "2012-10-17"
-  #           Statement:
-  #             - Effect: "Allow"
-  #               Action: "logs:*"
-  #               Resource: '*'
-
-  # DeleteCustomResourceLambda:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     FunctionName: cyngular-lambda-delete-custom-resource
-  #     Description: Created by Cyngular Security.
-
-  #     Role: !GetAtt DeleteCustomResourceLambdaRole.Arn
-  #     Runtime: "python3.9"
-  #     Handler: index.cyngular_function
-  #     Timeout: 300
-  #     Code:
-  #       ZipFile: !Sub |
-  #         import cfnresponse
-  #         '''
-  #         This function was created by cyngular security to delete a custom resource that is stuck
-  #         on creation or deletion. Before running this function, make sure that the resource is actually stuck
-  #         and not just taking time to complete (check the logs).
-  #         If it truly is stuck, copy the event json from the logs and paste them below.
-  #         Then run the function and confirm that the resource was successfully deleted.
-  #         '''
-  #         def cyngular_function(event, context):
-  #           event = {} # copy and paste event from manager lambda logs to here
-  #           cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : 'Custom resource manually deleted'})
