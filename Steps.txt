@@ -1,8 +1,5 @@
-Step 1: If using aws Organizations feature, make sure trusted access is enabled for CloudFormation StackSets and CloudTrail Organizations services.
-Step 2: Create a CloudFormation Stack using Cyngular's Template with this quick-create link: <https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/CyngularOnBoarding.yaml&stackName=CyngularOnBoarding>.
-Step 3: Ensure you are in the preferred AWS region.
-Step 4: Fill the required parameters in the CloudFormation template.
-Step 5: Set parameters to true for Cyngular log collection or false if not needed. 
-Step 6: If logging to an existing S3 bucket, add the respective tags, with value 'true' to the buckets: 'cyngular-cloudtrail', 'cyngular-dnslogs', 'cyngular-vpcflowlogs', 'cyngular-ekslogs' .
-Step 7: Review the stack details and click "Create Stack" to start the deployment.
-Step 8: Monitor the stack status until it reaches CREATE_COMPLETE.
+Step 1: If you are using the AWS Organizations feature, ensure the following services are enabled:
+    https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/CloudTrail
+    https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/CloudFormation%20StackSets
+Step 2: Create a CloudFormation Stack (Ensure you are in your preferred AWS region) using Cyngular's template https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://cyngular-onboarding-templates.s3.amazonaws.com/v3/stacks/CyngularOnBoarding.yaml&stackName=CyngularOnBoarding
+Step 3: After the deployment is complete, enter your management account ID and select your preferred regions. Then, click "Connect Cloud Provider"

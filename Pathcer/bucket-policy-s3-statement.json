@@ -1,0 +1,21 @@
+{
+    "Sid": "LambdaRead",
+    "Effect": "Allow",
+    "Principal": {
+        "AWS": [
+            "arn:aws:iam::{Cyngular Account ID}:root"
+        ]
+    },
+    "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+    ],
+    "Resource": [
+        "arn:aws:s3:::cyngular-{Client Name}-bucket-{MGMT Account ID}",
+        "arn:aws:s3:::cyngular-{Client Name}-bucket-{MGMT Account ID}/AWSLogs/*"
+    ]
+}
