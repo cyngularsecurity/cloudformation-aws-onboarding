@@ -17,8 +17,8 @@ Metadata:
         Parameters:
           - CloudTrailBucket
           - EnableDNS
-          - EnableEKS
           - EnableVPCFlowLogs
+          - EnableEKS
       - Label:
           default: Cyngular Info
         Parameters:
@@ -47,7 +47,7 @@ Parameters:
   ClientName:
     Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
     Type: "String"
-    AllowedPattern: "^[a-z0-9]+$" # "^[a-z0-9](?:[a-z0-9\\-\\.]*[a-z0-9])?$"
+    AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
     MaxLength: 10
 
@@ -57,31 +57,28 @@ Parameters:
     Default: ""
 
   ClientRegions:
-    Description: "The regions in which the company operate in (comma-separated for example; us-east-1,us-east-2), make sure all regions listed are enabled in the relevent accounts"
+    Description: "The regions in which your company operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
     Type: CommaDelimitedList
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
 
   CloudTrailBucket:
-    # Description: "If you already configured CloudTrail To Send Logs to an s3 bucket, provide bucket name. leave empty if not"
-    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+    Description: "Leave blank for cyngular to log cloudtrail logs to the default bucket; Enter a bucket Name, if you already configured CloudTrail To Send Logs to an s3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket."
     Type: String
     Default: ""
 
   EnableDNS:
-    # Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc Query Logging & log to cyngular bucket"
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
   EnableEKS:
-    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters & log to cyngular bucket"
+    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
   EnableVPCFlowLogs:
-    # Description: "VFL Service - Whether to log flow logs from vpcs & log to cyngular bucket"
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
     AllowedValues: ["true", "false"]
@@ -96,7 +93,6 @@ Parameters:
     Description: "The cyngular Account ID to assume the read only role"
     Type: String
     AllowedValues: ["851565895544"]
-    # AllowedValues: ["851565895544", "468159710337"]
     Default: "851565895544"
 
 Conditions:
