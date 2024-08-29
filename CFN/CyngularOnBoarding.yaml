@@ -93,16 +93,16 @@ Parameters:
     Description: "The cyngular Account ID to assume the read only role"
     Type: String
     AllowedValues: ["851565895544"]
+    # AllowedValues: ["468159710337", "851565895544"]
     Default: "851565895544"
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
 
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
   ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
   ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
-
-  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
 
 Resources:
   CyngularS3Bucket:
@@ -139,6 +139,11 @@ Resources:
         - !If
             - ServiceVFL
             - Key: cyngular-vpcflowlogs
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceVFL
+            - Key: cyngular-ekslogs
               Value: true
             - !Ref AWS::NoValue
 
