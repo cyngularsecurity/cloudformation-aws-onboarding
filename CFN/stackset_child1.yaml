@@ -61,10 +61,8 @@ Resources:
                   - organizations:RegisterDelegatedAdministrator
 
                   - cloudtrail:LookupEvents
-                  # - cloudtrail:CreateTrail
-                  # - cloudtrail:StartLogging
-                  # - ce:GetCostAndUsage
-                  # - ce:GetDimensionValues
+                  - ce:GetCostAndUsage
+                  - ce:GetDimensionValues
 
                   - kms:List*
                   - kms:Describe*
@@ -185,7 +183,6 @@ Resources:
       Role: !GetAtt LambdasRole.Arn
       Environment:
         Variables:
-          # CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]       
           CLIENT_REGIONS: !Ref ClientRegions
           FINAL_CRON: "cron(0 0 * * ? *)"
           FIRST_RUN: "true"
@@ -256,7 +253,7 @@ Resources:
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
-                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
                             raise
 
                     for curr_region in REGIONS.split(','):

@@ -3,7 +3,7 @@
     "Effect": "Allow",
     "Principal": {
         "AWS": [
-            "arn:aws:iam::{Cyngular Account ID}:root"
+            "arn:aws:iam::851565895544:root"
         ]
     },
     "Action": [
@@ -15,7 +15,7 @@
         "s3:AbortMultipartUpload"
     ],
     "Resource": [
-        "arn:aws:s3:::cyngular-{Client Name}-bucket-{MGMT Account ID}",
-        "arn:aws:s3:::cyngular-{Client Name}-bucket-{MGMT Account ID}/AWSLogs/*"
+        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}",
+        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}/AWSLogs/*"
     ]
 }

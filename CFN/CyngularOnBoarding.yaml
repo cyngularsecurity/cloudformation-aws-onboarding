@@ -62,7 +62,7 @@ Parameters:
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-north-1, eu-south-1, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1]
 
   CloudTrailBucket:
-    Description: "Leave blank for cyngular to log cloudtrail logs to the default bucket; Enter a bucket Name, if you already configured CloudTrail To Send Logs to an s3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket."
+    Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
     Type: String
     Default: ""
 
@@ -85,15 +85,15 @@ Parameters:
     Default: "true"
 
   CFNVersion:
-    Description: "Cloud Formation Template version for path in s3 internal bucket"
+    Description: "CloudFormation Template version for path in s3 internal bucket"
     Type: String
     Default: "v3.0"
+    AllowedValues: ["v3.0"]
 
   CyngularAccountId:
     Description: "The cyngular Account ID to assume the read only role"
     Type: String
     AllowedValues: ["851565895544"]
-    # AllowedValues: ["468159710337", "851565895544"]
     Default: "851565895544"
 
 Conditions:
@@ -142,7 +142,7 @@ Resources:
               Value: true
             - !Ref AWS::NoValue
         - !If
-            - ServiceVFL
+            - ServiceEKS
             - Key: cyngular-ekslogs
               Value: true
             - !Ref AWS::NoValue
@@ -162,25 +162,11 @@ Resources:
                 !Sub "arn:aws:iam::${CyngularAccountId}:root"                
               ]
             Action:
-              - 's3:GetBucketLocation'
-              - 's3:GetObject'
-              - 's3:ListBucket'
-              - 's3:ListBucketMultipartUploads'
-              - 's3:ListMultipartUploadParts'
-              - 's3:AbortMultipartUpload'
+              - 's3:*'
 
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
-              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/*"
-              - !If 
-                - IsOrg
-                - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
-                - !Ref "AWS::NoValue"
-            # Principal: 
-            #   Service: "lambda.amazonaws.com"
-            # Condition:
-            #   ArnLike:
-            #     aws:SourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${CyngularAccountId}:function:*${ClientName}*"
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
 
           - !If
             - CreateCloudTrail
@@ -271,24 +257,20 @@ Resources:
                   - organizations:RegisterDelegatedAdministrator
 
                   - cloudtrail:LookupEvents
-                  # - ce:GetCostAndUsage
-                  # - ce:GetDimensionValues
+                  - ce:GetCostAndUsage
+                  - ce:GetDimensionValues
 
                   - kms:List*
                   - kms:Describe*
                   - s3:List*
                   - s3:Describe*
-                  # - s3:GetObject
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
-                  # - s3:ListAllMyBuckets
-                  # - s3:ListBucket
 
                   - s3:GetAccountPublicAccessBlock
                   - s3:GetBucketPublicAccessBlock
-                  # - s3:ListAttachedUserPolicies # not valid
 
                   - logs:List*
                   - logs:Describe*
@@ -338,8 +320,6 @@ Resources:
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
-                  # - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}"
-                  # - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${AWS::AccountId}/*"
                 Action:
                   - "s3:*"
               - Sid: KmsPartial
@@ -439,8 +419,7 @@ Resources:
                 try:
                     logging.info('STARTING OS INTERNALS...')
                     ec2_client = boto3.client('ec2', region_name=curr_region)
-                    ssm_client = boto3.client('ssm', region_name=curr_region
-                    )
+                    ssm_client = boto3.client('ssm', region_name=curr_region)
 
                     all_instances = ec2_client.describe_instances()
                     instance_ids = []
@@ -491,7 +470,7 @@ Resources:
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
-                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
                             raise
 
                     for curr_region in REGIONS.split(' '):
@@ -603,7 +582,7 @@ Resources:
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
-                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
                             raise
 
                     logger.info('STARTING EKSLOGS...')                    
@@ -690,9 +669,7 @@ Resources:
                                     resp = r_53_client.associate_resolver_query_log_config(ResolverQueryLogConfigId = cyngular_resolver_id, ResourceId = vpc_id )
                                     logging.info(f'COMMAND SUCCEEDED.')
                                 except Exception as e:
-                                    if 'already associated' in str(e):
-                                        logging.critical(f'{vpc_id} - ResolverAlreadyAssociated')
-                                    else:
+                                    if not 'already associated' in str(e):
                                         logging.critical(str(e))
                 except Exception as e:
                     logging.critical(str(e))
@@ -725,7 +702,7 @@ Resources:
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
-                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
                             raise
 
                     logger.info('STARTING DNSLOGS...')                    
@@ -775,8 +752,6 @@ Resources:
           FINAL_CRON: "cron(0 * * * ? *)"
           FIRST_RUN: "true"
           CYNGULAR_BUCKET: !Ref CyngularS3Bucket
-
-                        # LogFormat='${region} ${instance-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${tcp-flags} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}',
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
@@ -856,7 +831,7 @@ Resources:
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
-                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
                             raise
 
                     logger.info('STARTING VPCFLOWLOGS...')
@@ -1056,7 +1031,6 @@ Resources:
       Role: !GetAtt LambdasRole.Arn
       Environment:
         Variables:
-          # IsOrg: !Ref Org
           BUCKET_NAME: !Ref CyngularS3Bucket
 
       Runtime: "python3.12"
@@ -1150,7 +1124,6 @@ Resources:
                 logger = logging.getLogger()
                 logger.setLevel(logging.INFO)
                 logger.info('STARTING CYNGULAR\'S FUNCTION...')
-                logger.info(f"copy this to manually delete the custom resource: \n{event}") ## printing event for responseurl
                 try:
                     logger.info('UPDATING CYNGULAR BUCKET POLICY')
                     cyngular_bucket_name = os.environ['BUCKET_NAME']
