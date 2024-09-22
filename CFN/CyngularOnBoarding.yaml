@@ -91,9 +91,8 @@ Parameters:
     AllowedValues: ["release/v3.1"]
 
   CyngularAccountId:
-    Description: "The cyngular Account ID to assume the read only role"
+    Description: "The cyngular Account ID to assume the read only role [851565895544]"
     Type: String
-    AllowedValues: ["851565895544"]
     Default: "851565895544"
 
 Conditions:
@@ -256,12 +255,9 @@ Resources:
                   - organizations:EnableAWSServiceAccess
                   - organizations:RegisterDelegatedAdministrator
 
-                  - cloudtrail:LookupEvents
                   - ce:GetCostAndUsage
                   - ce:GetDimensionValues
 
-                  - kms:List*
-                  - kms:Describe*
                   - s3:List*
                   - s3:Describe*
                   - s3:GetBucketAcl
@@ -298,6 +294,24 @@ Resources:
                   - cloudformation:Get*
                   
                   - tag:GetResources
+
+                  # Route 53
+                  - 'route53:Get*'
+                  - 'route53:List*'
+                  - 'route53:TestDNSAnswer'
+                  # CloudTrail
+                  - 'cloudtrail:GetTrail'
+                  - 'cloudtrail:DescribeTrails'
+                  - 'cloudtrail:GetTrailStatus'
+                  - 'cloudtrail:LookupEvents'
+                  - 'cloudtrail:ListTags'
+                  - 'cloudtrail:ListTrails'
+                  - 'cloudtrail:GetEventSelectors'
+                  - 'cloudtrail:GetInsightSelectors'
+                  # KMS
+                  - 'kms:Describe*'
+                  - 'kms:Get*'
+                  - 'kms:List*'
 
               - Sid: ec2CyngularSnapshot
                 Effect: Allow
@@ -1023,7 +1037,7 @@ Resources:
                 except Exception as e:
                     logger.critical(str(e))
 
-  CyngularLambdaE:
+  CyngularLambdaUpdateBucketPolicy:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-update-cyngular-bucket
@@ -1157,10 +1171,9 @@ Resources:
                 Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                  # - lambda:InvokeAsync
                   - lambda:GetFunction
                 Resource:
-                  - !GetAtt CyngularLambdaE.Arn
+                  - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
 
               - Sid: StackSetManager
                 Effect: Allow
@@ -1252,14 +1265,21 @@ Resources:
                   - "sts:GetCallerIdentity"
 
                   - "logs:*"
-                  - "s3:GetObject"
                 Resource: "*"
+
+              - Sid: GetStackSetTemplates
+                Effect: "Allow"
+                Resource:
+                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
+                Action:
+                  - "s3:GetObject"
 
   AdminAndExecTrigger:
     Type: Custom::AdminAndExec
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaAdminAndExec.Arn
+      ServiceTimeout: 1800
 
   LambdaAdminAndExec:
     Type: AWS::Lambda::Function
@@ -1342,16 +1362,6 @@ Resources:
                     - !Sub arn:aws:iam::aws:policy/AdministratorAccess
             """
 
-            def enable_trusted_access(service_principal): #LINK - Initialization Proccess
-                client = boto3.client('organizations')
-                try:
-                    response = client.enable_aws_service_access(
-                        ServicePrincipal=service_principal
-                    )
-                    print(f"Trusted access enabled for {service_principal}")
-                except Exception as e:
-                    print(f"Error enabling trusted access for {service_principal}: {e}")
-
             def check_role_existence(role_name):
                 iam_client = boto3.client('iam')
                 try:
@@ -1397,37 +1407,40 @@ Resources:
                 return False, None
 
             def create_executionrole_on_childs(management_account_id, root_ou_id, regions):
-                cfn_client = boto3.client('cloudformation')
-                cfn_client.create_stack_set(
-                    StackSetName='cyngular-execution-role-stackset',
-                    Description='Cyngular deployment of Execution roles for nested accounts',
-                    TemplateBody=EXECUTION_ROLE_TEMPLATE,
-                    AutoDeployment={
-                        'Enabled': True,
-                        'RetainStacksOnAccountRemoval': False
-                    },
-                    PermissionModel='SERVICE_MANAGED',
-                    Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
-                    Parameters=[
-                        { 
-                            'ParameterKey': 'AdministratorAccountId',
-                            'ParameterValue': management_account_id
+                try:
+                    cfn_client = boto3.client('cloudformation')
+                    cfn_client.create_stack_set(
+                        StackSetName='cyngular-execution-role-stackset',
+                        Description='Cyngular deployment of Execution roles for nested accounts',
+                        TemplateBody=EXECUTION_ROLE_TEMPLATE,
+                        AutoDeployment={
+                            'Enabled': True,
+                            'RetainStacksOnAccountRemoval': False
                         },
-                    ]
-                )
-                result = cfn_client.create_stack_instances(
-                        StackSetName = 'cyngular-execution-role-stackset',
-                        DeploymentTargets = {
-                            "OrganizationalUnitIds": [root_ou_id]
-                        },
-                        Regions = [regions[0]],
-                        OperationPreferences = {
-                            'RegionConcurrencyType': 'PARALLEL',
-                            'FailureTolerancePercentage': 100,
-                            'MaxConcurrentPercentage': 100
-                        }
+                        PermissionModel='SERVICE_MANAGED',
+                        Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
+                        Parameters=[
+                            { 
+                                'ParameterKey': 'AdministratorAccountId',
+                                'ParameterValue': management_account_id
+                            },
+                        ]
                     )
-                wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])
+                    result = cfn_client.create_stack_instances(
+                            StackSetName = 'cyngular-execution-role-stackset',
+                            DeploymentTargets = {
+                                "OrganizationalUnitIds": [root_ou_id]
+                            },
+                            Regions = [regions[0]],
+                            OperationPreferences = {
+                                'RegionConcurrencyType': 'PARALLEL',
+                                'FailureTolerancePercentage': 100,
+                                'MaxConcurrentPercentage': 100
+                            }
+                        )
+                    wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])
+                except Exception as e:
+                    print(f"Error creating execution-role on childs: {e}")
 
             def create_management_execution_role(management_account_id):
                 cfn_client = boto3.client('cloudformation')
@@ -1461,15 +1474,9 @@ Resources:
                     logger = logging.getLogger()
                     logger.setLevel(logging.INFO)
                     logger.info('STARTING CYNGULAR\'S FUNCTION...')
-                    logger.info(f"copy this to manually delete the custom resource: \n{event}") ## printing event for responseurl
 
                     if event['RequestType'] == 'Create':        
                         try:
-
-                            # cloudtrail_service_principal = 'cloudtrail.amazonaws.com'
-                            # stacksets_service_principal = 'stacksets.cloudformation.amazonaws.com'
-                            # enable_trusted_access(cloudtrail_service_principal)
-                            # enable_trusted_access(stacksets_service_principal)
                             mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
                             is_org, root_ou_id = is_organization_account()
                             regions = list(set(os.getenv('CLIENT_REGIONS', '').split(',')))
@@ -1483,8 +1490,6 @@ Resources:
                                 create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions)
                             logger.info("DONE WITH ALL CYNGULAR STACKS!")
 
-                            # response_data = {'OrgId': org_id}
-                            # cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
                             cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : '-- Done --'})
 
                         except Exception as e:
@@ -1502,6 +1507,7 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
+      ServiceTimeout: 1800
       Stack2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stack2.yaml"
       StackSet1URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child1.yaml"
       StackSet2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child2.yaml"
@@ -1520,12 +1526,11 @@ Resources:
         Variables:
           ClientName: !Ref ClientName
           ClientRegions: !Join [",", !Ref ClientRegions]
-          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaE
+          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
 
-          # IsOrg: !Ref Org
           EnableDNS: !Ref EnableDNS
           EnableEKS: !Ref EnableEKS
           EnableVPCFlowLogs: !Ref EnableVPCFlowLogs
@@ -1697,7 +1702,6 @@ Resources:
                     logger = logging.getLogger()
                     logger.setLevel(logging.INFO)
                     logging.info('STARTING CYNGULAR\'S FUNCTION...')
-                    logging.info(f"copy this to manually delete the custom resource: \n{event}") ## printing event for responseurl
 
                     if event['RequestType'] == 'Create':
                         try:                            
