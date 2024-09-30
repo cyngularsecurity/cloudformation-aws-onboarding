@@ -1217,16 +1217,22 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates"
                   - "arn:aws:s3:::cyngular-onboarding-templates/*"
                 Action:
-                  - "s3:GetBucketLocation"
                   - "s3:GetObject"
-                  - "s3:ListBucket"
-                  - "s3:ListBucketMultipartUploads"
-                  - "s3:ListMultipartUploadParts"
-                  - "s3:AbortMultipartUpload"
-                  - "s3:PutObject"
+              # - Sid: GetStackSetTemplates
+              #   Effect: "Allow"
+              #   Resource:
+              #     - "arn:aws:s3:::cyngular-onboarding-templates"
+              #     - "arn:aws:s3:::cyngular-onboarding-templates/*"
+              #   Action:
+              #     - "s3:GetBucketLocation"
+              #     - "s3:GetObject"
+              #     - "s3:ListBucket"
+              #     - "s3:ListBucketMultipartUploads"
+              #     - "s3:ListMultipartUploadParts"
+              #     - "s3:AbortMultipartUpload"
+              #     - "s3:PutObject"
 
   LambdaAdminAndExecRole:
     Type: AWS::IAM::Role
