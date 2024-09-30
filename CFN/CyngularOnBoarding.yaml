@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular: v3.0 -
+  Cyngular: v3.2 -
   Main OnBoarding stack template
 
 Metadata:
@@ -1527,7 +1527,7 @@ Resources:
         Variables:
           ClientName: !Ref ClientName
           ClientRegions: !Join [",", !Ref ClientRegions]
-          # UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
+          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
