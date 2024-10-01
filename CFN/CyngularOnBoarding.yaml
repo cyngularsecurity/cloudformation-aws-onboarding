@@ -23,7 +23,6 @@ Metadata:
           default: Cyngular Info
         Parameters:
           - CyngularAccountId
-          - CFNVersion
 
     ParameterLabels:
       ClientName:
@@ -83,12 +82,6 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
-
-  CFNVersion:
-    Description: "CloudFormation Template version for path in s3 internal bucket"
-    Type: String
-    Default: "release/v3.1"
-    AllowedValues: ["release/v3.1"]
 
   CyngularAccountId:
     Description: "The cyngular Account ID to assume the read only role [851565895544]"
@@ -1220,19 +1213,6 @@ Resources:
                   - "arn:aws:s3:::cyngular-onboarding-templates/*"
                 Action:
                   - "s3:GetObject"
-              # - Sid: GetStackSetTemplates
-              #   Effect: "Allow"
-              #   Resource:
-              #     - "arn:aws:s3:::cyngular-onboarding-templates"
-              #     - "arn:aws:s3:::cyngular-onboarding-templates/*"
-              #   Action:
-              #     - "s3:GetBucketLocation"
-              #     - "s3:GetObject"
-              #     - "s3:ListBucket"
-              #     - "s3:ListBucketMultipartUploads"
-              #     - "s3:ListMultipartUploadParts"
-              #     - "s3:AbortMultipartUpload"
-              #     - "s3:PutObject"
 
   LambdaAdminAndExecRole:
     Type: AWS::IAM::Role
@@ -1522,9 +1502,9 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
       ServiceTimeout: 1800
-      Stack2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stack2.yaml"
-      StackSet1URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child1.yaml"
-      StackSet2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/${CFNVersion}/stacks/stackset_child2.yaml"
+      Stack2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack2.yaml"
+      StackSet1URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child1.yaml"
+      StackSet2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml"
 
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
