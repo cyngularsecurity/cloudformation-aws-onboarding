@@ -96,6 +96,7 @@ Resources:
                   - rds:List*
                   - rds:Describe*
 
+                  # CFN Stacks
                   - cloudformation:Describe*
                   - cloudformation:List*
                   - cloudformation:Get*
@@ -119,6 +120,15 @@ Resources:
                   - 'kms:Describe*'
                   - 'kms:Get*'
                   - 'kms:List*'
+                  # Event Bridge
+                  - "events:ListRules"
+                  - "events:ListTargetsByRule"
+                  - "events:ListEventBuses"
+                  - "events:DescribeEventBus"
+                  - "events:DescribeRule"
+                  - "events:TestEventPattern"
+                  - "events:PutRule"
+                  - "events:PutTargets"
 
               - Sid: ec2CyngularSnapshot
                 Effect: Allow
