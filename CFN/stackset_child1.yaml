@@ -202,6 +202,16 @@ Resources:
                   - lambda:InvokeFunction
                   - lambda:UpdateFunctionConfiguration
 
+              - Sid: EditEKS
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+                Action:
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
+                  - "eks:DescribeCluster"
+
   LambdaOS:
     Type: AWS::Lambda::Function
     Properties:
