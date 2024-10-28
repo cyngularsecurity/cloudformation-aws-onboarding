@@ -155,7 +155,6 @@ Resources:
               ]
             Action:
               - 's3:*'
-
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
@@ -410,6 +409,15 @@ Resources:
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
+
+              - Sid: EditEKS
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+                Action:
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
 
   LambdaOS:
     Type: AWS::Lambda::Function
@@ -1228,6 +1236,7 @@ Resources:
 
   LambdaAdminAndExecRole:
     Type: AWS::IAM::Role
+    DependsOn: [CyngularS3Bucket]
     Properties:
       RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
       AssumeRolePolicyDocument:
