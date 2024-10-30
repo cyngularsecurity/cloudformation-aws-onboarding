@@ -1666,10 +1666,6 @@ Resources:
                             'ParameterValue': os.environ['CyngularAccountId']
                         },
                         {
-                            'ParameterKey': 'ClientRegions',
-                            'ParameterValue': ','.join(regions)
-                        },
-                        {
                             'ParameterKey': 'S3BucketArn',
                             'ParameterValue': os.environ['S3BucketArn']
                         },

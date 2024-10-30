@@ -7,8 +7,8 @@ Parameters:
   CyngularAccountId:
     Description: The cyngular account id
     Type: String
-  ClientRegions:
-    Type: CommaDelimitedList
+  # ClientRegions:
+  #   Type: CommaDelimitedList
   S3BucketArn:
     Type: String
   EnableDNS:

@@ -24,4 +24,4 @@ Resources:
                 Action:
                   - sts:AssumeRole
                 Resource:
-                  - "arn:*:iam::*:role/AWSCloudFormationStackSetExecutionRole"  # Cyngular
+                  - !Sub "arn:${AWS::Partition}:iam::*:role/AWSCloudFormationStackSetExecutionRole"  # Cyngular

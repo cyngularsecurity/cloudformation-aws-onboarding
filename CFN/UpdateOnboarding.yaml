@@ -11,7 +11,7 @@ Resources:
   CyngularReadOnlyPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub "cyngular-readonly-policy-v3"
+      ManagedPolicyName: "cyngular-readonly-policy-v3"
       Roles:
         - !Sub "cyngular-readonly-role-${ClientName}"
       PolicyDocument:
