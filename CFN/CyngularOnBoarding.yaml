@@ -316,6 +316,10 @@ Resources:
                   - "events:PutRule"
                   - "events:PutTargets"
 
+                  - "cloudwatch:ListMetrics"
+                  - "cloudwatch:GetMetricData"
+
+
               - Sid: ec2CyngularSnapshot
                 Effect: Allow
                 Action:
