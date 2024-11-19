@@ -108,12 +108,6 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      # LifecycleConfiguration:
-      #   Rules:
-      #     - Id: DeleteOldVersions
-      #       Status: Enabled
-      #       NoncurrentVersionExpiration:
-      #         NoncurrentDays: 90
 
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -201,56 +195,6 @@ Resources:
                   s3:x-amz-acl: "bucket-owner-full-control"
                   AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
             - !Ref "AWS::NoValue"
-
-          # - Sid: DenyBucketDelete
-          #   Effect: Deny
-          #   Principal: '*'
-          #   Action:
-          #     - s3:DeleteBucket
-          #     - s3:DeleteBucketPolicy
-          #     - s3:DeleteBucketWebsite
-          #     # - s3:PutBucketAcl
-          #     # - s3:PutBucketPolicy
-          #     # - s3:PutEncryptionConfiguration
-          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}'
-          #   # Condition:
-          #   #   # StringNotLike:
-          #   #   #   aws:PrincipalArn:
-          #   #   #     - !Ref AdminRoleArn
-          #   #   #     - !Ref AdminUserArn
-          #   #   StringNotEquals:
-          #   #     aws:CalledVia: ['cloudformation.amazonaws.com']
-
-          # - Sid: EnforceMFA
-          #   Effect: Deny
-          #   Principal: '*'
-          #   Action:
-          #     - s3:DeleteObject
-          #     - s3:DeleteObjectVersion
-          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
-          #   Condition:
-          #     BoolIfExists:
-          #       aws:MultiFactorAuthPresent: 'false'
-
-          # - Sid: EnforceEncryption
-          #   Effect: Deny
-          #   Principal: '*'
-          #   Action: s3:PutObject
-          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
-          #   Condition:
-          #     StringNotEquals:
-          #       s3:x-amz-server-side-encryption: AES256
-
-          # - Sid: DenyPublicAccess
-          #   Effect: Deny
-          #   Principal: '*'
-          #   Action: s3:*
-          #   Resource:
-          #     - !Sub 'arn:aws:s3:::${CyngularS3Bucket}'
-          #     - !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
-          #   Condition:
-          #     StringEquals:
-          #       aws:PrincipalOrgID: '*'
 
   ClientCloudTrail:
     DependsOn: S3BucketPolicy
@@ -342,18 +286,16 @@ Resources:
                   - rds:List*
                   - rds:Describe*
 
-                  # CFN Stacks
                   - cloudformation:Describe*
                   - cloudformation:List*
                   - cloudformation:Get*
                   
                   - tag:GetResources
 
-                  # Route 53
                   - 'route53:Get*'
                   - 'route53:List*'
                   - 'route53:TestDNSAnswer'
-                  # CloudTrail
+
                   - 'cloudtrail:GetTrail'
                   - 'cloudtrail:DescribeTrails'
                   - 'cloudtrail:GetTrailStatus'
@@ -362,11 +304,11 @@ Resources:
                   - 'cloudtrail:ListTrails'
                   - 'cloudtrail:GetEventSelectors'
                   - 'cloudtrail:GetInsightSelectors'
-                  # KMS
+
                   - 'kms:Describe*'
                   - 'kms:Get*'
                   - 'kms:List*'
-                  # Event Bridge
+
                   - "events:ListRules"
                   - "events:ListTargetsByRule"
                   - "events:ListEventBuses"
@@ -1192,8 +1134,7 @@ Resources:
                 except Exception as e:
                     logger.critical(str(e))
 
-  CyngularLambdaE:
-  # CyngularLambdaUpdateBucketPolicy:
+  CyngularLambdaUpdateBucketPolicy:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cyngular-lambda-update-cyngular-bucket
@@ -1329,8 +1270,7 @@ Resources:
                   - lambda:InvokeFunction
                   - lambda:GetFunction
                 Resource:
-                  # - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
-                  - !GetAtt CyngularLambdaE.Arn
+                  - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
 
               - Sid: StackSetManager
                 Effect: Allow
@@ -1685,8 +1625,7 @@ Resources:
           ClientName: !Ref ClientName
           ClientRegions: !Join [",", !Ref ClientRegions]
 
-          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaE
-          # UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
+          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
@@ -1753,7 +1692,7 @@ Resources:
                     StackSetName='cyngular-stackset-1',
                     Description='Cyngular Deployments | Child Accounts, Global scope',
                     TemplateURL=url,
-                    PermissionModel='SERVICE_MANAGED', # 'SELF_MANAGED'
+                    PermissionModel='SERVICE_MANAGED',
                     AutoDeployment={
                         'Enabled': True,
                         'RetainStacksOnAccountRemoval': False
@@ -1806,7 +1745,7 @@ Resources:
                     StackSetName='cyngular-stackset-2',
                     Description='Cyngular Deployments | Child Accounts, Regional scope',
                     TemplateURL=url,
-                    PermissionModel='SERVICE_MANAGED', # 'SELF_MANAGED'
+                    PermissionModel='SERVICE_MANAGED',
                     AutoDeployment={
                         'Enabled': True,
                         'RetainStacksOnAccountRemoval': False
