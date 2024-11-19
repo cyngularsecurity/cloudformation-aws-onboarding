@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular: v3.2 -
+  Cyngular: v3.3 -
   Main OnBoarding stack template
 
 Metadata:
@@ -99,12 +99,22 @@ Conditions:
 Resources:
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      # LifecycleConfiguration:
+      #   Rules:
+      #     - Id: DeleteOldVersions
+      #       Status: Enabled
+      #       NoncurrentVersionExpiration:
+      #         NoncurrentDays: 90
+
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -191,6 +201,56 @@ Resources:
                   s3:x-amz-acl: "bucket-owner-full-control"
                   AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
             - !Ref "AWS::NoValue"
+
+          # - Sid: DenyBucketDelete
+          #   Effect: Deny
+          #   Principal: '*'
+          #   Action:
+          #     - s3:DeleteBucket
+          #     - s3:DeleteBucketPolicy
+          #     - s3:DeleteBucketWebsite
+          #     # - s3:PutBucketAcl
+          #     # - s3:PutBucketPolicy
+          #     # - s3:PutEncryptionConfiguration
+          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}'
+          #   # Condition:
+          #   #   # StringNotLike:
+          #   #   #   aws:PrincipalArn:
+          #   #   #     - !Ref AdminRoleArn
+          #   #   #     - !Ref AdminUserArn
+          #   #   StringNotEquals:
+          #   #     aws:CalledVia: ['cloudformation.amazonaws.com']
+
+          # - Sid: EnforceMFA
+          #   Effect: Deny
+          #   Principal: '*'
+          #   Action:
+          #     - s3:DeleteObject
+          #     - s3:DeleteObjectVersion
+          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
+          #   Condition:
+          #     BoolIfExists:
+          #       aws:MultiFactorAuthPresent: 'false'
+
+          # - Sid: EnforceEncryption
+          #   Effect: Deny
+          #   Principal: '*'
+          #   Action: s3:PutObject
+          #   Resource: !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
+          #   Condition:
+          #     StringNotEquals:
+          #       s3:x-amz-server-side-encryption: AES256
+
+          # - Sid: DenyPublicAccess
+          #   Effect: Deny
+          #   Principal: '*'
+          #   Action: s3:*
+          #   Resource:
+          #     - !Sub 'arn:aws:s3:::${CyngularS3Bucket}'
+          #     - !Sub 'arn:aws:s3:::${CyngularS3Bucket}/*'
+          #   Condition:
+          #     StringEquals:
+          #       aws:PrincipalOrgID: '*'
 
   ClientCloudTrail:
     DependsOn: S3BucketPolicy
