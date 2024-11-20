@@ -1,0 +1,8 @@
+
+# ------< Config >----------------------------
+include:
+  - project: 'cyngular-security/cyngular-devops/automation'
+    file: '/Pipes/Devops/cfn.gitlab-ci.yml'
+    ref: 'main'
+variables:
+  BUCKET_LAMBDA_KEY: "CFN"
