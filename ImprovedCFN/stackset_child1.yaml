@@ -1,0 +1,655 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  StackSet - 1
+  Applied on all client accounts in one region
+
+Parameters:
+  ClientName:
+    Description: The name of the client
+    Type: String
+  CyngularAccountId:
+    Description: The cyngular account id
+    Type: String
+  S3BucketArn:
+    Description: The Arn of the S3 Bucket.
+    Type: String
+  ClientRegions:
+    Description: The regions in which the client operate (use whitespace)
+    Type: String
+  EnableDNS:
+    Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
+    Type: String
+  EnableEKS:
+    Description: "EKS Service - Whether to Configure EKS Audit & authenticator Logging for kubernetes Clusters"
+    Type: String
+  EnableVPCFlowLogs:
+    Description: "EKS Service - Whether to Configure EKS Audit & authenticator Logging for kubernetes Clusters"
+    Type: String
+
+Conditions:
+  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
+  ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
+  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
+
+Resources:
+  ClientCyngularRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-readonly-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: cyngular-readonly-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: readOnly
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - iam:List*
+                  - iam:Get*
+                  - iam:GenerateServiceLastAccessedDetails
+
+                  - organizations:Describe*
+                  - organizations:List*
+                  - organizations:EnableAWSServiceAccess
+                  - organizations:RegisterDelegatedAdministrator
+
+                  - ce:GetCostAndUsage
+                  - ce:GetDimensionValues
+
+                  - s3:List*
+                  - s3:Describe*
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:GetBucketPolicyStatus
+                  - s3:GetEncryptionConfiguration
+
+                  - s3:GetAccountPublicAccessBlock
+                  - s3:GetBucketPublicAccessBlock
+
+                  - logs:List*
+                  - logs:Describe*
+                  - logs:Get*
+                  - logs:FilterLogEvents
+                  - logs:StartQuery
+                  - cloudwatch:GetMetricStatistics
+
+                  - ec2:List*
+                  - ec2:CreateTags
+                  - ec2:Describe*
+                  - ec2:GetImageBlockPublicAccessState
+                  - ecr:Describe*
+                  - ecr:List*
+                  - eks:Describe*
+                  - eks:List*
+                  - ecs:List*
+                  - ecs:Describe*
+                  - lambda:List*
+                  - lambda:Get*
+                  - rds:List*
+                  - rds:Describe*
+
+                  - cloudformation:Describe*
+                  - cloudformation:List*
+                  - cloudformation:Get*
+                  
+                  - tag:GetResources
+
+                  - 'route53:Get*'
+                  - 'route53:List*'
+                  - 'route53:TestDNSAnswer'
+
+                  - 'cloudtrail:GetTrail'
+                  - 'cloudtrail:DescribeTrails'
+                  - 'cloudtrail:GetTrailStatus'
+                  - 'cloudtrail:LookupEvents'
+                  - 'cloudtrail:ListTags'
+                  - 'cloudtrail:ListTrails'
+                  - 'cloudtrail:GetEventSelectors'
+                  - 'cloudtrail:GetInsightSelectors'
+
+                  - 'kms:Describe*'
+                  - 'kms:Get*'
+                  - 'kms:List*'
+
+                  - "events:ListRules"
+                  - "events:ListTargetsByRule"
+                  - "events:ListEventBuses"
+                  - "events:DescribeEventBus"
+                  - "events:DescribeRule"
+                  - "events:TestEventPattern"
+                  - "events:PutRule"
+                  - "events:PutTargets"
+
+              - Sid: ec2CyngularSnapshot
+                Effect: Allow
+                Action:
+                  - ec2:DeleteSnapshot
+                  - ec2:ModifySnapshotAttribute
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*
+
+              - Sid: ec2CreateSnapshot
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - ec2:CopySnapshot
+                  - ec2:CreateSnapshot
+                  - ec2:CreateSnapshots
+
+              - Sid: CyngularBucketAdmin
+                Effect: Allow
+                Resource:
+                  - !Ref S3BucketArn
+                  - !Sub "${S3BucketArn}/*"
+                Action: "s3:*"
+
+              - Sid: KmsPartial
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:Decrypt
+                  - kms:CreateGrant
+
+              - Sid: CyngularKmsKey
+                Effect: Allow
+                Resource: '*'
+                Action: "kms:*"
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*
+
+  LambdasRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-lambdas-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: cyngular-lambdas-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: first
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - route53resolver:*
+                  - organizations:ListAccounts
+                  - ec2:Describe*
+                  - ec2:CreateFlowLogs
+                  - ec2:DeleteFlowLogs
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                  - logs:*
+                  - eks:List*
+                  - eks:UpdateClusterConfig
+                  - events:PutRule
+                  - events:DisableRule
+                  - lambda:InvokeFunction
+                  - lambda:UpdateFunctionConfiguration
+
+              - Sid: EditEKS
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+                Action:
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
+                  - "eks:DescribeCluster"
+
+  LambdaEKS:
+    Type: AWS::Lambda::Function
+    Condition: ServiceEKS
+    Properties:
+      FunctionName: "cyngular-lambda-config-eks"
+      Description: "Created by Cyngular Security | Configure EKS Logging"
+      Role: !GetAtt LambdasRole.Arn
+      Environment:
+        Variables:
+          CLIENT_REGIONS: !Ref ClientRegions
+          FINAL_CRON: "cron(0 * * * ? *)"
+          FIRST_RUN: "true"
+          ROLE_ARN: !GetAtt ClientCyngularRole.Arn
+
+      Runtime: "python3.12"
+      Handler: index.cyngular_function
+      Timeout: 300
+      Code:
+        ZipFile: |
+            import boto3
+            import traceback
+            import os
+            import logging
+            from botocore.exceptions import ClientError
+
+            def check_access_entry_exists(eks_client, cluster_name, role_arn):
+                try:
+                    response = eks_client.list_access_entries(clusterName=cluster_name)
+                    if 'accessEntries' in response:
+                        return role_arn in response['accessEntries']
+                    return False
+                except eks_client.exceptions.ResourceNotFoundException:
+                    logging.error(f'Cluster {cluster_name} not found')
+                    return False
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'InvalidRequestException' and 'authentication mode' in str(e):
+                        logging.warning(f'Cluster {cluster_name} has incompatible authentication mode for access entries')
+                        return False
+                except Exception as e:
+                    logging.error(f'Error checking access entries: {str(e)}')
+                    return False
+
+            def create_access_entry(eks_client, logger, cluster_name, role_arn):
+                try:
+                    try:
+                        cluster_info = eks_client.describe_cluster(name=cluster_name)
+                        auth_mode = cluster_info['cluster'].get('accessConfig', {}).get('authenticationMode', 'CONFIG_MAP')
+                        if auth_mode not in ['API', 'API_AND_CONFIG_MAP']:
+                            logger.warning(f'Skipping access entry creation for cluster {cluster_name} - incompatible authentication mode: {auth_mode}')
+                            return
+                    except Exception as e:
+                        logger.error(f'Error checking cluster authentication mode: {str(e)}')
+                        return
+
+                    if check_access_entry_exists(eks_client, cluster_name, role_arn):
+                        logger.info(f'Access entry for role {role_arn} already exists in cluster {cluster_name}.')
+                        return
+
+                    logger.info(f'Creating access entry for cluster: {cluster_name}')
+                    response = eks_client.create_access_entry(
+                        clusterName=cluster_name,
+                        principalArn=role_arn,
+                        type='STANDARD'
+                    )
+                    logger.info(f'Access entry created successfully: {response["accessEntry"]["accessEntryArn"]}')
+
+                    logger.info(f'Associating access policy for cluster: {cluster_name}')
+                    eks_client.associate_access_policy(
+                        clusterName=cluster_name,
+                        principalArn=role_arn,
+                        policyArn='arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy',
+                        accessScope={
+                            'type': 'cluster'
+                        }
+                    )
+                    logger.info('Access policy associated successfully')
+                except eks_client.exceptions.ResourceNotFoundException as e_not_found:
+                    logger.error(f'Cluster {cluster_name} not found -- {str(e_not_found)}')
+                except eks_client.exceptions.AccessDeniedException as e_access_denied:
+                    logger.error(f'Access denied when creating access entry for cluster {cluster_name} -- {str(e_access_denied)}')
+                except Exception as e:
+                    logger.error(f'Error creating access entry: {str(e)}')
+
+            def ekslogs(curr_region, logger, role_arn):
+                try:
+                    logger.info('STARTING EKSLOGS...')
+                    wanted_cluster_logging_config = {
+                        'clusterLogging': [{
+                            'types': ['audit', 'authenticator'],
+                            'enabled': True
+                        }]
+                    }
+                    eks_client = boto3.client('eks', region_name=curr_region)
+                    logger.info('EKS client created successfully')
+                    
+                    clusters = eks_client.list_clusters()['clusters']
+                    logger.info(f'Found {len(clusters)} clusters in region {curr_region}')
+
+                    for cluster_name in clusters:
+                        try:
+                            logger.info(f'CONFIGURING EKSLOGS ON CLUSTER: {cluster_name}')
+                            eks_client.update_cluster_config(
+                                name=cluster_name,
+                                logging=wanted_cluster_logging_config
+                            )
+                            logger.info(f'COMMAND SUCCEEDED.')
+                            
+                        except Exception as e:
+                            if 'No changes needed for the logging config provided' not in str(e):
+                                logger.critical(f'COMMAND FAILED - {str(e)}')
+                            else:
+                                logger.info(f'No changes needed for cluster {cluster_name}')
+                
+                        create_access_entry(eks_client, logger, cluster_name, role_arn)
+
+                except Exception as e:
+                    logger.critical(f'Error in ekslogs function: {str(e)}')
+                    logger.critical(traceback.format_exc())
+                    
+            def cyngular_function(event, context):
+                logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                logger = logging.getLogger()
+                logger.setLevel(logging.INFO)
+                logger.info('STARTING CYNGULARS FUNCTION...')
+
+                LAMBDA_NAME = context.function_name
+                REGIONS = os.environ['CLIENT_REGIONS']
+                ROLE_ARN = os.environ['ROLE_ARN']
+                try:
+                    if os.environ.get('FIRST_RUN') == 'true':
+                        logger.info('First run detected. Updating EventBridge rule schedule.')
+                        try:
+                            lambda_client = boto3.client('lambda')
+                            events_client = boto3.client('events')
+                            response = events_client.put_rule(
+                                Name=f"{LAMBDA_NAME}-rule",
+                                State='ENABLED',
+                                ScheduleExpression=os.environ['FINAL_CRON'],
+                                Description='LambdaEKS | Scheduled to run hourly',
+                                EventBusName='default'
+                            )
+                            logger.info('Successfully updated the EventBridge rule: %s', response)
+                            response = lambda_client.update_function_configuration(
+                                FunctionName=LAMBDA_NAME,
+                                Environment={'Variables': {"FIRST_RUN": "false", "CLIENT_REGIONS": REGIONS, "ROLE_ARN": ROLE_ARN}}
+                            )
+                            logger.info('Successfully updated the function configuration: %s', response)
+                        except Exception as e:
+                            logger.critical('Error updating the EventBridge rule: %s', str(e))
+                            raise
+
+                    logger.info('STARTING EKSLOGS...')                    
+                    for curr_region in REGIONS.split(' '):
+                        logger.info(f'AWS REGION: {curr_region}')
+                        try:
+                            ekslogs(curr_region, logger, ROLE_ARN)
+                        except Exception as e:
+                            logger.critical(str(e))
+                    logger.info('DONE!')
+                    return {
+                        'statusCode': 200,
+                        'body': 'Function executed successfully'
+                    }
+
+                except Exception as e:
+                    logger.critical(str(e))
+                    return {
+                        'statusCode': 500,
+                        'body': f'Error occurred: {str(e)}'
+                    }
+
+  ScheduledRuleLambdaEKS:
+    Type: AWS::Events::Rule
+    Condition: ServiceEKS
+    Properties:
+      Name: !Sub "${LambdaEKS}-rule"
+      Description: "Function did not run yet"
+      ScheduleExpression: "rate(2 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt LambdaEKS.Arn
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeLambdaEKS: 
+    Type: AWS::Lambda::Permission
+    Condition: ServiceEKS
+    Properties: 
+      FunctionName: !Ref LambdaEKS
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ScheduledRuleLambdaEKS.Arn
+
+  LambdaDNS:
+    Type: AWS::Lambda::Function
+    Condition: ServiceDNS
+    Properties:
+      FunctionName: "cyngular-lambda-config-dns"
+      Description: "Created by Cyngular Security. | Configure DNS"
+      Role: !GetAtt LambdasRole.Arn
+      Environment:
+        Variables:
+          CLIENT_REGIONS: !Ref ClientRegions
+          FINAL_CRON: "cron(0 * * * ? *)"
+          FIRST_RUN: "true"
+
+      Runtime: "python3.12"
+      Handler: index.cyngular_function
+      Timeout: 300
+      Code:
+        ZipFile: |
+            import boto3
+            import traceback
+            import os
+            import logging
+
+            def dnslogs(curr_region):
+                try:
+                    logging.info(f'STARTING DNSLOGS...')
+                    r_53_client = boto3.client('route53resolver', region_name=curr_region)
+                    ec2_client = boto3.client('ec2', region_name=curr_region)
+                    
+                    region_query_log_configs = r_53_client.list_resolver_query_log_configs()['ResolverQueryLogConfigs']
+                    cyngular_resolver_id = ''
+                    
+                    for region_query_log_config in region_query_log_configs:
+                        try:
+                            if region_query_log_config['Name'] == 'cyngular_dns':
+                                cyngular_resolver_id = region_query_log_config['Id']
+                                break
+                        except:
+                            pass
+
+                    if cyngular_resolver_id:
+                        vpc_list = ec2_client.describe_vpcs()
+                        if "Vpcs" in vpc_list:                  
+                            for vpc in vpc_list["Vpcs"]:
+                                try:
+                                    vpc_id = vpc["VpcId"]
+                                    logging.info(f'CONFIGURING DNSLOGS ON VPC-ID: {vpc_id}')
+                                    resp = r_53_client.associate_resolver_query_log_config(ResolverQueryLogConfigId = cyngular_resolver_id, ResourceId = vpc_id )
+                                    logging.info(f'COMMAND SUCCEEDED.')
+                                except Exception as e:
+                                    if 'already associated' in str(e):
+                                        logging.critical(f'{vpc_id} - ResolverAlreadyAssociated')
+                                    else:
+                                        logging.critical(str(e))
+                except Exception as e:
+                    logging.critical(str(e))
+
+            def cyngular_function(event, context):
+                logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                logger = logging.getLogger()
+                logger.setLevel(logging.INFO)
+                logger.info('STRATING CYNGULARS FUNCTION...')
+
+                LAMBDA_NAME=context.function_name
+                REGIONS=os.environ['CLIENT_REGIONS']
+                try:
+                    if os.environ.get('FIRST_RUN') == 'true':
+                        logger.info('First run detected. Updating EventBridge rule schedule.')
+                        try:
+                            lambda_client = boto3.client('lambda')
+                            events_client = boto3.client('events')
+                            response = events_client.put_rule(
+                                Name = f"{LAMBDA_NAME}-rule",
+                                State = 'ENABLED',
+                                ScheduleExpression = os.environ['FINAL_CRON'],
+                                Description = 'LambdaDNS | Scheduled to run hourly',
+                                EventBusName = 'default'
+                            )
+                            logger.info('Successfully updated the EventBridge rule: %s', response)
+                            response = lambda_client.update_function_configuration(
+                                FunctionName=LAMBDA_NAME,
+                                Environment={'Variables': {"FIRST_RUN": "false", "CLIENT_REGIONS": REGIONS}}
+                            )
+                            logger.info('Successfully updated the function configuration: %s', response)
+                        except Exception as e:
+                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            raise
+
+                    logger.info('STARTING DNSLOGS...')                    
+                    for curr_region in REGIONS.split(','):
+                        logging.info(f'AWS REGION: {curr_region}')
+                        try:
+                            dnslogs(curr_region)
+                        except Exception as e:
+                            logging.critical(str(e))
+                    logging.info('DONE!')
+
+                except Exception as e:
+                    logging.critical(str(e))
+
+  ScheduledRuleLambdaDNS:
+    Type: AWS::Events::Rule
+    Condition: ServiceDNS
+    Properties:
+      Name: !Sub "${LambdaDNS}-rule"
+      Description: "Function did not run yet"
+      ScheduleExpression: "rate(2 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt LambdaDNS.Arn
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeLambdaDNS:
+    Type: AWS::Lambda::Permission
+    Condition: ServiceDNS
+    Properties: 
+      FunctionName: !Ref LambdaDNS
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ScheduledRuleLambdaDNS.Arn
+
+  LambdaVFL:
+    Type: AWS::Lambda::Function
+    Condition: ServiceVFL
+    Properties:
+      FunctionName: "cyngular-lambda-config-vpcflowlogs" 
+      Description: "Created by Cyngular Security. | Configure VFL"
+      Role: !GetAtt LambdasRole.Arn
+      Environment:
+        Variables:
+          CLIENT_REGIONS: !Ref ClientRegions
+          FINAL_CRON: "cron(0 * * * ? *)"
+          FIRST_RUN: "true"
+          CYNGULAR_BUCKET: !Ref S3BucketArn
+
+      Runtime: "python3.12"
+      Handler: index.cyngular_function
+      Timeout: 300
+      Code:
+        ZipFile: | 
+            import boto3
+            import traceback
+            import os
+            import logging
+
+            def vpcflowlogs(curr_region, bucket_name):
+                try:
+                    logging.info('STARTING VPCFLOWLOGS...')
+
+                    ec2_client = boto3.client('ec2', region_name=curr_region)
+                    vpc_list = ec2_client.describe_vpcs()
+
+                    vpc_id_list = []
+                    if "Vpcs" in vpc_list:                  
+                        for vpc in vpc_list["Vpcs"]:
+                            vpc_id_list.append(vpc["VpcId"])
+
+                    logging.info(f'CONFIGURING VPCFLOWLOGS ON VPC-IDS: {vpc_id_list}')
+                    response = ec2_client.create_flow_logs(
+                        ResourceIds=vpc_id_list,
+                        ResourceType='VPC',
+                        TrafficType='ALL',
+                        LogDestinationType = 's3',
+                        LogDestination = f"arn:aws:s3:::{bucket_name}",
+                        TagSpecifications=[
+                            {
+                                'ResourceType': 'vpc-flow-log',
+                                'Tags': [
+                                    {
+                                        'Key': 'Name',
+                                        'Value': 'Cyngular-vpc-flowlogs'
+                                    },
+                                ]
+                            },
+                        ]
+                    )
+                    logging.info(f'COMMAND SUCCEEDED.')
+
+                except Exception as e:
+                    if 'FlowLogAlreadyExists' in str(e):
+                        pass
+                    else:
+                        logging.critical(str(e))
+
+            def cyngular_function(event, context):
+                logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                logger = logging.getLogger()
+                logger.setLevel(logging.INFO)
+                logger.info('STRATING CYNGULARS FUNCTION...')
+
+                LAMBDA_NAME=context.function_name
+                REGIONS = os.environ['CLIENT_REGIONS']
+                bucket_name = os.environ['CYNGULAR_BUCKET']
+                try:
+                    if os.environ.get('FIRST_RUN') == 'true':
+                        logger.info('First run detected. Updating EventBridge rule schedule.')
+                        try:
+                            lambda_client = boto3.client('lambda')
+                            events_client = boto3.client('events')
+                            response = events_client.put_rule(
+                                Name = f"{LAMBDA_NAME}-rule",
+                                State = 'ENABLED',
+                                ScheduleExpression = os.environ['FINAL_CRON'],
+                                Description = 'LambdaVFL | Scheduled to run hourly',
+                                EventBusName = 'default'
+                            )
+                            logger.info('Successfully updated the EventBridge rule: %s', response)
+                            response = lambda_client.update_function_configuration(
+                                FunctionName=LAMBDA_NAME,
+                                Environment={'Variables': {"FIRST_RUN": "false", "CLIENT_REGIONS": REGIONS, "CYNGULAR_BUCKET": bucket_name}}
+                            )
+                            logger.info('Successfully updated the function configuration: %s', response)
+                        except Exception as e:
+                            logger.error('Error updating the EventBridge rule: %s', str(e))
+                            raise
+
+                    logger.info('STARTING VPCFLOWLOGS...')                    
+                    for curr_region in REGIONS.split(','):
+                        logging.info(f'AWS REGION: {curr_region}')
+                        try:
+                            vpcflowlogs(curr_region, bucket_name)
+                        except Exception as e:
+                            logging.critical(str(e))
+                    logging.info('DONE!')
+
+                except Exception as e:
+                    logging.critical(str(e))
+  
+  ScheduledRuleLambdaVFL:
+    Type: AWS::Events::Rule
+    Condition: ServiceVFL
+    Properties: 
+      Name: !Sub "${LambdaVFL}-rule"
+      Description: "Function did not run yet"
+      ScheduleExpression: "rate(2 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt LambdaVFL.Arn
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeLambdaVFL:
+    Type: AWS::Lambda::Permission
+    Condition: ServiceVFL
+    Properties:
+      FunctionName: !Ref LambdaVFL
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ScheduledRuleLambdaVFL.Arn
