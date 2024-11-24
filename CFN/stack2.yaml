@@ -5,18 +5,8 @@ Description: >-
   
 Parameters:
   CyngularAccountId:
-    Description: The cyngular account id
+    Description: "The Cyngular account id"
     Type: String
-  # ClientRegions:
-  #   Type: CommaDelimitedList
-  S3BucketArn:
-    Type: String
-  EnableDNS:
-    Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
-    Type: String
-
-Conditions:
-  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
 
 Resources:
   CyngularKmsKey:
@@ -45,10 +35,3 @@ Resources:
     Properties: 
       AliasName: alias/cyngular-kms-key
       TargetKeyId: !GetAtt CyngularKmsKey.Arn
-
-  CyngularResolver:
-    Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
-    Condition: ServiceDNS
-    Properties: 
-      DestinationArn: !Ref S3BucketArn
-      Name: cyngular_dns

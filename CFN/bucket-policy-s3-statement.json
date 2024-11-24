@@ -16,6 +16,6 @@
     ],
     "Resource": [
         "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}",
-        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}/AWSLogs/*"
+        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}/*"
     ]
 }

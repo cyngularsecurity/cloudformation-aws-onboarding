@@ -7,20 +7,20 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Client Info
+          default: "Client Info"
         Parameters:
           - ClientName
           - ClientRegions
           - OrganizationId
       - Label:
-          default: Services
+          default: "Services"
         Parameters:
           - CloudTrailBucket
           - EnableDNS
           - EnableVPCFlowLogs
           - EnableEKS
       - Label:
-          default: Cyngular Info
+          default: "Cyngular Info"
         Parameters:
           - CyngularAccountId
 
@@ -44,8 +44,8 @@ Metadata:
 
 Parameters:
   ClientName:
-    Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
-    Type: "String"
+    Description: "The client company name (must be lowercase, can contain letters, numbers and dashes)"
+    Type: String
     AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
     MaxLength: 10
@@ -59,6 +59,11 @@ Parameters:
     Description: "The regions in which your company operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
     Type: CommaDelimitedList
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-central-2, eu-north-1, eu-south-1, eu-south-2, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1, ap-south-2, ap-southeast-3, ap-southeast-4, ap-southeast-5, ca-west-1, me-central-1]
+
+  CyngularAccountId:
+    Description: "The Cyngular Account ID to assume the read only role [851565895544]"
+    Type: String
+    Default: "851565895544"
 
   CloudTrailBucket:
     Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
@@ -82,11 +87,6 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
-
-  CyngularAccountId:
-    Description: "The cyngular Account ID to assume the read only role [851565895544]"
-    Type: String
-    Default: "851565895544"
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
@@ -248,11 +248,10 @@ Resources:
 
                   - organizations:Describe*
                   - organizations:List*
-                  - organizations:EnableAWSServiceAccess
-                  - organizations:RegisterDelegatedAdministrator
 
-                  - ce:GetCostAndUsage
-                  - ce:GetDimensionValues
+                  - ce:List*
+                  - ce:Get*
+                  - ce:Describe*
 
                   - s3:List*
                   - s3:Describe*
@@ -1386,7 +1385,7 @@ Resources:
       Description: Created by Cyngular Security.
 
       Role: !GetAtt LambdaAdminAndExecRole.Arn
-      Runtime: python3.12
+      Runtime: "python3.12"
       Handler: index.cyngular_function
       Timeout: 600
       Environment:

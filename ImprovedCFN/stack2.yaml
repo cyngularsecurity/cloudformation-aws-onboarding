@@ -1,52 +1,41 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Stack - 2
-  Applied on Management account per region
-  
+  1. Applied on Management account per region
+  2. Applied on all client child accounts per region
+
 Parameters:
   CyngularAccountId:
-    Description: The cyngular account id
+    Description: "Cyngular AWS Account ID to assume the read only role [851565895544]"
     Type: String
-  S3BucketArn:
-    Type: String
-  EnableDNS:
-    Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
-    Type: String
-
-Conditions:
-  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
+    # Default: "851565895544"
+    # AllowedValues: ["851565895544"]
 
 Resources:
   CyngularKmsKey:
     Type: AWS::KMS::Key
-    Properties: 
+    Properties:
       Description: cyngular_kms_key
       KeyPolicy:
         Id: key-policy-1
         Version: "2012-10-17"
         Statement:
-          - Sid: Enable IAM User Permissions
+          - Sid: "Enable IAM User Permissions"
             Effect: Allow
             Principal:
               AWS:
-                - !Sub "arn:aws:iam::${CyngularAccountId}:root"
-                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"                
+                - !Sub "arn:aws:iam::${CyngularAccountId}:root"     
             Action: "kms:*"
             Resource: "*"
 
-      Tags: 
+      Tags:
         - Key: Name
           Value: cyngular-kms-key
 
   CyngularKmsAlias:
     Type: AWS::KMS::Alias
+    DependsOn: CyngularKmsKey
     Properties: 
       AliasName: alias/cyngular-kms-key
       TargetKeyId: !GetAtt CyngularKmsKey.Arn
-
-  CyngularResolver:
-    Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
-    Condition: ServiceDNS
-    Properties: 
-      DestinationArn: !Ref S3BucketArn
-      Name: cyngular_dns
