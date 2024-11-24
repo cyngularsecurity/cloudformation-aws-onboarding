@@ -33,7 +33,7 @@ Parameters:
   CyngularAccountId:
     Description: "Cyngular AWS Account ID to assume the read only role [851565895544]"
     Type: String
-    Default: "851565895544"
+    Default: "842675989492"
     # AllowedValues: ["851565895544"]
 
 Resources:
