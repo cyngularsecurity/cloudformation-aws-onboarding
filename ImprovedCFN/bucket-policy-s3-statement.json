@@ -1,5 +1,5 @@
 {
-    "Sid": "LambdaRead",
+    "Sid": "CyngularLambdaRead",
     "Effect": "Allow",
     "Principal": {
         "AWS": [
