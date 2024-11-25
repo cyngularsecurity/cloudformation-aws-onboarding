@@ -15,7 +15,7 @@
         "s3:AbortMultipartUpload"
     ],
     "Resource": [
-        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}",
-        "arn:aws:s3:::cyngular-{Company Name}-bucket-{Company MGMT Account ID}/*"
+        "arn:aws:s3:::<existing-bucket-name>",
+        "arn:aws:s3:::<existing-bucket-name>/*"
     ]
 }
