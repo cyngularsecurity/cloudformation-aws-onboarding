@@ -16,7 +16,7 @@ Parameters:
     Description: "Cyngular AWS Account id"
     Type: String
     Default: "851565895544"
-    # AllowedValues: ["851565895544"]
+    AllowedValues: ["851565895544"]
 
   S3BucketArn:
     Description: The Arn of the Cyngular Managed S3 Bucket.
