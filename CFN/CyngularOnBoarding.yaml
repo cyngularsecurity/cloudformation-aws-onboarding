@@ -257,6 +257,7 @@ Resources:
                   - s3:Describe*
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
 
@@ -383,15 +384,14 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: first
+              - Sid: CyngularGeneral
                 Effect: Allow
                 Resource: '*'
                 Action:
                   - ssm:*
                   - logs:*
                   - route53resolver:*
-
-                  - sts:GetCallerIdentity
+  
                   - organizations:ListAccounts
 
                   - ec2:Describe*
@@ -403,9 +403,11 @@ Resources:
                   - eks:UpdateClusterConfig
 
                   - events:PutRule
-                  - events:DisableRule
-                  - lambda:InvokeFunction
                   - lambda:UpdateFunctionConfiguration
+
+                  # - sts:GetCallerIdentity
+                  # - lambda:InvokeFunction
+                  # - events:DisableRule
 
               - Sid: CyngularBucketAdmin
                 Effect: Allow
@@ -424,6 +426,135 @@ Resources:
                   - "eks:CreateAccessEntry"
                   - "eks:AssociateAccessPolicy"
                   - "eks:DescribeCluster"
+
+  ManagerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-manager-lambda-role-${ClientName}"
+      MaxSessionDuration: 43200
+
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "CloudFormationPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeBucketPolicyLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                  - lambda:GetFunction
+                Resource:
+                  - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
+
+              - Sid: StackSetManager
+                Effect: Allow
+                Action:
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListStackSetOperationResults
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackSet
+                  - cloudformation:DescribeStackSetOperation
+                  - cloudformation:CreateStack
+                  - cloudformation:CreateStackSet
+                  - cloudformation:CreateStackInstances
+                  - cloudformation:DeleteStackSet
+                  - cloudformation:DeleteStackInstances
+                Resource: "*"
+              - Sid: OrgManager
+                Effect: Allow
+                Action: 
+                  - organizations:ListAccounts
+                  - organizations:ListRoots
+                Resource: "*"
+
+              - Sid: LogsManager
+                Effect: Allow
+                Action: logs:*
+                Resource: "arn:aws:logs:*:*:*"
+
+              - Sid: IdentityManager
+                Effect: Allow
+                Resource: "*"
+                Action:
+                  - iam:GetRole
+                  - iam:getRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DeleteRolePolicy
+
+                  # - sts:GetCallerIdentity
+
+              - Sid: GetStackSetTemplates
+                Effect: "Allow"
+                Resource:
+                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
+                Action:
+                  - "s3:GetObject"
+
+  LambdaAdminAndExecRole:
+    Type: AWS::IAM::Role
+    DependsOn: [CyngularS3Bucket]
+    Properties:
+      RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CloudFormationPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:DescribeStackSet"
+                  - "cloudformation:DescribeStackSetOperation"
+                  - "cloudformation:DescribeStackEvents"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:CreateStackSet"
+                  - "cloudformation:CreateStackInstances"
+                  - "cloudformation:CreateChangSet"
+                  - "cloudformation:DeleteStackInstances"
+                  - "cloudformation:DeleteStackSet"
+                  - "cloudformation:ListStackSetOperationResults"
+                  - "cloudformation:ListStackInstances"
+                  - "cloudformation:UpdateStackSet"
+                  - "cloudformation:UpdateStackInstances"
+                  - "cloudformation:ExecuteChangeSet"
+
+                  - "organizations:ListAccounts"
+                  - "organizations:ListRoots"
+                  
+                  - "iam:GetRole"
+                  - "iam:getRolePolicy"
+                  - "iam:CreateRole"
+                  - "iam:AttachRolePolicy"
+                  - "iam:PutRolePolicy"
+
+                  - "logs:*"
+
+                  # - "sts:GetCallerIdentity"
+
+                Resource: "*"
+
+              - Sid: GetStackSetTemplates
+                Effect: "Allow"
+                Resource:
+                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
+                Action:
+                  - "s3:GetObject"
 
   LambdaOS:
     Type: AWS::Lambda::Function
@@ -1244,132 +1375,6 @@ Resources:
 
                 except Exception as e:
                     logger.critical(str(e))
-
-  ManagerLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "cyngular-manager-lambda-role-${ClientName}"
-      MaxSessionDuration: 43200
-
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: "CloudFormationPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: InvokeBucketPolicyLambda
-                Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                  - lambda:GetFunction
-                Resource:
-                  - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
-
-              - Sid: StackSetManager
-                Effect: Allow
-                Action:
-                  - cloudformation:GetTemplateSummary
-                  - cloudformation:ListStackSetOperationResults
-                  - cloudformation:DescribeStacks
-                  - cloudformation:DescribeStackSet
-                  - cloudformation:DescribeStackSetOperation
-                  - cloudformation:CreateStack
-                  - cloudformation:CreateStackSet
-                  - cloudformation:CreateStackInstances
-                  - cloudformation:DeleteStackSet
-                  - cloudformation:DeleteStackInstances
-                Resource: "*"
-              - Sid: OrgManager
-                Effect: Allow
-                Action: 
-                  - organizations:ListAccounts
-                  - organizations:ListRoots
-                Resource: "*"
-
-              - Sid: LogsManager
-                Effect: Allow
-                Action: logs:*
-                Resource: "arn:aws:logs:*:*:*"
-
-              - Sid: IdentityManager
-                Effect: Allow
-                Resource: "*"
-                Action:
-                  - sts:GetCallerIdentity
-                  - iam:GetRole
-                  - iam:getRolePolicy
-                  - iam:PutRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:AttachRolePolicy
-                  - iam:DeleteRolePolicy
-
-              - Sid: GetStackSetTemplates
-                Effect: "Allow"
-                Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
-                Action:
-                  - "s3:GetObject"
-
-  LambdaAdminAndExecRole:
-    Type: AWS::IAM::Role
-    DependsOn: [CyngularS3Bucket]
-    Properties:
-      RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: "CloudFormationPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "cloudformation:DescribeStacks"
-                  - "cloudformation:DescribeStackSet"
-                  - "cloudformation:DescribeStackSetOperation"
-                  - "cloudformation:DescribeStackEvents"
-                  - "cloudformation:CreateStack"
-                  - "cloudformation:CreateStackSet"
-                  - "cloudformation:CreateStackInstances"
-                  - "cloudformation:CreateChangSet"
-                  - "cloudformation:DeleteStackInstances"
-                  - "cloudformation:DeleteStackSet"
-                  - "cloudformation:ListStackSetOperationResults"
-                  - "cloudformation:ListStackInstances"
-                  - "cloudformation:UpdateStackSet"
-                  - "cloudformation:UpdateStackInstances"
-                  - "cloudformation:ExecuteChangeSet"
-
-                  - "organizations:ListAccounts"
-                  - "organizations:ListRoots"
-                  
-                  - "iam:GetRole"
-                  - "iam:getRolePolicy"
-                  - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
-                  - "iam:PutRolePolicy"
-                  - "sts:GetCallerIdentity"
-
-                  - "logs:*"
-                Resource: "*"
-
-              - Sid: GetStackSetTemplates
-                Effect: "Allow"
-                Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
-                Action:
-                  - "s3:GetObject"
 
   AdminAndExecTrigger:
     Type: Custom::AdminAndExec

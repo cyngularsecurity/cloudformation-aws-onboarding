@@ -120,6 +120,7 @@ Resources:
                   - s3:Describe*
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
                   - s3:GetAccountPublicAccessBlock

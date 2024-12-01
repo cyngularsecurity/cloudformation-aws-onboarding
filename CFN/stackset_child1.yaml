@@ -68,6 +68,7 @@ Resources:
                   - s3:Describe*
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
 
@@ -199,7 +200,7 @@ Resources:
                   - eks:UpdateClusterConfig
                   - events:PutRule
                   - events:DisableRule
-                  - lambda:InvokeFunction
+                  # - lambda:InvokeFunction
                   - lambda:UpdateFunctionConfiguration
 
               - Sid: EditEKS
