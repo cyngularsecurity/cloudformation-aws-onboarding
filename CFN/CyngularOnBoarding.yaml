@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular: v3.3 -
+  Cyngular
   Main OnBoarding stack template
 
 Metadata:
-  # Vendor:
-  #   Description: Cyngular Security
+  Vendor:
+    Description: Cyngular Security
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
