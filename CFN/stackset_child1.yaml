@@ -10,11 +10,11 @@ Parameters:
   CyngularAccountId:
     Description: "The Cyngular account id"
     Type: String
-  S3BucketArn:
-    Description: "The Arn of the Cyngular managed S3 Bucket"
-    Type: String
   ClientRegions:
     Description: "The regions in which the client operate"
+    Type: String
+  S3BucketArn:
+    Description: "The Arn of the Cyngular managed S3 Bucket"
     Type: String
   EnableDNS:
     Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"

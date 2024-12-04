@@ -51,9 +51,3 @@ Resources:
     Properties: 
       DestinationArn: !Ref S3BucketArn
       Name: cyngular_dns
-
-  # UpdateBucketPolicyTrigger:
-  #   Type: Custom::AdminAndExec
-  #   Version: "1.0"
-  #   Properties:
-  #     ServiceToken: !Ref BucketPoli
