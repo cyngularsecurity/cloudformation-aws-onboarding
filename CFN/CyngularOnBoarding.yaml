@@ -4,6 +4,9 @@ Description: >-
   Main OnBoarding stack template
 
 Metadata:
+  # Vendor:
+  #   Description: Cyngular Security
+
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -260,7 +263,9 @@ Resources:
                   - s3:GetBucketPolicy
                   - s3:GetBucketPolicyStatus
                   - s3:GetEncryptionConfiguration
-
+                  - s3:GetBucketOwnershipControls
+                  - s3:GetBucketTagging
+                  - s3:GetIntelligentTieringConfiguration
                   - s3:GetAccountPublicAccessBlock
                   - s3:GetBucketPublicAccessBlock
 
