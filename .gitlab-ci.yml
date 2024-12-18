@@ -5,4 +5,5 @@ include:
     file: '/Pipes/Devops/cfn.gitlab-ci.yml'
     ref: 'main'
 variables:
-  BUCKET_LAMBDA_KEY: "CFN"
+  # BUCKET_LAMBDA_KEY: "CFN"
+  ZIP_FILES_PATH: "./CFN"
