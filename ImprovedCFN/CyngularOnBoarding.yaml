@@ -28,7 +28,7 @@ Parameters:
     AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
     MaxLength: 10
-    Default: "mamram"
+    Default: ""
 
   CyngularAccountId:
     Description: "Cyngular AWS Account ID to assume the read only role [851565895544]"

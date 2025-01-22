@@ -398,6 +398,7 @@ Resources:
                   - route53resolver:*
   
                   - organizations:ListAccounts
+                  # - organizations:ListOrganizationalUnitsForParent
 
                   - ec2:Describe*
                   - ec2:CreateFlowLogs

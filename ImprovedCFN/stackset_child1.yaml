@@ -10,7 +10,7 @@ Parameters:
     AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
     MaxLength: 10
-    Default: "mamram"
+    Default: ""
 
   CyngularAccountId:
     Description: "Cyngular AWS Account id"
