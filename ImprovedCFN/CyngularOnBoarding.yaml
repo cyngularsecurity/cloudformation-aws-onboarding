@@ -27,7 +27,7 @@ Parameters:
     Type: "String"
     AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
-    MaxLength: 10
+    MaxLength: 15
     Default: ""
 
   CyngularAccountId:

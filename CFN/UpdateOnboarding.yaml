@@ -5,7 +5,7 @@ Parameters:
     Description: "The name of the client. (must be lowercase, can contain letters, numbers and dashes)"
     Type: "String"
     MinLength: 3
-    MaxLength: 10
+    MaxLength: 15
 
 Resources:
   CyngularReadOnlyPolicy:
