@@ -19,23 +19,12 @@ Parameters:
     MinLength: 3
     MaxLength: 15
 
-  CloudTrailBucket:
-    Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
-    Type: String
-    Default: ""
-
   EnableDNS:
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
-
-  EnableEKS:
-    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."
-    Type: String
-    AllowedValues: ["true", "false"]
-    Default: "true"
-
+  
   EnableVPCFlowLogs:
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
@@ -53,10 +42,7 @@ Parameters:
     Default: 900
 
 Conditions:
-  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
-
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
-  ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
   ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
 
 Resources:
@@ -156,6 +142,7 @@ Resources:
 
   LambdaDeleteDNSTrigger:
     Type: Custom::LambdaDeleteDNS
+    Condition: ServiceDNS
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaDeleteDNS.Arn
@@ -164,6 +151,7 @@ Resources:
 
   LambdaDeleteVFLTrigger:
     Type: Custom::LambdaDeleteVFL
+    Condition: ServiceVFL
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaDeleteVFL.Arn

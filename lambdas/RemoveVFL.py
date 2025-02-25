@@ -23,6 +23,9 @@ def vpcflowlogs(curr_region):
         for flow_log in response['FlowLogs']:
             flowlogs_ids_list.append(flow_log['FlowLogId'])
         
+        if not flowlogs_ids_list:
+            logging.info('No VPC flow logs to delete.')
+            return
         logging.info(f'DELETING THE VPCFLOWLOGS: {flowlogs_ids_list}')
         response = ec2_client.delete_flow_logs(
             FlowLogIds=flowlogs_ids_list
@@ -54,4 +57,3 @@ def cyngular_function(event, context):
         logger.info('DONE!')
     except Exception as e:
         logger.critical(str(e))
-
