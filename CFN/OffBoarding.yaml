@@ -1,0 +1,162 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Cyngular
+  Main OnBoarding stack template
+
+Metadata:
+  Vendor:
+    Description: Cyngular Security
+
+Parameters:
+  ClientRegions:
+    Description: "The regions in which your company operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
+    Type: CommaDelimitedList
+    AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-central-2, eu-north-1, eu-south-1, eu-south-2, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1, ap-south-2, ap-southeast-3, ap-southeast-4, ap-southeast-5, ca-west-1, me-central-1]
+  ClientName:
+    Description: "The client company name (must be lowercase, can contain letters, numbers and dashes)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    MinLength: 3
+    MaxLength: 15
+
+  EnableDNS:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+  
+  EnableVPCFlowLogs:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  CyngularSourceBucketPrefix:
+    Description: "The prefix of the bucket where the source code is located"
+    Type: String
+    Default: "cyngular-onboarding"
+
+  ServiceTimeout:
+    Description: "The timeout for the lambda triggers"
+    Type: Number
+    Default: 900
+
+Conditions:
+  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
+  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
+
+Resources:
+  LambdasRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-offboarding-lambdas-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Sub "cyngular-offboarding-lambdas-policy-${ClientName}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CyngularGeneral
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - ssm:*
+                  - logs:*
+                  - route53resolver:*
+  
+                  - organizations:ListAccounts
+
+                  - ec2:Describe*
+                  - ec2:CreateFlowLogs
+                  - ec2:DeleteFlowLogs
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+
+                  - events:DisableRule
+
+              - Sid: GetStackSetTemplates    
+                Effect: "Allow"
+                Resource:
+                  - !Sub "arn:aws:s3:::${CyngularSourceBucketPrefix}-${AWS::Region}/lambdas/*"
+                Action:
+                  - "s3:GetObject"
+
+  LambdaDeleteDNS:
+    Type: AWS::Lambda::Function
+    Condition: ServiceDNS
+    Properties:
+      FunctionName: !Sub "cyngular-lambda-remove-dns-${ClientName}"
+      Description: "Created by Cyngular Security. | Remove DNS"
+      Role: !GetAtt LambdasRole.Arn
+
+      Environment:
+        Variables:
+          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
+
+      Runtime: "python3.12"
+      Handler: lambda_function.cyngular_function
+      Timeout: 300
+      Code:
+        S3Bucket: !Sub "${CyngularSourceBucketPrefix}-${AWS::Region}"
+        S3Key: !Join
+          - ''
+          - - lambdas/
+            - !Join
+              - .
+              - - RemoveDNS
+                - zip
+
+
+  LambdaDeleteVFL:
+    Type: AWS::Lambda::Function
+    Condition: ServiceVFL
+    Properties:
+      FunctionName: !Sub "cyngular-lambda-remove-vpcflowlogs-${ClientName}"
+      Description: "Created by Cyngular Security. | Remove VPCFLOWLOGS"
+      Role: !GetAtt LambdasRole.Arn
+
+      Environment:
+        Variables:
+          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
+
+      Runtime: "python3.12"
+      Handler: lambda_function.cyngular_function
+      Timeout: 300
+      Code:
+        S3Bucket: !Sub "${CyngularSourceBucketPrefix}-${AWS::Region}"
+        S3Key: !Join
+          - ''
+          - - lambdas/
+            - !Join
+              - .
+              - - RemoveVFL
+                - zip
+
+  LambdaDeleteDNSTrigger:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Condition: ServiceDNS
+
+    Type: Custom::LambdaDeleteDNS
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt LambdaDeleteDNS.Arn
+      ServiceTimeout: !Ref ServiceTimeout
+
+  LambdaDeleteVFLTrigger:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Condition: ServiceVFL
+
+    Type: Custom::LambdaDeleteVFL
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt LambdaDeleteVFL.Arn
+      ServiceTimeout: !Ref ServiceTimeout
