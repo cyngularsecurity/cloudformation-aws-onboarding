@@ -52,6 +52,7 @@ def cyngular_function(event, context):
             except Exception as e:
                 logger.critical(str(e))
         try:
+            logger.info('DEACTIVATING EVENT BUS RULE')
             events_client.disable_rule(
                 Name='cyngular-lambda-config-dns-rule',
                 EventBusName='default'

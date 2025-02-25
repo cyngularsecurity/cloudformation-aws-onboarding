@@ -101,7 +101,7 @@ Resources:
           CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
 
       Runtime: "python3.12"
-      Handler: RemoveDNS.cyngular_function
+      Handler: lambda_function.cyngular_function
       Timeout: 300
       Code:
         S3Bucket: !Sub "${CyngularSourceBucketPrefix}-${AWS::Region}"
@@ -127,7 +127,7 @@ Resources:
           CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
 
       Runtime: "python3.12"
-      Handler: index.cyngular_function
+      Handler: lambda_function.cyngular_function
       Timeout: 300
       Code:
         S3Bucket: !Sub "${CyngularSourceBucketPrefix}-${AWS::Region}"
@@ -139,19 +139,23 @@ Resources:
               - - RemoveVFL
                 - zip
 
-
   LambdaDeleteDNSTrigger:
-    Type: Custom::LambdaDeleteDNS
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Condition: ServiceDNS
+
+    Type: Custom::LambdaDeleteDNS
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaDeleteDNS.Arn
       ServiceTimeout: !Ref ServiceTimeout
 
-
   LambdaDeleteVFLTrigger:
-    Type: Custom::LambdaDeleteVFL
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Condition: ServiceVFL
+
+    Type: Custom::LambdaDeleteVFL
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaDeleteVFL.Arn
