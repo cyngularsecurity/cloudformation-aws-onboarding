@@ -49,11 +49,18 @@ def cyngular_function(event, context):
                 vpcflowlogs(curr_region)
             except Exception as e:
                 logger.critical(str(e))
-        logger.info('DEACTIVATING EVENT BUS RULE')
-        events_client.disable_rule(
-            Name='cyngular-lambda-config-vpcflowlogs-rule',
-            EventBusName='default'
-        )
-        logger.info('DONE!')
+
+        try:
+            logger.info('DEACTIVATING EVENT BUS RULE')
+            events_client.disable_rule(
+                Name='cyngular-lambda-config-vpcflowlogs-rule',
+                EventBusName='default'
+            )
+            logger.info('DONE!')
+        except events_client.exceptions.ResourceNotFoundException:
+            logger.warning('Rule cyngular-lambda-config-vpcflowlogs-rule does not exist on EventBus default. Continuing execution.')
+        except Exception as e:
+            logger.critical(str(e))
+
     except Exception as e:
         logger.critical(str(e))
