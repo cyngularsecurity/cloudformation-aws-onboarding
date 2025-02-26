@@ -39,7 +39,7 @@ Parameters:
   ServiceTimeout:
     Description: "The timeout for the lambda triggers"
     Type: Number
-    Default: 900
+    Default: 300
 
 Conditions:
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
