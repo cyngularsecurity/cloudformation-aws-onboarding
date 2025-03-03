@@ -18,24 +18,20 @@ Parameters:
     AllowedPattern: "^[a-z0-9]+$"
     MinLength: 3
     MaxLength: 15
-
   EnableDNS:
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
-  
   EnableVPCFlowLogs:
     Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
-
   CyngularSourceBucketPrefix:
     Description: "The prefix of the bucket where the source code is located"
     Type: String
     Default: "cyngular-onboarding"
-
   ServiceTimeout:
     Description: "The timeout for the lambda triggers"
     Type: Number
