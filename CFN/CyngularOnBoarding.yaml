@@ -60,12 +60,12 @@ Parameters:
     MaxLength: 15
 
   OrganizationId:
-    Description: "Specify the company Organization id | leave empty if not"
+    Description: "Specify the Company Organization id | leave empty if not"
     Type: String
     Default: ""
 
   ClientRegions:
-    Description: "The regions in which your company operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
+    Description: "The regions in which your Company operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
     Type: CommaDelimitedList
     AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-central-2, eu-north-1, eu-south-1, eu-south-2, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1, ap-south-2, ap-southeast-3, ap-southeast-4, ap-southeast-5, ca-west-1, me-central-1]
 
@@ -1665,6 +1665,16 @@ Resources:
                             'ParameterValue': os.environ['EnableDNS']
                         }
                     ]
+                    Tags=[
+                        {
+                            'Key': 'Company',
+                            'Value': ClientName
+                        },
+                        {
+                            'Key': 'Vendor',
+                            'Value': 'Cyngular Security'
+                        },
+                    ]
                 )
                 cfn_client.create_stack_instances(
                     StackSetName = 'cyngular-stackset-mgmt-regional',
@@ -1723,6 +1733,16 @@ Resources:
                             'ParameterKey': 'EnableVPCFlowLogs',
                             'ParameterValue': (os.environ['EnableVPCFlowLogs'])
                         }
+                    ]
+                    Tags=[
+                        {
+                            'Key': 'Company',
+                            'Value': ClientName
+                        },
+                        {
+                            'Key': 'Vendor',
+                            'Value': 'Cyngular Security'
+                        },
                     ]
                 )
                 cfn_client.create_stack_instances(
