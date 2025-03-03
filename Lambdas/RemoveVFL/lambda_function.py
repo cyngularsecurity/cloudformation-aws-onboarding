@@ -1,7 +1,7 @@
 import boto3
-import traceback
 import os
 import logging
+import cfnresponse
 
 def vpcflowlogs(curr_region):
     try:
@@ -39,7 +39,7 @@ def cyngular_function(event, context):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     try:
-        logger.info('STRATING CYNGULARS FUNCTION...')
+        logger.info('STARTING CYNGULARS FUNCTION...')
         events_client = boto3.client('events')
         REGIONS = os.environ['CLIENT_REGIONS']
 
@@ -57,10 +57,14 @@ def cyngular_function(event, context):
                 EventBusName='default'
             )
             logger.info('DONE!')
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
         except events_client.exceptions.ResourceNotFoundException:
-            logger.warning('Rule cyngular-lambda-config-vpcflowlogs-rule does not exist on EventBus default. Continuing execution.')
+            logger.warning('Rule cyngular-lambda-config-vpcflowlogs-rule does not exist on EventBus default.')
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Rule does not exist'})
         except Exception as e:
             logger.critical(str(e))
+            cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
 
     except Exception as e:
         logger.critical(str(e))
+        cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})

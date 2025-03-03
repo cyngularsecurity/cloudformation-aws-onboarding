@@ -45,11 +45,17 @@ Metadata:
       CyngularAccountId:
         default: "Cyngular Account Id"
 
+Mappings:
+  VARS:
+    "Cyngular":
+      TemplateBucket: "cyngular-onboarding-templates"
+
 Parameters:
   ClientName:
-    Description: "The client company name (must be lowercase, can contain letters, numbers and dashes)"
+    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
     Type: String
     AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
     MinLength: 3
     MaxLength: 15
 
@@ -385,7 +391,7 @@ Resources:
                 - "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: cyngular-lambdas-policy
+        - PolicyName: !Sub "cyngular-lambdas-policy-${ClientName}"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -413,7 +419,7 @@ Resources:
 
                   # - sts:GetCallerIdentity
                   # - lambda:InvokeFunction
-                  # - events:DisableRule
+                  - events:DisableRule
 
               - Sid: CyngularBucketAdmin
                 Effect: Allow
@@ -501,7 +507,10 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
+                  - !Sub
+                    - "arn:aws:s3:::${bucket_name}/stacks/*"
+                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+
                 Action:
                   - "s3:GetObject"
 
@@ -558,7 +567,9 @@ Resources:
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
-                  - "arn:aws:s3:::cyngular-onboarding-templates/*"
+                  - !Sub
+                    - "arn:aws:s3:::${bucket_name}/stacks/*"
+                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
                 Action:
                   - "s3:GetObject"
 
@@ -576,7 +587,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: |
             import boto3
@@ -689,7 +700,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: |
             import boto3
@@ -881,7 +892,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: |
             import boto3
@@ -1002,7 +1013,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: | 
             import boto3
@@ -1129,7 +1140,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: | 
             import boto3
@@ -1203,7 +1214,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: | 
             import boto3
@@ -1273,7 +1284,7 @@ Resources:
   CyngularLambdaUpdateBucketPolicy:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cyngular-lambda-update-cyngular-bucket
+      FunctionName: !Sub "cyngular-lambda-update-cyngular-bucket-policy-${ClientName}"
       Description: Created by Cyngular Security.
       Role: !GetAtt LambdasRole.Arn
       Environment:
@@ -1282,7 +1293,7 @@ Resources:
 
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: | 
             import boto3
@@ -1384,24 +1395,36 @@ Resources:
 
   AdminAndExecTrigger:
     Type: Custom::AdminAndExec
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaAdminAndExec.Arn
-      ServiceTimeout: 1800
+      ServiceTimeout: 1200
+
+      ADMIN_TEMPLATE_URL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/stacks/AWSCloudFormationStackSetAdministrationRole.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+
+      EXEC_TEMPLATE_URL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/stacks/AWSCloudFormationStackSetExecutionRole.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
 
   LambdaAdminAndExec:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cyngular-lambda-admin-and-execution-roles
+      FunctionName: !Sub "cyngular-lambda-admin-and-execution-roles-${ClientName}"
       Description: Created by Cyngular Security.
 
       Role: !GetAtt LambdaAdminAndExecRole.Arn
       Runtime: "python3.12"
       Handler: index.cyngular_function
-      Timeout: 600
+      Timeout: 900
       Environment:
         Variables:
           CLIENT_REGIONS: !Join [",", !Ref ClientRegions]
+
       Code:
         ZipFile: |
             import boto3
@@ -1409,66 +1432,6 @@ Resources:
             import os
             import cfnresponse
             import logging
-
-            ADMIN_ROLE_TEMPLATE = """
-            AWSTemplateFormatVersion: 2010-09-09
-            Description: Configure the AWSCloudFormationStackSetAdministrationRole to enable use of AWS CloudFormation StackSets.
-
-            Resources:
-              AdministrationRole:
-                Type: AWS::IAM::Role
-                Properties:
-                  RoleName: AWSCloudFormationStackSetAdministrationRole
-                  AssumeRolePolicyDocument:
-                    Version: 2012-10-17
-                    Statement:
-                      - Effect: Allow
-                        Principal:
-                          Service: cloudformation.amazonaws.com
-                        Action:
-                          - sts:AssumeRole
-                  Path: /
-                  Policies:
-                    - PolicyName: AssumeRole-AWSCloudFormationStackSetExecutionRole
-                      PolicyDocument:
-                        Version: 2012-10-17
-                        Statement:
-                          - Effect: Allow
-                            Action:
-                              - sts:AssumeRole
-                            Resource:
-                              - "arn:*:iam::*:role/AWSCloudFormationStackSetExecutionRole"
-            """
-
-            EXECUTION_ROLE_TEMPLATE = """
-            AWSTemplateFormatVersion: 2010-09-09
-            Description: Configure the AWSCloudFormationStackSetExecutionRole to enable use of your account as a target account in AWS CloudFormation StackSets.
-
-            Parameters:
-              AdministratorAccountId:
-                Type: String
-                Description: AWS Account Id of the administrator account (the account in which StackSets will be created).
-                MaxLength: 12
-                MinLength: 12
-
-            Resources:
-              ExecutionRole:
-                Type: AWS::IAM::Role
-                Properties:
-                  RoleName: AWSCloudFormationStackSetExecutionRole
-                  AssumeRolePolicyDocument:
-                    Version: 2012-10-17
-                    Statement:
-                      - Effect: Allow
-                        Principal:
-                          AWS:
-                            - !Ref AdministratorAccountId
-                        Action:
-                          - sts:AssumeRole
-                  Path: /
-                  ManagedPolicyArns:
-                    - !Sub arn:aws:iam::aws:policy/AdministratorAccess
-            """
 
             def check_role_existence(role_name):
                 iam_client = boto3.client('iam')
@@ -1514,13 +1477,14 @@ Resources:
                     print(f"Error checking organization status: {e}")
                 return False, None
 
-            def create_executionrole_on_childs(management_account_id, root_ou_id, regions):
+            def create_executionrole_on_childs(management_account_id, root_ou_id, regions, url):
                 try:
                     cfn_client = boto3.client('cloudformation')
                     cfn_client.create_stack_set(
                         StackSetName='cyngular-execution-role-stackset',
-                        Description='Cyngular deployment of Execution roles for nested accounts',
-                        TemplateBody=EXECUTION_ROLE_TEMPLATE,
+                        Description='Cyngular Deployments | Child Accounts, Regional scope',
+                        TemplateURL=url,
+                        # TemplateBody=EXECUTION_ROLE_TEMPLATE,
                         AutoDeployment={
                             'Enabled': True,
                             'RetainStacksOnAccountRemoval': False
@@ -1543,7 +1507,8 @@ Resources:
                             OperationPreferences = {
                                 'RegionConcurrencyType': 'PARALLEL',
                                 'FailureTolerancePercentage': 100,
-                                'MaxConcurrentPercentage': 100
+                                'MaxConcurrentPercentage': 100,
+                                'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
                             }
                         )
                     wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])
@@ -1566,12 +1531,13 @@ Resources:
                     )
                     wait_for("cyngular-managment-execution-role")
 
-            def create_management_admin_role():
+            def create_management_admin_role(url):
                 cfn_client = boto3.client('cloudformation')
                 if not check_role_existence("AWSCloudFormationStackSetAdministrationRole"):
                     cfn_client.create_stack(
                         StackName='cyngular-managment-admin-role',
-                        TemplateBody=ADMIN_ROLE_TEMPLATE,
+                        # TemplateBody=ADMIN_ROLE_TEMPLATE,
+                        TemplateURL=url,
                         Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM']
                     )
                     wait_for("cyngular-managment-admin-role")
@@ -1585,17 +1551,20 @@ Resources:
 
                     if event['RequestType'] == 'Create':        
                         try:
+                            exec_stack_url = event['ResourceProperties']['EXEC_TEMPLATE_URL']
+                            admin_stack_url = event['ResourceProperties']['ADMIN_TEMPLATE_URL']
+
                             mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
                             is_org, root_ou_id = is_organization_account()
                             regions = list(set(os.getenv('CLIENT_REGIONS', '').split(',')))
 
                             logger.info("CREATING ROLES ON MANAGEMENT ACCOUNT")
                             create_management_execution_role(mgmt_acc_id)
-                            create_management_admin_role()
+                            create_management_admin_role(admin_stack_url)
 
                             if is_org:
                                 logger.info("CREATING ROLES ON CHILDS")
-                                create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions)
+                                create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions, exec_stack_url)
                             logger.info("DONE WITH ALL CYNGULAR STACKS!")
 
                             cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : '-- Done --'})
@@ -1612,24 +1581,34 @@ Resources:
   StackSetManagerTrigger:
     DependsOn: [AdminAndExecTrigger]
     Type: Custom::StackSetManager
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
-      ServiceTimeout: 1800
-      Stack2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stack2.yaml"
-      StackSet1URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child1.yaml"
-      StackSet2URL: !Sub "https://cyngular-onboarding-templates.s3.amazonaws.com/stacks/stackset_child2.yaml"
+      ServiceTimeout: 1200
+      Stack2URL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/stacks/stack2.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+
+      StackSet1URL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/stacks/stackset_child1.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+
+      StackSet2URL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/stacks/stackset_child2.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
 
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cyngular-lambda-stackset-manager
+      FunctionName: !Sub "cyngular-lambda-stackset-manager-${ClientName}"
       Description: Created by Cyngular Security.
       Role: !GetAtt ManagerLambdaRole.Arn
 
       Runtime: python3.12
       Handler: index.cyngular_function
-      Timeout: 600
+      Timeout: 900
       Environment:
         Variables:
           ClientName: !Ref ClientName
@@ -1639,6 +1618,7 @@ Resources:
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
+          IsOrg: !If [IsOrg, true, false]
 
           EnableDNS: !Ref EnableDNS
           EnableEKS: !Ref EnableEKS
@@ -1653,6 +1633,8 @@ Resources:
 
             def is_organization_account():
                 try:
+                    if os.getenv('IsOrg', 'error').lower() == 'false':
+                        return False, None
                     org_client = boto3.client('organizations')
                     root_response = org_client.list_roots()
                     if 'Roots' in root_response and len(root_response['Roots']) > 0:
@@ -1692,8 +1674,9 @@ Resources:
                     Regions = regions,
                     OperationPreferences = {
                         'RegionConcurrencyType': 'PARALLEL',
-                        'FailureTolerancePercentage': 0,
-                        'MaxConcurrentPercentage': 100
+                        'FailureTolerancePercentage': 100,
+                        'MaxConcurrentPercentage': 100,
+                        'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
                     }
                 )
             def create_stackset1(deployment_targets, regions, url):
@@ -1706,6 +1689,9 @@ Resources:
                     AutoDeployment={
                         'Enabled': True,
                         'RetainStacksOnAccountRemoval': False
+                    },
+                    ManagedExecution={
+                      'Active': True
                     },
                     Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
                     Parameters = [
@@ -1745,8 +1731,9 @@ Resources:
                     Regions = [regions[0]],
                     OperationPreferences = {
                         'RegionConcurrencyType': 'PARALLEL',
-                        'FailureTolerancePercentage': 0,
-                        'MaxConcurrentPercentage': 100
+                        'FailureTolerancePercentage': 100,
+                        'MaxConcurrentPercentage': 100,
+                        'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
                     }
                 )
             def create_stackset2(deployment_targets, regions, url):
@@ -1782,11 +1769,11 @@ Resources:
                     Regions = regions,
                     OperationPreferences = {
                         'RegionConcurrencyType': 'PARALLEL',
-                        'FailureTolerancePercentage': 0,
-                        'MaxConcurrentPercentage': 100
+                        'FailureTolerancePercentage': 100,
+                        'MaxConcurrentPercentage': 100,
+                        'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
                     }
                 )
-
             def invoke_lambda(func_name):
                 try:
                     lambda_client = boto3.client('lambda')
@@ -1800,14 +1787,12 @@ Resources:
                         logging.critical(f"Error {response}")
                 except Exception as e:
                     logging.critical(str(e))
-
             def cyngular_function(event, context):
+                logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                logger = logging.getLogger()
+                logger.setLevel(logging.INFO)
+                logger.info('STARTING CYNGULAR\'S FUNCTION...')
                 try:
-                    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-                    logger = logging.getLogger()
-                    logger.setLevel(logging.INFO)
-                    logging.info('STARTING CYNGULAR\'S FUNCTION...')
-
                     if event['RequestType'] == 'Create':
                         try:                            
                             mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
@@ -1822,26 +1807,26 @@ Resources:
                             stackset2_url = event['ResourceProperties']['StackSet2URL']
                             lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
-                            logging.info("Updating Bucket Policy")
+                            logger.info("Updating Bucket Policy")
                             invoke_lambda(lambda_E_name)
                             time.sleep(60)
-                            logging.info("STARING CYNGULAR STACK2")
+                            logger.info("STARING CYNGULAR STACK2")
                             create_stack2(mgmt_acc_id, regions, stack2_url)
 
                             if is_org:
-                                logging.info("STARING CYNGULAR STACKSET1")
+                                logger.info("STARING CYNGULAR STACKSET1")
                                 create_stackset1(deployment_targets, regions, stackset1_url)
 
-                                logging.info("STARING CYNGULAR STACKSET2")
+                                logger.info("STARING CYNGULAR STACKSET2")
                                 create_stackset2(deployment_targets, regions, stackset2_url)
-                            logging.info("DONE WITH ALL CYNGULAR STACKS!")
+                            logger.info("DONE WITH ALL CYNGULAR STACKS!")
                             cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
 
                         except Exception as e:
-                            logging.critical(str(e))
+                            logger.critical(str(e))
                             cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
                     else:
                         cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'No error'})
                 except Exception as e:
-                    logging.critical(str(e))
+                    logger.critical(str(e))
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
