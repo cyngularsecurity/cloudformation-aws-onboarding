@@ -247,7 +247,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: readOnly
+              - Sid: 'ReadOnly'
                 Effect: Allow
                 Resource: '*'
                 Action:
@@ -333,7 +333,7 @@ Resources:
                   - "cloudwatch:GetMetricData"
 
 
-              - Sid: ec2CyngularSnapshot
+              - Sid: 'Ec2CyngularSnapshot'
                 Effect: Allow
                 Action:
                   - ec2:DeleteSnapshot
@@ -342,27 +342,27 @@ Resources:
                 Condition:
                   StringLike:
                     aws:ResourceTag/Name: cyngular*
-              - Sid: ec2CreateSnapshot
+              - Sid: 'Ec2CreateSnapshot'
                 Effect: Allow
                 Resource: '*'
                 Action:
                   - ec2:CopySnapshot
                   - ec2:CreateSnapshot
                   - ec2:CreateSnapshots
-              - Sid: CyngularBucketAdmin
+              - Sid: 'CyngularBucketAdmin'
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
-              - Sid: KmsPartial
+              - Sid: 'KmsPartial'
                 Effect: Allow
                 Resource: '*'
                 Action:
                   - kms:Decrypt
                   - kms:CreateGrant
-              - Sid: CyngularKmsKey
+              - Sid: 'CyngularKmsKey'
                 Effect: Allow
                 Resource: '*'
                 Action:
@@ -370,7 +370,7 @@ Resources:
                 Condition:
                   StringLike:
                     aws:ResourceTag/Name: cyngular*
-              - Sid: "ListRegionsOnAccounts"
+              - Sid: 'ListRegionsOnAccounts'
                 Effect: "Allow"
                 Action:
                   - "account:ListRegions"
@@ -398,7 +398,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: CyngularGeneral
+              - Sid: 'CyngularGeneral'
                 Effect: Allow
                 Resource: '*'
                 Action:
@@ -424,7 +424,7 @@ Resources:
                   # - lambda:InvokeFunction
                   - events:DisableRule
 
-              - Sid: CyngularBucketAdmin
+              - Sid: 'CyngularBucketAdmin'
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
@@ -432,7 +432,7 @@ Resources:
                 Action:
                   - "s3:*"
 
-              - Sid: EditEKS
+              - Sid: 'EditEKS'
                 Effect: Allow
                 Resource:
                   - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
@@ -463,15 +463,16 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: InvokeBucketPolicyLambda
+              - Sid: 'InvokeBucketPolicyLambda'
                 Effect: Allow
                 Action:
                   - lambda:InvokeFunction
                   - lambda:GetFunction
                 Resource:
                   - !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
-              - Sid: StackSetManager
+              - Sid: 'StackSetManager'
                 Effect: Allow
+                Resource: "*"
                 Action:
                   - cloudformation:GetTemplateSummary
                   - cloudformation:ListStackSetOperationResults
@@ -483,18 +484,18 @@ Resources:
                   - cloudformation:CreateStackInstances
                   - cloudformation:DeleteStackSet
                   - cloudformation:DeleteStackInstances
-                Resource: "*"
-              - Sid: OrgManager
+                  - cloudformation:TagResource
+              - Sid: 'OrgManager'
                 Effect: Allow
-                Action: 
+                Resource: "*"
+                Action:
                   - organizations:ListAccounts
                   - organizations:ListRoots
-                Resource: "*"
-              - Sid: LogsManager
+              - Sid: 'LogsManager'
                 Effect: Allow
                 Action: logs:*
                 Resource: "arn:aws:logs:*:*:*"
-              - Sid: IdentityManager
+              - Sid: 'IdentityManager'
                 Effect: Allow
                 Resource: "*"
                 Action:
@@ -504,7 +505,7 @@ Resources:
                   - iam:DetachRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DeleteRolePolicy
-              - Sid: GetStackSetTemplates
+              - Sid: 'GetStackSetTemplates'
                 Effect: "Allow"
                 Resource:
                   - !Sub
@@ -531,6 +532,7 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: "Allow"
+                Resource: "*"
                 Action:
                   - "cloudformation:DescribeStacks"
                   - "cloudformation:DescribeStackSet"
@@ -558,8 +560,7 @@ Resources:
                   - "iam:PutRolePolicy"
 
                   - "logs:*"
-                Resource: "*"
-              - Sid: GetStackSetTemplates
+              - Sid: 'GetStackSetTemplates'
                 Effect: "Allow"
                 Resource:
                   - !Sub
