@@ -512,6 +512,9 @@ Resources:
                   - !Sub
                     - "arn:aws:s3:::${bucket_name}/stacks/*"
                     - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+                  # - !Sub
+                  #   - "${bucket_name}-${AWS::Region}/lambdas/*"
+                  #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
                 Action:
                   - "s3:GetObject"
 
@@ -567,6 +570,9 @@ Resources:
                   - !Sub
                     - "arn:aws:s3:::${bucket_name}/stacks/*"
                     - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+                  # - !Sub
+                  #   - "${bucket_name}-${AWS::Region}/lambdas/AdminAndExec.zip"
+                  #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
                 Action:
                   - "s3:GetObject"
 
