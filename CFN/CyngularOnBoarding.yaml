@@ -459,7 +459,7 @@ Resources:
               Service: "lambda.amazonaws.com"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: "CloudFormationPolicy"
+        - PolicyName: "ManagerLambdaRolePolicy"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -527,7 +527,7 @@ Resources:
               Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: "CloudFormationPolicy"
+        - PolicyName: "AdminExecLambdaRolePolicy"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
