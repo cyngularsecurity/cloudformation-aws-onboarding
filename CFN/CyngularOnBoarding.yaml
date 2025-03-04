@@ -1432,7 +1432,7 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaAdminAndExec.Arn
-      ServiceTimeout: 60 ## 1200
+      ServiceTimeout: 1200
 
       ADMIN_TEMPLATE_URL: !Sub
         - "https://${bucket_name}.s3.amazonaws.com/stacks/AWSCloudFormationStackSetAdministrationRole.yaml"
@@ -1653,7 +1653,7 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
-      ServiceTimeout: 60 ## 1200
+      ServiceTimeout: 1200
       Stack2URL: !Sub
         - "https://${bucket_name}.s3.amazonaws.com/stacks/stack2.yaml"
         - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
