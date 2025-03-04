@@ -3,15 +3,45 @@ import time
 import os
 import cfnresponse
 import logging
+import botocore
+
+def check_role_existence_in_child(account_id, role_name='AWSCloudFormationStackSetExecutionRole'):
+    sts_client = boto3.client('sts')
+    role_arn = f'arn:aws:iam::{account_id}:role/{role_name}'
+    try:
+        # Attempt to assume the role in the child account
+        assumed_role = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='CheckRoleSession'
+        )
+        
+        # If assume_role is successful, the role exists and is assumable
+        logging.info(f"Successfully assumed role '{role_name}' in account {account_id}.")
+        return True
+
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'AccessDenied':
+            # Role exists, but we can't assume it (which is expected)
+            logging.info(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
+            return True
+        elif error_code == 'NoSuchEntity':
+            # Role doesn't exist
+            logging.info(f"Role '{role_name}' does not exist in account {account_id}.")
+            return False
+        else:
+            # Some other error occurred
+            logging.info(f"Unexpected error checking role in account {account_id}: {e}")
+            return False
 
 def check_role_existence(role_name):
     iam_client = boto3.client('iam')
     try:
         iam_client.get_role(RoleName=role_name)
-        print(f"IAM role '{role_name}' already exists.")
+        logging.info(f"The IAM role '{role_name}' exists.")
         return True
     except Exception as e:
-        print(str(e))
+        logging.info(str(e))
         return False
 
 def wait_for(stack_name):
@@ -45,7 +75,7 @@ def is_organization_account():
         if 'Roots' in root_response and len(root_response['Roots']) > 0:
             return True, root_response['Roots'][0]['Id']
     except Exception as e:
-        print(f"Error checking organization status: {e}")
+        logging.info(f"Error checking organization status: {e}")
     return False, None
 
 def create_executionrole_on_childs(management_account_id, root_ou_id, regions, url):
@@ -53,20 +83,20 @@ def create_executionrole_on_childs(management_account_id, root_ou_id, regions, u
         cfn_client = boto3.client('cloudformation')
         cfn_client.create_stack_set(
             StackSetName='cyngular-execution-role-stackset',
-            Description='Cyngular Deployments | Child Accounts, Global scope',
+            Description='Cyngular Deployments | Child Accounts, Regional scope',
             TemplateURL=url,
             # TemplateBody=EXECUTION_ROLE_TEMPLATE,
-            AutoDeployment={
+            AutoDeployment = {
                 'Enabled': True,
                 'RetainStacksOnAccountRemoval': False
             },
-            PermissionModel='SERVICE_MANAGED',
-            Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
-            Parameters=[
+            PermissionModel = 'SERVICE_MANAGED',
+            Capabilities = ['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
+            Parameters = [
                 { 
                     'ParameterKey': 'AdministratorAccountId',
                     'ParameterValue': management_account_id
-                },
+                }
             ]
         )
         result = cfn_client.create_stack_instances(
@@ -84,7 +114,7 @@ def create_executionrole_on_childs(management_account_id, root_ou_id, regions, u
             )
         wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])
     except Exception as e:
-        print(f"Error creating execution-role on childs: {e}")
+        logging.info(f"Error creating execution-role on childs: {e}")
 
 def create_management_execution_role(management_account_id):
     cfn_client = boto3.client('cloudformation')
@@ -93,11 +123,11 @@ def create_management_execution_role(management_account_id):
             StackName='cyngular-managment-execution-role',
             TemplateBody=EXECUTION_ROLE_TEMPLATE,
             Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
-            Parameters=[
+            Parameters = [
                 {
                     'ParameterKey': 'AdministratorAccountId',
                     'ParameterValue': management_account_id
-                },
+                }
             ]
         )
         wait_for("cyngular-managment-execution-role")
@@ -134,6 +164,7 @@ def cyngular_function(event, context):
                 create_management_admin_role(admin_stack_url)
 
                 if is_org:
+                    # check_role_existence_in_child(mgmt_acc_id) ## check for all accounts
                     logger.info("CREATING ROLES ON CHILDS")
                     create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions, exec_stack_url)
                 logger.info("DONE WITH ALL CYNGULAR STACKS!")

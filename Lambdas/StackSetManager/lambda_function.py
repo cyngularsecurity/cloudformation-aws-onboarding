@@ -6,6 +6,8 @@ import logging
 
 def is_organization_account():
     try:
+        if os.getenv('IsOrg', 'error').lower() == 'false':
+            return False, None
         org_client = boto3.client('organizations')
         root_response = org_client.list_roots()
         if 'Roots' in root_response and len(root_response['Roots']) > 0:
@@ -17,11 +19,11 @@ def is_organization_account():
 def create_stack2(mgmt_acc_id, regions, url):
     cfn_client = boto3.client('cloudformation')
     cfn_client.create_stack_set(
-        StackSetName='cyngular-stackset-mgmt-regional',
-        Description='Cyngular Deployments | MGMT Account, Regional scope',
-        TemplateURL=url,
-        PermissionModel='SELF_MANAGED',
-        Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+        StackSetName = 'cyngular-stackset-mgmt-regional',
+        Description = 'Cyngular Deployments | MGMT Account, Regional scope',
+        TemplateURL = url,
+        PermissionModel = 'SELF_MANAGED',
+        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
         Parameters = [
             {
                 'ParameterKey': 'CyngularAccountId',
@@ -35,6 +37,16 @@ def create_stack2(mgmt_acc_id, regions, url):
                 'ParameterKey': 'EnableDNS',
                 'ParameterValue': os.environ['EnableDNS']
             }
+        ],
+        Tags = [
+            {
+                'Key': 'Company',
+                'Value': os.environ['ClientName']
+            },
+            {
+                'Key': 'Vendor',
+                'Value': 'Cyngular Security'
+            }
         ]
     )
     cfn_client.create_stack_instances(
@@ -45,25 +57,26 @@ def create_stack2(mgmt_acc_id, regions, url):
         Regions = regions,
         OperationPreferences = {
             'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 0,
-            'MaxConcurrentPercentage': 100
+            'FailureTolerancePercentage': 100,
+            'MaxConcurrentPercentage': 100,
+            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
         }
     )
 def create_stackset1(deployment_targets, regions, url):
     cfn_client = boto3.client('cloudformation')
     cfn_client.create_stack_set(
-        StackSetName='cyngular-stackset-1',
-        Description='Cyngular Deployments | Child Accounts, Global scope',
-        TemplateURL=url,
-        PermissionModel='SERVICE_MANAGED',
-        AutoDeployment={
+        StackSetName = 'cyngular-stackset-1',
+        Description = 'Cyngular Deployments | Child Accounts, Global scope',
+        TemplateURL = url,
+        PermissionModel = 'SERVICE_MANAGED',
+        AutoDeployment = {
             'Enabled': True,
             'RetainStacksOnAccountRemoval': False
         },
-        ManagedExecution={
+        ManagedExecution = {
             'Active': True
         },
-        Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
         Parameters = [
             {
                 'ParameterKey': 'ClientName',
@@ -93,6 +106,16 @@ def create_stackset1(deployment_targets, regions, url):
                 'ParameterKey': 'EnableVPCFlowLogs',
                 'ParameterValue': (os.environ['EnableVPCFlowLogs'])
             }
+        ],
+        Tags = [
+            {
+                'Key': 'Company',
+                'Value': os.environ['ClientName']
+            },
+            {
+                'Key': 'Vendor',
+                'Value': 'Cyngular Security'
+            }
         ]
     )
     cfn_client.create_stack_instances(
@@ -101,23 +124,24 @@ def create_stackset1(deployment_targets, regions, url):
         Regions = [regions[0]],
         OperationPreferences = {
             'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 0,
-            'MaxConcurrentPercentage': 100
+            'FailureTolerancePercentage': 100,
+            'MaxConcurrentPercentage': 100,
+            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
         }
     )
 def create_stackset2(deployment_targets, regions, url):
     cfn_client = boto3.client('cloudformation')
     cfn_client.create_stack_set(
-        StackSetName='cyngular-stackset-2',
-        Description='Cyngular Deployments | Child Accounts, Regional scope',
-        TemplateURL=url,
-        PermissionModel='SERVICE_MANAGED',
-        AutoDeployment={
+        StackSetName = 'cyngular-stackset-2',
+        Description = 'Cyngular Deployments | Child Accounts, Regional scope',
+        TemplateURL = url,
+        PermissionModel = 'SERVICE_MANAGED',
+        AutoDeployment = {
             'Enabled': True,
             'RetainStacksOnAccountRemoval': False
         },
-        Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
-        Parameters=[
+        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+        Parameters = [
             {
                 'ParameterKey': 'CyngularAccountId',
                 'ParameterValue': os.environ['CyngularAccountId']
@@ -138,11 +162,11 @@ def create_stackset2(deployment_targets, regions, url):
         Regions = regions,
         OperationPreferences = {
             'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 0,
-            'MaxConcurrentPercentage': 100
+            'FailureTolerancePercentage': 100,
+            'MaxConcurrentPercentage': 100,
+            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
         }
     )
-
 def invoke_lambda(func_name):
     try:
         lambda_client = boto3.client('lambda')
@@ -156,14 +180,12 @@ def invoke_lambda(func_name):
             logging.critical(f"Error {response}")
     except Exception as e:
         logging.critical(str(e))
-
 def cyngular_function(event, context):
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.info('STARTING CYNGULAR\'S FUNCTION...')
     try:
-        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
-        logging.info('STARTING CYNGULAR\'S FUNCTION...')
-
         if event['RequestType'] == 'Create':
             try:                            
                 mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
@@ -178,26 +200,26 @@ def cyngular_function(event, context):
                 stackset2_url = event['ResourceProperties']['StackSet2URL']
                 lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
-                logging.info("Updating Bucket Policy")
+                logger.info("Updating Bucket Policy")
                 invoke_lambda(lambda_E_name)
                 time.sleep(60)
-                logging.info("STARING CYNGULAR STACK2")
+                logger.info("STARING CYNGULAR STACK2")
                 create_stack2(mgmt_acc_id, regions, stack2_url)
 
                 if is_org:
-                    logging.info("STARING CYNGULAR STACKSET1")
+                    logger.info("STARING CYNGULAR STACKSET1")
                     create_stackset1(deployment_targets, regions, stackset1_url)
 
-                    logging.info("STARING CYNGULAR STACKSET2")
+                    logger.info("STARING CYNGULAR STACKSET2")
                     create_stackset2(deployment_targets, regions, stackset2_url)
-                logging.info("DONE WITH ALL CYNGULAR STACKS!")
+                logger.info("DONE WITH ALL CYNGULAR STACKS!")
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
 
             except Exception as e:
-                logging.critical(str(e))
+                logger.critical(str(e))
                 cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
         else:
             cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'No error'})
     except Exception as e:
-        logging.critical(str(e))
+        logger.critical(str(e))
         cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})

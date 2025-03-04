@@ -1,7 +1,7 @@
 import boto3
+import traceback
 import os
 import logging
-import cfnresponse
 
 def vpcflowlogs(curr_region):
     try:
@@ -23,9 +23,6 @@ def vpcflowlogs(curr_region):
         for flow_log in response['FlowLogs']:
             flowlogs_ids_list.append(flow_log['FlowLogId'])
         
-        if not flowlogs_ids_list:
-            logging.info('No VPC flow logs to delete.')
-            return
         logging.info(f'DELETING THE VPCFLOWLOGS: {flowlogs_ids_list}')
         response = ec2_client.delete_flow_logs(
             FlowLogIds=flowlogs_ids_list
@@ -39,7 +36,7 @@ def cyngular_function(event, context):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     try:
-        logger.info('STARTING CYNGULARS FUNCTION...')
+        logger.info('STRATING CYNGULARS FUNCTION...')
         events_client = boto3.client('events')
         REGIONS = os.environ['CLIENT_REGIONS']
 
@@ -49,22 +46,11 @@ def cyngular_function(event, context):
                 vpcflowlogs(curr_region)
             except Exception as e:
                 logger.critical(str(e))
-
-        try:
-            logger.info('DEACTIVATING EVENT BUS RULE')
-            events_client.disable_rule(
-                Name='cyngular-lambda-config-vpcflowlogs-rule',
-                EventBusName='default'
-            )
-            logger.info('DONE!')
-            cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
-        except events_client.exceptions.ResourceNotFoundException:
-            logger.warning('Rule cyngular-lambda-config-vpcflowlogs-rule does not exist on EventBus default.')
-            cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Rule does not exist'})
-        except Exception as e:
-            logger.critical(str(e))
-            cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
-
+        logger.info('DEACTIVATING EVENT BUS RULE')
+        response = events_client.disable_rule(
+            Name='cyngular-lambda-config-vpcflowlogs-rule',
+            EventBusName='default'
+        )
+        logger.info('DONE!')
     except Exception as e:
         logger.critical(str(e))
-        cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
