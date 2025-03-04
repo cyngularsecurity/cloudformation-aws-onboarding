@@ -1220,7 +1220,6 @@ Resources:
         - Key: Vendor
           Value: "Cyngular Security"
 
-
   LambdaRemoveDNS:
     Type: AWS::Lambda::Function
     Condition: ServiceDNS
