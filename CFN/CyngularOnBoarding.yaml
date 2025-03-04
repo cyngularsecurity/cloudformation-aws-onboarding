@@ -366,6 +366,9 @@ Resources:
                 Resource:
                   - arn:aws:account::*:account/o-*/*
                   - arn:aws:account::*:account
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   LambdasRole:
     Type: AWS::IAM::Role
@@ -425,6 +428,9 @@ Resources:
                   - "eks:CreateAccessEntry"
                   - "eks:AssociateAccessPolicy"
                   - "eks:DescribeCluster"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   LambdaOS:
     Type: AWS::Lambda::Function
@@ -516,6 +522,11 @@ Resources:
 
                 except Exception as e:
                     logger.critical(str(e))
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-config-os"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   ScheduledRuleLambdaOS:
     Type: AWS::Events::Rule
@@ -707,6 +718,11 @@ Resources:
                         'statusCode': 500,
                         'body': f'Error occurred: {str(e)}'
                     }
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-config-eks"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   ScheduledRuleLambdaEKS:
     Type: AWS::Events::Rule
@@ -827,6 +843,11 @@ Resources:
 
                 except Exception as e:
                     logging.critical(str(e))
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-config-dns"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   ScheduledRuleLambdaDNS: 
     Type: AWS::Events::Rule
@@ -956,7 +977,12 @@ Resources:
 
                 except Exception as e:
                     logging.critical(str(e))
-  
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-config-vpcflowlogs"
+        - Key: Vendor
+          Value: "Cyngular Security"
+
   ScheduledRuleLambdaVFL:
     Type: AWS::Events::Rule
     DependsOn: [StackSetManagerTrigger]
@@ -979,7 +1005,7 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRuleLambdaVFL.Arn
 
-  LambdaDeleteVFL:
+  LambdaRemoveVFL:
     Type: AWS::Lambda::Function
     Condition: ServiceVFL
     Properties:
@@ -1052,8 +1078,14 @@ Resources:
                     logger.info('DONE!')
                 except Exception as e:
                     logger.critical(str(e))
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-remove-vpcflowlogs"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
-  LambdaDeleteDNS:
+
+  LambdaRemoveDNS:
     Type: AWS::Lambda::Function
     Condition: ServiceDNS
     Properties:
@@ -1133,11 +1165,16 @@ Resources:
 
                 except Exception as e:
                     logger.critical(str(e))
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-remove-dns"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
-  CyngularLambdaUpdateBucketPolicy:
+  LambdaUpdateCyngularBucketPolicy:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cyngular-lambda-update-cyngular-bucket
+      FunctionName: "cyngular-lambda-update-cyngular-bucket-policy"
       Description: Created by Cyngular Security.
       Role: !GetAtt LambdasRole.Arn
       Environment:
@@ -1245,6 +1282,11 @@ Resources:
 
                 except Exception as e:
                     logger.critical(str(e))
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-update-cyngular-bucket-policy"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   ManagerLambdaRole:
     Type: AWS::IAM::Role
@@ -1270,7 +1312,7 @@ Resources:
                   - lambda:InvokeFunction
                   - lambda:GetFunction
                 Resource:
-                  - !GetAtt CyngularLambdaUpdateBucketPolicy.Arn
+                  - !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
 
               - Sid: StackSetManager
                 Effect: Allow
@@ -1316,6 +1358,9 @@ Resources:
                   - "arn:aws:s3:::cyngular-onboarding-templates/*"
                 Action:
                   - "s3:GetObject"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   LambdaAdminAndExecRole:
     Type: AWS::IAM::Role
@@ -1371,6 +1416,9 @@ Resources:
                   - "arn:aws:s3:::cyngular-onboarding-templates/*"
                 Action:
                   - "s3:GetObject"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   AdminAndExecTrigger:
     Type: Custom::AdminAndExec
@@ -1598,6 +1646,11 @@ Resources:
                 except Exception as e:
                     logger.critical(str(e))
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-admin-and-execution-roles"
+        - Key: Vendor
+          Value: "Cyngular Security"
 
   StackSetManagerTrigger:
     DependsOn: [AdminAndExecTrigger]
@@ -1613,7 +1666,7 @@ Resources:
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cyngular-lambda-stackset-manager
+      FunctionName: "cyngular-lambda-stackset-manager"
       Description: Created by Cyngular Security.
       Role: !GetAtt ManagerLambdaRole.Arn
 
@@ -1625,7 +1678,7 @@ Resources:
           ClientName: !Ref ClientName
           ClientRegions: !Join [",", !Ref ClientRegions]
 
-          UpdateBucketPolicyLambdaName: !Ref CyngularLambdaUpdateBucketPolicy
+          UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn
@@ -1835,3 +1888,8 @@ Resources:
                 except Exception as e:
                     logging.critical(str(e))
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'msg' : str(e)})
+      Tags:
+        - Key: Name
+          Value: "cyngular-lambda-stackset-manager"
+        - Key: Vendor
+          Value: "Cyngular Security"
