@@ -607,9 +607,9 @@ Resources:
                         try:
                             logging.info(f'CONFIGURING OS INTERNALS ON INSTANCE-ID: {instance_id}')
                             response = ssm_client.send_command(
-                                InstanceIds=[instance_id],
-                                DocumentName="AWS-RunShellScript",
-                                Parameters={'commands': ['apt-get update -y','apt-get install -y auditd','systemctl kill auditd.service', 'sleep 10', f'echo {auditd_rules} | base64 --decode > "/etc/audit/rules.d/audit.rules"', 'sleep 10','systemctl start auditd.service'] }
+                                InstanceIds = [instance_id],
+                                DocumentName = "AWS-RunShellScript",
+                                Parameters = {'commands': ['apt-get update -y','apt-get install -y auditd','systemctl kill auditd.service', 'sleep 10', f'echo {auditd_rules} | base64 --decode > "/etc/audit/rules.d/audit.rules"', 'sleep 10','systemctl start auditd.service'] }
                             )
                             logging.info(f'COMMAND SUCCEEDED.')
                         except Exception as e:
@@ -619,29 +619,29 @@ Resources:
 
             def cyngular_function(event, context):
                 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-                logger=logging.getLogger()
+                logger = logging.getLogger()
                 logger.setLevel(logging.INFO)
                 logger.info('STRATING CYNGULARS FUNCTION...')
 
-                LAMBDA_NAME=context.function_name
-                REGIONS=os.environ['CLIENT_REGIONS']
+                LAMBDA_NAME = context.function_name
+                REGIONS = os.environ['CLIENT_REGIONS']
                 try:
                     if os.environ.get('FIRST_RUN') == 'true':
                         logger.info('First run detected. Updating EventBridge rule schedule.')
                         try:
-                            lambda_client=boto3.client('lambda')
-                            events_client=boto3.client('events')
-                            response=events_client.put_rule(
-                                Name=f"{LAMBDA_NAME}-rule",
+                            lambda_client = boto3.client('lambda')
+                            events_client = boto3.client('events')
+                            response = events_client.put_rule(
+                                Name = f"{LAMBDA_NAME}-rule",
                                 State='ENABLED',
-                                ScheduleExpression=os.environ['FINAL_CRON'],
-                                Description='LambdaOS | Config OS | Scheduled to run daily',
-                                EventBusName='default'
+                                ScheduleExpression = os.environ['FINAL_CRON'],
+                                Description = 'LambdaOS | Config OS | Scheduled to run daily',
+                                EventBusName = 'default'
                             )
                             logger.info('Successfully updated the EventBridge rule: %s', response)
-                            response=lambda_client.update_function_configuration(
-                                FunctionName=LAMBDA_NAME,
-                                Environment={'Variables': {"FIRST_RUN": "false", "CLIENT_REGIONS": REGIONS}}
+                            response = lambda_client.update_function_configuration(
+                                FunctionName = LAMBDA_NAME,
+                                Environment = {'Variables': {"FIRST_RUN": "false", "CLIENT_REGIONS": REGIONS}}
                             )
                             logger.info('Successfully updated the function configuration: %s', response)
                         except Exception as e:
@@ -1546,17 +1546,17 @@ Resources:
                         Description='Cyngular Deployments | Child Accounts, Regional scope',
                         TemplateURL=url,
                         # TemplateBody=EXECUTION_ROLE_TEMPLATE,
-                        AutoDeployment={
+                        AutoDeployment = {
                             'Enabled': True,
                             'RetainStacksOnAccountRemoval': False
                         },
-                        PermissionModel='SERVICE_MANAGED',
-                        Capabilities=['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
-                        Parameters=[
+                        PermissionModel = 'SERVICE_MANAGED',
+                        Capabilities = ['CAPABILITY_IAM',"CAPABILITY_NAMED_IAM"],
+                        Parameters = [
                             { 
                                 'ParameterKey': 'AdministratorAccountId',
                                 'ParameterValue': management_account_id
-                            },
+                            }
                         ]
                     )
                     result = cfn_client.create_stack_instances(
@@ -1732,10 +1732,10 @@ Resources:
                             'ParameterValue': os.environ['EnableDNS']
                         }
                     ],
-                    Tags=[
+                    Tags = [
                         {
                             'Key': 'Company',
-                            'Value': ClientName
+                            'Value': os.environ['ClientName']
                         },
                         {
                             'Key': 'Vendor',
@@ -1759,18 +1759,18 @@ Resources:
             def create_stackset1(deployment_targets, regions, url):
                 cfn_client = boto3.client('cloudformation')
                 cfn_client.create_stack_set(
-                    StackSetName='cyngular-stackset-1',
-                    Description='Cyngular Deployments | Child Accounts, Global scope',
-                    TemplateURL=url,
-                    PermissionModel='SERVICE_MANAGED',
-                    AutoDeployment={
+                    StackSetName = 'cyngular-stackset-1',
+                    Description = 'Cyngular Deployments | Child Accounts, Global scope',
+                    TemplateURL = url,
+                    PermissionModel = 'SERVICE_MANAGED',
+                    AutoDeployment = {
                         'Enabled': True,
                         'RetainStacksOnAccountRemoval': False
                     },
-                    ManagedExecution={
+                    ManagedExecution = {
                       'Active': True
                     },
-                    Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                    Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
                     Parameters = [
                         {
                             'ParameterKey': 'ClientName',
@@ -1801,15 +1801,15 @@ Resources:
                             'ParameterValue': (os.environ['EnableVPCFlowLogs'])
                         }
                     ],
-                    Tags=[
+                    Tags = [
                         {
                             'Key': 'Company',
-                            'Value': ClientName
+                            'Value': os.environ['ClientName']
                         },
                         {
                             'Key': 'Vendor',
                             'Value': 'Cyngular Security'
-                        },
+                        }
                     ]
                 )
                 cfn_client.create_stack_instances(
@@ -1826,16 +1826,16 @@ Resources:
             def create_stackset2(deployment_targets, regions, url):
                 cfn_client = boto3.client('cloudformation')
                 cfn_client.create_stack_set(
-                    StackSetName='cyngular-stackset-2',
-                    Description='Cyngular Deployments | Child Accounts, Regional scope',
-                    TemplateURL=url,
-                    PermissionModel='SERVICE_MANAGED',
-                    AutoDeployment={
+                    StackSetName = 'cyngular-stackset-2',
+                    Description = 'Cyngular Deployments | Child Accounts, Regional scope',
+                    TemplateURL = url,
+                    PermissionModel = 'SERVICE_MANAGED',
+                    AutoDeployment = {
                         'Enabled': True,
                         'RetainStacksOnAccountRemoval': False
                     },
-                    Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
-                    Parameters=[
+                    Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                    Parameters = [
                         {
                             'ParameterKey': 'CyngularAccountId',
                             'ParameterValue': os.environ['CyngularAccountId']
