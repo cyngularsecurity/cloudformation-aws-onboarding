@@ -470,7 +470,6 @@ Resources:
                   - lambda:GetFunction
                 Resource:
                   - !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
-
               - Sid: StackSetManager
                 Effect: Allow
                 Action:
@@ -491,12 +490,10 @@ Resources:
                   - organizations:ListAccounts
                   - organizations:ListRoots
                 Resource: "*"
-
               - Sid: LogsManager
                 Effect: Allow
                 Action: logs:*
                 Resource: "arn:aws:logs:*:*:*"
-
               - Sid: IdentityManager
                 Effect: Allow
                 Resource: "*"
@@ -507,16 +504,12 @@ Resources:
                   - iam:DetachRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DeleteRolePolicy
-
-                  # - sts:GetCallerIdentity
-
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
                   - !Sub
                     - "arn:aws:s3:::${bucket_name}/stacks/*"
                     - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-
                 Action:
                   - "s3:GetObject"
 
@@ -565,11 +558,7 @@ Resources:
                   - "iam:PutRolePolicy"
 
                   - "logs:*"
-
-                  # - "sts:GetCallerIdentity"
-
                 Resource: "*"
-
               - Sid: GetStackSetTemplates
                 Effect: "Allow"
                 Resource:
