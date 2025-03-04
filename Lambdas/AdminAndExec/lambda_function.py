@@ -53,7 +53,7 @@ def create_executionrole_on_childs(management_account_id, root_ou_id, regions, u
         cfn_client = boto3.client('cloudformation')
         cfn_client.create_stack_set(
             StackSetName='cyngular-execution-role-stackset',
-            Description='Cyngular deployment of Execution roles for nested accounts',
+            Description='Cyngular Deployments | Child Accounts, Global scope',
             TemplateURL=url,
             # TemplateBody=EXECUTION_ROLE_TEMPLATE,
             AutoDeployment={
@@ -78,7 +78,8 @@ def create_executionrole_on_childs(management_account_id, root_ou_id, regions, u
                 OperationPreferences = {
                     'RegionConcurrencyType': 'PARALLEL',
                     'FailureTolerancePercentage': 100,
-                    'MaxConcurrentPercentage': 100
+                    'MaxConcurrentPercentage': 100,
+                    'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
                 }
             )
         wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])

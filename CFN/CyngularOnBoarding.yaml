@@ -1431,7 +1431,7 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaAdminAndExec.Arn
-      ServiceTimeout: 1200
+      ServiceTimeout: 60 ## 1200
 
       ADMIN_TEMPLATE_URL: !Sub
         - "https://${bucket_name}.s3.amazonaws.com/stacks/AWSCloudFormationStackSetAdministrationRole.yaml"
@@ -1462,6 +1462,37 @@ Resources:
             import os
             import cfnresponse
             import logging
+            import botocore
+
+
+            def check_role_existence_in_child(account_id, role_name='AWSCloudFormationStackSetExecutionRole'):
+                sts_client = boto3.client('sts')
+                role_arn = f'arn:aws:iam::{account_id}:role/{role_name}'
+                try:
+                    # Attempt to assume the role in the child account
+                    assumed_role = sts_client.assume_role(
+                        RoleArn=role_arn,
+                        RoleSessionName='CheckRoleSession'
+                    )
+                    
+                    # If assume_role is successful, the role exists and is assumable
+                    print(f"Successfully assumed role '{role_name}' in account {account_id}.")
+                    return True
+
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response['Error']['Code']
+                    if error_code == 'AccessDenied':
+                        # Role exists, but we can't assume it (which is expected)
+                        print(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
+                        return True
+                    elif error_code == 'NoSuchEntity':
+                        # Role doesn't exist
+                        print(f"Role '{role_name}' does not exist in account {account_id}.")
+                        return False
+                    else:
+                        # Some other error occurred
+                        print(f"Unexpected error checking role in account {account_id}: {e}")
+                        return False
 
             def check_role_existence(role_name):
                 iam_client = boto3.client('iam')
@@ -1552,11 +1583,11 @@ Resources:
                         StackName='cyngular-managment-execution-role',
                         TemplateBody=EXECUTION_ROLE_TEMPLATE,
                         Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
-                        Parameters=[
+                        Parameters = [
                             {
                                 'ParameterKey': 'AdministratorAccountId',
                                 'ParameterValue': management_account_id
-                            },
+                            }
                         ]
                     )
                     wait_for("cyngular-managment-execution-role")
@@ -1594,6 +1625,7 @@ Resources:
 
                             if is_org:
                                 logger.info("CREATING ROLES ON CHILDS")
+                                check_role_existence_in_child(mgmt_acc_id)
                                 create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions, exec_stack_url)
                             logger.info("DONE WITH ALL CYNGULAR STACKS!")
 
@@ -1621,7 +1653,7 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
-      ServiceTimeout: 1200
+      ServiceTimeout: 60 ## 1200
       Stack2URL: !Sub
         - "https://${bucket_name}.s3.amazonaws.com/stacks/stack2.yaml"
         - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
@@ -1681,11 +1713,11 @@ Resources:
             def create_stack2(mgmt_acc_id, regions, url):
                 cfn_client = boto3.client('cloudformation')
                 cfn_client.create_stack_set(
-                    StackSetName='cyngular-stackset-mgmt-regional',
-                    Description='Cyngular Deployments | MGMT Account, Regional scope',
-                    TemplateURL=url,
-                    PermissionModel='SELF_MANAGED',
-                    Capabilities=['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+                    StackSetName = 'cyngular-stackset-mgmt-regional',
+                    Description = 'Cyngular Deployments | MGMT Account, Regional scope',
+                    TemplateURL = url,
+                    PermissionModel = 'SELF_MANAGED',
+                    Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
                     Parameters = [
                         {
                             'ParameterKey': 'CyngularAccountId',
@@ -1699,7 +1731,7 @@ Resources:
                             'ParameterKey': 'EnableDNS',
                             'ParameterValue': os.environ['EnableDNS']
                         }
-                    ]
+                    ],
                     Tags=[
                         {
                             'Key': 'Company',
@@ -1708,7 +1740,7 @@ Resources:
                         {
                             'Key': 'Vendor',
                             'Value': 'Cyngular Security'
-                        },
+                        }
                     ]
                 )
                 cfn_client.create_stack_instances(
@@ -1768,7 +1800,7 @@ Resources:
                             'ParameterKey': 'EnableVPCFlowLogs',
                             'ParameterValue': (os.environ['EnableVPCFlowLogs'])
                         }
-                    ]
+                    ],
                     Tags=[
                         {
                             'Key': 'Company',
