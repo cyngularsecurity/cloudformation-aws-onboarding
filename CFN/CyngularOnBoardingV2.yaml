@@ -506,17 +506,17 @@ Resources:
                   - iam:DetachRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DeleteRolePolicy
-              - Sid: 'GetStackSetTemplates'
-                Effect: "Allow"
-                Resource:
-                  - !Sub
-                    - "arn:aws:s3:::${bucket_name}/stacks/*"
-                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-                  # - !Sub
-                  #   - "${bucket_name}-${AWS::Region}/lambdas/*"
-                  #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-                Action:
-                  - "s3:GetObject"
+              # - Sid: 'GetStackSetTemplates'
+              #   Effect: "Allow"
+              #   Resource:
+              #     - !Sub
+              #       - "arn:aws:s3:::${bucket_name}/stacks/*"
+              #       - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              #     # - !Sub
+              #     #   - "${bucket_name}-${AWS::Region}/lambdas/*"
+              #     #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+              #   Action:
+              #     - "s3:GetObject"
 
   LambdaAdminAndExecRole:
     Type: AWS::IAM::Role
@@ -564,17 +564,17 @@ Resources:
                   - "iam:PutRolePolicy"
 
                   - "logs:*"
-              - Sid: 'GetStackSetTemplates'
-                Effect: "Allow"
-                Resource:
-                  - !Sub
-                    - "arn:aws:s3:::${bucket_name}/stacks/*"
-                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-                  # - !Sub
-                  #   - "${bucket_name}-${AWS::Region}/lambdas/AdminAndExec.zip"
-                  #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-                Action:
-                  - "s3:GetObject"
+              # - Sid: 'GetStackSetTemplates'
+              #   Effect: "Allow"
+              #   Resource:
+              #     - !Sub
+              #       - "arn:aws:s3:::${bucket_name}/stacks/*"
+              #       - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              #     # - !Sub
+              #     #   - "${bucket_name}-${AWS::Region}/lambdas/AdminAndExec.zip"
+              #     #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+              #   Action:
+              #     - "s3:GetObject"
 
   LambdaOS:
     Type: AWS::Lambda::Function
