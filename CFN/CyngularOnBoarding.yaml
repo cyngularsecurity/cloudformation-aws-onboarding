@@ -1445,7 +1445,7 @@ Resources:
   LambdaAdminAndExec:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "cyngular-lambda-admin-and-execution-roles-${ClientName}"
+      FunctionName: "cyngular-lambda-admin-and-execution-roles"
       Description: Created by Cyngular Security.
 
       Role: !GetAtt LambdaAdminAndExecRole.Arn
@@ -1624,8 +1624,8 @@ Resources:
                             create_management_admin_role(admin_stack_url)
 
                             if is_org:
+                                # check_role_existence_in_child(mgmt_acc_id) ## check for all accounts
                                 logger.info("CREATING ROLES ON CHILDS")
-                                check_role_existence_in_child(mgmt_acc_id)
                                 create_executionrole_on_childs(mgmt_acc_id, root_ou_id, regions, exec_stack_url)
                             logger.info("DONE WITH ALL CYNGULAR STACKS!")
 
