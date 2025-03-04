@@ -1465,7 +1465,6 @@ Resources:
             import logging
             import botocore
 
-
             def check_role_existence_in_child(account_id, role_name='AWSCloudFormationStackSetExecutionRole'):
                 sts_client = boto3.client('sts')
                 role_arn = f'arn:aws:iam::{account_id}:role/{role_name}'
@@ -1477,32 +1476,32 @@ Resources:
                     )
                     
                     # If assume_role is successful, the role exists and is assumable
-                    print(f"Successfully assumed role '{role_name}' in account {account_id}.")
+                    logging.info(f"Successfully assumed role '{role_name}' in account {account_id}.")
                     return True
 
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response['Error']['Code']
                     if error_code == 'AccessDenied':
                         # Role exists, but we can't assume it (which is expected)
-                        print(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
+                        logging.info(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
                         return True
                     elif error_code == 'NoSuchEntity':
                         # Role doesn't exist
-                        print(f"Role '{role_name}' does not exist in account {account_id}.")
+                        logging.info(f"Role '{role_name}' does not exist in account {account_id}.")
                         return False
                     else:
                         # Some other error occurred
-                        print(f"Unexpected error checking role in account {account_id}: {e}")
+                        logging.info(f"Unexpected error checking role in account {account_id}: {e}")
                         return False
 
             def check_role_existence(role_name):
                 iam_client = boto3.client('iam')
                 try:
                     iam_client.get_role(RoleName=role_name)
-                    print(f"The IAM role '{role_name}' exists.")
+                    logging.info(f"The IAM role '{role_name}' exists.")
                     return True
                 except Exception as e:
-                    print(str(e))
+                    logging.info(str(e))
                     return False
 
             def wait_for(stack_name):
@@ -1536,7 +1535,7 @@ Resources:
                     if 'Roots' in root_response and len(root_response['Roots']) > 0:
                         return True, root_response['Roots'][0]['Id']
                 except Exception as e:
-                    print(f"Error checking organization status: {e}")
+                    logging.info(f"Error checking organization status: {e}")
                 return False, None
 
             def create_executionrole_on_childs(management_account_id, root_ou_id, regions, url):
@@ -1575,7 +1574,7 @@ Resources:
                         )
                     wait_for_stackset_creation("cyngular-execution-role-stackset", result["OperationId"])
                 except Exception as e:
-                    print(f"Error creating execution-role on childs: {e}")
+                    logging.info(f"Error creating execution-role on childs: {e}")
 
             def create_management_execution_role(management_account_id):
                 cfn_client = boto3.client('cloudformation')
