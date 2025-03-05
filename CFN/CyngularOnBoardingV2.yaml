@@ -365,12 +365,19 @@ Resources:
                   - kms:CreateGrant
               - Sid: 'CyngularKmsKey'
                 Effect: Allow
-                Resource: '*'
+                Resource:
+                  # - '*'
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/${ClientName}-kms-key"
+
                 Action:
-                  - kms:*
-                Condition:
-                  StringLike:
-                    aws:ResourceTag/Name: cyngular*
+                  # - kms:*
+                  - kms:Encrypt
+                  - kms:ReEncryptFrom
+                  - kms:ReEncryptTo
+                # Condition:
+                #   StringLike:
+                #     aws:ResourceTag/Name: cyngular*
+
               - Sid: 'ListRegionsOnAccounts'
                 Effect: "Allow"
                 Action:
