@@ -1455,6 +1455,7 @@ Resources:
       Environment:
         Variables:
           CLIENT_REGIONS: !Join [",", !Ref ClientRegions]
+          IsOrg: !If [IsOrg, true, false]
 
       Code:
         ZipFile: |
@@ -1530,6 +1531,8 @@ Resources:
 
             def is_organization_account():
                 try:
+                    if os.getenv('IsOrg', 'error').lower() == 'false':
+                        return False, None
                     org_client = boto3.client('organizations')
                     root_response = org_client.list_roots()
                     if 'Roots' in root_response and len(root_response['Roots']) > 0:
@@ -1707,7 +1710,7 @@ Resources:
                     if 'Roots' in root_response and len(root_response['Roots']) > 0:
                         return True, root_response['Roots'][0]['Id']
                 except Exception as e:
-                    print(f"Error checking organization status: {e}")
+                    logging.info(f"Error checking organization status: {e}")
                 return False, None
 
             def create_stack2(mgmt_acc_id, regions, url):
