@@ -191,7 +191,7 @@ Resources:
               Effect: Allow
               Principal: 
                 Service: "cloudtrail.amazonaws.com"
-              Action: 
+              Action:
                 - 's3:PutObject'
               Resource: 
                 - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
