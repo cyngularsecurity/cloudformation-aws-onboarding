@@ -5,34 +5,34 @@ import cfnresponse
 import logging
 import botocore
 
-def check_role_existence_in_child(account_id, role_name='AWSCloudFormationStackSetExecutionRole'):
-    sts_client = boto3.client('sts')
-    role_arn = f'arn:aws:iam::{account_id}:role/{role_name}'
-    try:
-        # Attempt to assume the role in the child account
-        assumed_role = sts_client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName='CheckRoleSession'
-        )
+# def check_role_existence_in_child(account_id, role_name='AWSCloudFormationStackSetExecutionRole'):
+#     sts_client = boto3.client('sts')
+#     role_arn = f'arn:aws:iam::{account_id}:role/{role_name}'
+#     try:
+#         # Attempt to assume the role in the child account
+#         assumed_role = sts_client.assume_role(
+#             RoleArn=role_arn,
+#             RoleSessionName='CheckRoleSession'
+#         )
         
-        # If assume_role is successful, the role exists and is assumable
-        logging.info(f"Successfully assumed role '{role_name}' in account {account_id}.")
-        return True
+#         # If assume_role is successful, the role exists and is assumable
+#         logging.info(f"Successfully assumed role '{role_name}' in account {account_id}.")
+#         return True
 
-    except botocore.exceptions.ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'AccessDenied':
-            # Role exists, but we can't assume it (which is expected)
-            logging.info(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
-            return True
-        elif error_code == 'NoSuchEntity':
-            # Role doesn't exist
-            logging.info(f"Role '{role_name}' does not exist in account {account_id}.")
-            return False
-        else:
-            # Some other error occurred
-            logging.info(f"Unexpected error checking role in account {account_id}: {e}")
-            return False
+#     except botocore.exceptions.ClientError as e:
+#         error_code = e.response['Error']['Code']
+#         if error_code == 'AccessDenied':
+#             # Role exists, but we can't assume it (which is expected)
+#             logging.info(f"Role '{role_name}' exists in account {account_id}, but cannot be assumed as expected.")
+#             return True
+#         elif error_code == 'NoSuchEntity':
+#             # Role doesn't exist
+#             logging.info(f"Role '{role_name}' does not exist in account {account_id}.")
+#             return False
+#         else:
+#             # Some other error occurred
+#             logging.info(f"Unexpected error checking role in account {account_id}: {e}")
+#             return False
 
 def check_role_existence(role_name):
     iam_client = boto3.client('iam')

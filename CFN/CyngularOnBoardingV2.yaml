@@ -361,8 +361,12 @@ Resources:
                 Effect: Allow
                 Resource: '*'
                 Action:
-                  - kms:Decrypt
-                  - kms:CreateGrant
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:ReEncrypt*"
+                  - "kms:Decrypt"
+                  - "kms:CreateGrant"
+
               - Sid: 'CyngularKmsKey'
                 Effect: Allow
                 Resource:
@@ -370,13 +374,11 @@ Resources:
                   - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/${ClientName}-kms-key"
 
                 Action:
-                  # - kms:*
-                  - kms:Encrypt
-                  - kms:ReEncryptFrom
-                  - kms:ReEncryptTo
-                # Condition:
-                #   StringLike:
-                #     aws:ResourceTag/Name: cyngular*
+                  - "kms:DescribeKey"
+                  - "kms:Encrypt"
+                  - "kms:ReEncrypt*"
+                  - "kms:Decrypt"
+                  - "kms:CreateGrant"
 
               - Sid: 'ListRegionsOnAccounts'
                 Effect: "Allow"
