@@ -18,14 +18,18 @@ def get_account_ids_lst(management_account_id):
         logging.critical("CyngularFunctions (ERROR) - while trying to get account ids for organization: " + str(e))
     return member_accounts
 
-def update_bucket(bucket_name, management_account_id):
+def update_bucket(bucket_name, management_account_id, is_org):
     try:
         s3_client=boto3.client('s3')
         response=s3_client.get_bucket_policy(
             Bucket=bucket_name
         )
 
-        account_ids_list=get_account_ids_lst(management_account_id)
+        if is_org:
+            account_ids_list = get_account_ids_lst(management_account_id)
+        else:
+            account_ids_list = [management_account_id]
+
         account_arns_list=[]
         for account_id in account_ids_list:
             account_arns_list.append(f"\"arn:aws:logs:*:{account_id}:*\"")
@@ -86,10 +90,11 @@ def cyngular_function(event, context):
     logger.info('STARTING CYNGULAR\'S FUNCTION...')
     try:
         logger.info('UPDATING CYNGULAR BUCKET POLICY')
+        is_org = event['is_org']
         cyngular_bucket_name = os.environ['BUCKET_NAME']
         mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
 
-        update_bucket(cyngular_bucket_name, mgmt_acc_id)
+        update_bucket(cyngular_bucket_name, mgmt_acc_id, is_org)
         logger.info('DONE!')
 
     except Exception as e:

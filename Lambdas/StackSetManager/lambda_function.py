@@ -227,16 +227,19 @@ def create_members_regional_stackset(deployment_targets, regions, url):
     except Exception as e:
         logging.error(f"Error creating stackset {MEMBERS_REGIONAL_STACKSET_NAME}: {e}")
 
-def invoke_lambda(func_name):
+def invoke_lambda(func_name, is_org):
     try:
         lambda_client = boto3.client('lambda')
+        payload = {
+            "is_org": is_org
+        }
+
         response = lambda_client.invoke(
             FunctionName = func_name,
             InvocationType = 'RequestResponse',
-
             # InvocationType='Event',  # async invocation
-            # Payload=json.dumps({'key': 'value'})
 
+            Payload=json.dumps(payload),
             LogType = 'Tail'
         )
 
@@ -277,7 +280,7 @@ def cyngular_function(event, context):
 
                 logger.info("Updating Bucket Policy")
                 
-                invoke_lambda(lambda_E_name)
+                invoke_lambda(lambda_E_name, is_org)
                 time.sleep(60)
 
                 logger.info("STARING CYNGULAR STACK2")
