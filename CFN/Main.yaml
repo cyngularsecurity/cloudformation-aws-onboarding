@@ -522,12 +522,15 @@ Resources:
 
               - Sid: 'PassRoleToStackSet'
                 Effect: Allow
-                Resource: "arn:aws:iam::781158784220:role/CyngularCloudFormationStackSetAdministrationRole"
+                Resource: !Sub 
+                  - "arn:aws:iam::${AWS::AccountId}:role/${template_name}"
+                  - template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
+
                 Action:
                   - iam:PassRole
-                Condition:
-                  StringEquals:
-                    iam:RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/cyngular-stackset-role-${ClientName}"
+                # Condition:
+                #   StringEquals:
+                #     iam:RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/cyngular-stackset-role-${ClientName}"
 
               - Sid: 'GetStackSetTemplates'
                 Effect: "Allow"
