@@ -2,9 +2,8 @@
 set -eu
 
 ClientRegions="eu-west-2,eu-west-1"
-CyngularAccountId="468159710337"
-OrganizationId="o-6lc0p6io84" # 418853915347,781158784220
-# RootOUid="r-ozfr"
+CyngularAccountId=""
+OrganizationId=""
 
 # Stack1URL="httpsonboarding-stacks.s3.eu-west-2.amazonaws.com/stack1.yaml"
 # Stack2URL="https://onboarding-stacks.s3.eu-west-2.amazonaws.com/stack2.yaml"

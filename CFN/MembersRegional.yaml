@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular Deployments | Child Accounts, Regional scope
+  Cyngular Deployments | Member Accounts, Regional scope
 
 Parameters:
   CyngularAccountId:

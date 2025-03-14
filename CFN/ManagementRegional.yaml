@@ -1,13 +1,13 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  Cyngular Deployments | Child Accounts, Regional scope
-
+  Cyngular Deployments | MGMT Account, Regional scope
+  
 Parameters:
   CyngularAccountId:
-    Description: The cyngular account id
+    Description: "The Cyngular account id"
     Type: String
   S3BucketArn:
-    Description: The Arn of cyngular S3 logs Bucket.
+    Description: "The Arn of the Cyngular managed S3 Bucket"
     Type: String
   EnableDNS:
     Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
@@ -37,7 +37,7 @@ Resources:
       Tags: 
         - Key: Name
           Value: cyngular-kms-key
-  
+
   CyngularKmsAlias:
     Type: AWS::KMS::Alias
     Properties: 
@@ -47,6 +47,6 @@ Resources:
   CyngularResolver:
     Type: AWS::Route53Resolver::ResolverQueryLoggingConfig
     Condition: ServiceDNS
-    Properties:
+    Properties: 
       DestinationArn: !Ref S3BucketArn
       Name: cyngular_dns

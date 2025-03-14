@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular Deployments | Child Accounts, Global scope
+  Cyngular Deployments | Member Accounts, Global scope
 
 Parameters:
   ClientName:
@@ -15,6 +15,9 @@ Parameters:
   S3BucketArn:
     Description: "The Arn of the Cyngular managed S3 Bucket"
     Type: String
+  BucketPolicyLambdaArn:
+    Description: "The Arn of the 'Cyngular Update Bucket Policy' Lambda"
+    Type: String
   EnableDNS:
     Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
     Type: String
@@ -24,13 +27,6 @@ Parameters:
   EnableVPCFlowLogs:
     Description: "VPC Flow Logs Service - Whether to Configure VPC Flow logs From vpcs to Cyngular managed S3 bucket"
     Type: String
-
-  # ClientMainRegion:
-  #   Description: "The main region of the client"
-  #   Type: String
-  # ClientManagementAccountId:
-  #   Description: "The management account id of the client"
-  #   Type: String
 
 Conditions:
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
@@ -774,12 +770,12 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRuleLambdaVFL.Arn
 
-  # UpdateCyngularBucketPolicyTrigger:
-  #   Type: Custom::UpdateCyngularBucketPolicy
-  #   DeletionPolicy: Retain
-  #   UpdateReplacePolicy: Retain
+  UpdateCyngularBucketPolicyTrigger:
+    Type: Custom::UpdateCyngularBucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
-  #   Version: "1.0"
-  #   Properties:
-  #     ServiceToken: !Sub "arn:aws:lambda:${ClientMainRegion}:${ClientManagementAccountId}:function:cyngular-lambda-update-cyngular-bucket-policy"
-  #     ServiceTimeout: 1200
+    Version: "1.0"
+    Properties:
+      ServiceToken: !Ref BucketPolicyLambdaArn
+      ServiceTimeout: 1200

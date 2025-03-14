@@ -4,182 +4,252 @@ import os
 import cfnresponse
 import logging
 
-def is_organization_account():
+EXECUTION_ROLE_NAME = "CyngularCloudFormationStackSetExecutionRole"
+ADMIN_ROLE_NAME = "CyngularCloudFormationStackSetAdministrationRole"
+
+MGMT_REGIONAL_STACKSET_NAME = 'cyngular-stackset-mgmt-regional'
+MEMBERS_GLOBAL_STACKSET_NAME = 'cyngular-stackset-1'
+MEMBERS_REGIONAL_STACKSET_NAME = 'cyngular-stackset-2'
+
+def is_org_deployment():
+    """Check if the account is part of an AWS organization."""
     try:
-        if os.getenv('IsOrg', 'error').lower() == 'false':
-            return False, None
+        is_org_env = os.environ['IsOrg']
+        if is_org_env is None:
+            raise EnvironmentError("Environment variable 'IsOrg' is not set.")
+        if is_org_env.lower() == 'false':
+            return False, "Not an organization account deployment, org id param is empty."
+
         org_client = boto3.client('organizations')
         root_response = org_client.list_roots()
         if 'Roots' in root_response and len(root_response['Roots']) > 0:
             return True, root_response['Roots'][0]['Id']
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == 'AccessDeniedException':
+            logging.info("Known Error: Access denied when calling ListRoots. This account is part of an organization but not the management account.")
+            raise
+        logging.error(f"Unexpected ClientError occurred: {e}")
+        raise
     except Exception as e:
-        print(f"Error checking organization status: {e}")
-    return False, None
+        logging.error(f"Unexpected error checking organization status: {e}")
+        raise
 
-def create_stack2(mgmt_acc_id, regions, url):
+def wait_for_ss_operation(stackset_name, operation_id):
     cfn_client = boto3.client('cloudformation')
-    cfn_client.create_stack_set(
-        StackSetName = 'cyngular-stackset-mgmt-regional',
-        Description = 'Cyngular Deployments | MGMT Account, Regional scope',
-        TemplateURL = url,
-        PermissionModel = 'SELF_MANAGED',
-        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
-        Parameters = [
-            {
-                'ParameterKey': 'CyngularAccountId',
-                'ParameterValue': os.environ['CyngularAccountId']
+    response = cfn_client.describe_stack_set_operation(
+        StackSetName=stackset_name,
+        OperationId=operation_id
+    )
+    status = response['StackSetOperation']['Status']
+    while status == 'RUNNING':
+        time.sleep(10)
+        response = cfn_client.describe_stack_set_operation(
+            StackSetName=stackset_name,
+            OperationId=operation_id
+        )
+        status = response['StackSetOperation']['Status']
+    if status == 'SUCCEEDED':
+        logging.info('StackSet operation completed successfully.')
+    else:
+        logging.info('StackSet operation failed.')
+
+def create_mgmt_regional_stackset(management_account_id, regions, url):
+    try:
+        cfn_client = boto3.client('cloudformation')
+        cfn_client.create_stack_set(
+            StackSetName = MGMT_REGIONAL_STACKSET_NAME,
+            Description = 'Cyngular Deployments | MGMT Account, Regional scope',
+            TemplateURL = url,
+            PermissionModel = 'SELF_MANAGED',
+            Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+            AdministrationRoleARN = f'arn:aws:iam::{management_account_id}:role/{ADMIN_ROLE_NAME}',
+            ExecutionRoleName=EXECUTION_ROLE_NAME,
+            Parameters = [
+                {
+                    'ParameterKey': 'CyngularAccountId',
+                    'ParameterValue': os.environ['CyngularAccountId']
+                },
+                {
+                    'ParameterKey': 'S3BucketArn',
+                    'ParameterValue': os.environ['S3BucketArn']
+                },
+                {
+                    'ParameterKey': 'EnableDNS',
+                    'ParameterValue': os.environ['EnableDNS']
+                }
+            ],
+            Tags = [
+                {
+                    'Key': 'Company',
+                    'Value': os.environ['ClientName']
+                },
+                {
+                    'Key': 'Vendor',
+                    'Value': 'Cyngular Security'
+                }
+            ]
+        )
+        cfn_client.create_stack_instances(
+            StackSetName = MGMT_REGIONAL_STACKSET_NAME,
+            DeploymentTargets = {
+                "Accounts": [management_account_id]
             },
-            {
-                'ParameterKey': 'S3BucketArn',
-                'ParameterValue': os.environ['S3BucketArn']
-            },
-            {
-                'ParameterKey': 'EnableDNS',
-                'ParameterValue': os.environ['EnableDNS']
+            Regions = regions,
+            OperationPreferences = {
+                'RegionConcurrencyType': 'PARALLEL',
+                'FailureTolerancePercentage': 90,
+                'MaxConcurrentPercentage': 100,
+                'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
             }
-        ],
-        Tags = [
-            {
-                'Key': 'Company',
-                'Value': os.environ['ClientName']
+        )
+        wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
+    except Exception as e:
+        logging.error(f"Error creating execution-role on members: {e}")
+
+def create_members_global_stackset(deployment_targets, regions, url):
+    try:
+        cfn_client = boto3.client('cloudformation')
+        cfn_client.create_stack_set(
+            StackSetName = MEMBERS_GLOBAL_STACKSET_NAME,
+            Description = 'Cyngular Deployments | Member Accounts, Global scope',
+            TemplateURL = url,
+            PermissionModel = 'SERVICE_MANAGED',
+            Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+            AutoDeployment = {
+                'Enabled': True,
+                'RetainStacksOnAccountRemoval': False
             },
-            {
-                'Key': 'Vendor',
-                'Value': 'Cyngular Security'
+            ManagedExecution = {
+                'Active': True
+            },
+            Parameters = [
+                {
+                    'ParameterKey': 'ClientName',
+                    'ParameterValue': os.environ['ClientName']
+                },
+                {
+                    'ParameterKey': 'CyngularAccountId',
+                    'ParameterValue': os.environ['CyngularAccountId']
+                },
+                {
+                    'ParameterKey': 'S3BucketArn',
+                    'ParameterValue': os.environ['S3BucketArn']
+                },
+                {
+                    'ParameterKey': 'BucketPolicyLambdaArn',
+                    'ParameterValue': os.environ['BucketPolicyLambdaArn']
+                },
+                {
+                    'ParameterKey': 'ClientRegions',
+                    'ParameterValue': ','.join(regions)
+                },
+                {
+                    'ParameterKey': 'EnableDNS',
+                    'ParameterValue': (os.environ['EnableDNS'])
+                },
+                {
+                    'ParameterKey': 'EnableEKS',
+                    'ParameterValue': (os.environ['EnableEKS'])
+                },
+                {
+                    'ParameterKey': 'EnableVPCFlowLogs',
+                    'ParameterValue': (os.environ['EnableVPCFlowLogs'])
+                }
+            ],
+            Tags = [
+                {
+                    'Key': 'Company',
+                    'Value': os.environ['ClientName']
+                },
+                {
+                    'Key': 'Vendor',
+                    'Value': 'Cyngular Security'
+                }
+            ]
+        )
+        cfn_client.create_stack_instances(
+            StackSetName = MEMBERS_GLOBAL_STACKSET_NAME,
+            DeploymentTargets = deployment_targets,
+            Regions = [regions[0]],
+            OperationPreferences = {
+                'RegionConcurrencyType': 'PARALLEL',
+                'FailureTolerancePercentage': 90,
+                'MaxConcurrentPercentage': 100,
+                'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
             }
-        ]
-    )
-    cfn_client.create_stack_instances(
-        StackSetName = 'cyngular-stackset-mgmt-regional',
-        DeploymentTargets = {
-            "Accounts": [mgmt_acc_id]
-        },
-        Regions = regions,
-        OperationPreferences = {
-            'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 100,
-            'MaxConcurrentPercentage': 100,
-            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
-        }
-    )
-def create_stackset1(deployment_targets, regions, url):
-    cfn_client = boto3.client('cloudformation')
-    cfn_client.create_stack_set(
-        StackSetName = 'cyngular-stackset-1',
-        Description = 'Cyngular Deployments | Child Accounts, Global scope',
-        TemplateURL = url,
-        PermissionModel = 'SERVICE_MANAGED',
-        AutoDeployment = {
-            'Enabled': True,
-            'RetainStacksOnAccountRemoval': False
-        },
-        ManagedExecution = {
-            'Active': True
-        },
-        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
-        Parameters = [
-            {
-                'ParameterKey': 'ClientName',
-                'ParameterValue': os.environ['ClientName']
+        )
+        wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
+    except Exception as e:
+        logging.error(f"Error creating execution-role on members: {e}")
+
+def create_members_regional_stackset(deployment_targets, regions, url):
+    try:
+        cfn_client = boto3.client('cloudformation')
+        cfn_client.create_stack_set(
+            StackSetName = MEMBERS_REGIONAL_STACKSET_NAME,
+            Description = 'Cyngular Deployments | Member Accounts, Regional scope',
+            TemplateURL = url,
+            PermissionModel = 'SERVICE_MANAGED',
+            Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
+            AutoDeployment = {
+                'Enabled': True,
+                'RetainStacksOnAccountRemoval': False
             },
-            {
-                'ParameterKey': 'CyngularAccountId',
-                'ParameterValue': os.environ['CyngularAccountId']
-            },
-            {
-                'ParameterKey': 'S3BucketArn',
-                'ParameterValue': os.environ['S3BucketArn']
-            },
-            {
-                'ParameterKey': 'ClientRegions',
-                'ParameterValue': ','.join(regions)
-            },
-            {
-                'ParameterKey': 'EnableDNS',
-                'ParameterValue': (os.environ['EnableDNS'])
-            },
-            {
-                'ParameterKey': 'EnableEKS',
-                'ParameterValue': (os.environ['EnableEKS'])
-            },
-            {
-                'ParameterKey': 'EnableVPCFlowLogs',
-                'ParameterValue': (os.environ['EnableVPCFlowLogs'])
+            Parameters = [
+                {
+                    'ParameterKey': 'CyngularAccountId',
+                    'ParameterValue': os.environ['CyngularAccountId']
+                },
+                {
+                    'ParameterKey': 'S3BucketArn',
+                    'ParameterValue': os.environ['S3BucketArn']
+                },
+                {
+                    'ParameterKey': 'EnableDNS',
+                    'ParameterValue': os.environ['EnableDNS']
+                }
+            ]
+        )
+        result = cfn_client.create_stack_instances(
+            StackSetName = MEMBERS_REGIONAL_STACKSET_NAME,
+            DeploymentTargets = deployment_targets,
+            Regions = regions,
+            OperationPreferences = {
+                'RegionConcurrencyType': 'PARALLEL',
+                'FailureTolerancePercentage': 90,
+                'MaxConcurrentPercentage': 100,
+                'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
             }
-        ],
-        Tags = [
-            {
-                'Key': 'Company',
-                'Value': os.environ['ClientName']
-            },
-            {
-                'Key': 'Vendor',
-                'Value': 'Cyngular Security'
-            }
-        ]
-    )
-    cfn_client.create_stack_instances(
-        StackSetName = 'cyngular-stackset-1',
-        DeploymentTargets = deployment_targets,
-        Regions = [regions[0]],
-        OperationPreferences = {
-            'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 100,
-            'MaxConcurrentPercentage': 100,
-            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
-        }
-    )
-def create_stackset2(deployment_targets, regions, url):
-    cfn_client = boto3.client('cloudformation')
-    cfn_client.create_stack_set(
-        StackSetName = 'cyngular-stackset-2',
-        Description = 'Cyngular Deployments | Child Accounts, Regional scope',
-        TemplateURL = url,
-        PermissionModel = 'SERVICE_MANAGED',
-        AutoDeployment = {
-            'Enabled': True,
-            'RetainStacksOnAccountRemoval': False
-        },
-        Capabilities = ['CAPABILITY_IAM','CAPABILITY_NAMED_IAM'],
-        Parameters = [
-            {
-                'ParameterKey': 'CyngularAccountId',
-                'ParameterValue': os.environ['CyngularAccountId']
-            },
-            {
-                'ParameterKey': 'S3BucketArn',
-                'ParameterValue': os.environ['S3BucketArn']
-            },
-            {
-                'ParameterKey': 'EnableDNS',
-                'ParameterValue': os.environ['EnableDNS']
-            }
-        ]
-    )
-    cfn_client.create_stack_instances(
-        StackSetName = 'cyngular-stackset-2',
-        DeploymentTargets = deployment_targets,
-        Regions = regions,
-        OperationPreferences = {
-            'RegionConcurrencyType': 'PARALLEL',
-            'FailureTolerancePercentage': 100,
-            'MaxConcurrentPercentage': 100,
-            'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
-        }
-    )
+        )
+        wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
+    except Exception as e:
+        logging.error(f"Error creating execution-role on members: {e}")
+
 def invoke_lambda(func_name):
     try:
         lambda_client = boto3.client('lambda')
         response = lambda_client.invoke(
             FunctionName = func_name,
             InvocationType = 'RequestResponse',
+
+            # InvocationType='Event',  # async invocation
+            # Payload=json.dumps({'key': 'value'})
+
             LogType = 'Tail'
         )
-        logging.info('lmbada E invoked!')
+
+        # if response['StatusCode'] != 200:
+            # logging.critical(f"Error in lambda {lambda_E_name} - {response}")
+            # raise Exception(f"Error in lambda {lambda_E_name} - {response}")
+        # payload = response['Payload'].read()
+        # result = json.loads(payload)
+
+        logging.info(f'Invoked Lambda {func_name}')
         if response['StatusCode'] != 200:
-            logging.critical(f"Error {response}")
+            logging.critical(f"Error in lambda {func_name} - {response}")
     except Exception as e:
         logging.critical(str(e))
+
 def cyngular_function(event, context):
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     logger = logging.getLogger()
@@ -188,30 +258,32 @@ def cyngular_function(event, context):
     try:
         if event['RequestType'] == 'Create':
             try:                            
-                mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
+                management_account_id = boto3.client('sts').get_caller_identity()['Account']
 
-                is_org, root_id = is_organization_account()
-                deployment_targets = {'OrganizationalUnitIds': [root_id]} if is_org else {'Accounts': [mgmt_acc_id]}
-                regions = list(set(os.getenv('ClientRegions', '').split(',')))
+                is_org, root_id = is_org_deployment()
+                deployment_targets = {'OrganizationalUnitIds': [root_id]} if is_org else {'Accounts': [management_account_id]}
+                regions = list(set(os.environ['ClientRegions'].split(',')))
                 logger.info(f"deploy targets -> {deployment_targets}")
 
-                stack2_url = event['ResourceProperties']['Stack2URL']
-                stackset1_url = event['ResourceProperties']['StackSet1URL']
-                stackset2_url = event['ResourceProperties']['StackSet2URL']
-                lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
+                stack2_url = os.environ['Stack2URL']
+                stackset1_url = os.environ['StackSet1URL']
+                stackset2_url = os.environ['StackSet2URL']
+                # lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
                 logger.info("Updating Bucket Policy")
-                invoke_lambda(lambda_E_name)
-                time.sleep(60)
+                
+                # invoke_lambda(lambda_E_name)
+                # time.sleep(60)
+
                 logger.info("STARING CYNGULAR STACK2")
-                create_stack2(mgmt_acc_id, regions, stack2_url)
+                create_mgmt_regional_stackset(management_account_id, regions, stack2_url)
 
                 if is_org:
                     logger.info("STARING CYNGULAR STACKSET1")
-                    create_stackset1(deployment_targets, regions, stackset1_url)
+                    create_members_global_stackset(deployment_targets, regions, stackset1_url)
 
                     logger.info("STARING CYNGULAR STACKSET2")
-                    create_stackset2(deployment_targets, regions, stackset2_url)
+                    create_members_regional_stackset(deployment_targets, regions, stackset2_url)
                 logger.info("DONE WITH ALL CYNGULAR STACKS!")
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
 
