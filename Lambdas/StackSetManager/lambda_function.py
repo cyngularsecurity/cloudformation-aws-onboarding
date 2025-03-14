@@ -1,8 +1,10 @@
 import boto3
 import time
 import os
-import cfnresponse
 import logging
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html#cfn-lambda-function-code-cfnresponsemodule-source-python
+import cfnresponse
 
 EXECUTION_ROLE_NAME = "CyngularCloudFormationStackSetExecutionRole"
 ADMIN_ROLE_NAME = "CyngularCloudFormationStackSetAdministrationRole"
@@ -106,7 +108,7 @@ def create_mgmt_regional_stackset(management_account_id, regions, url):
     except Exception as e:
         logging.error(f"Error creating execution-role on members: {e}")
 
-def create_members_global_stackset(deployment_targets, regions, url):
+def create_members_global_stackset(deployment_targets, regions, main_region, url):
     try:
         cfn_client = boto3.client('cloudformation')
         cfn_client.create_stack_set(
@@ -170,7 +172,8 @@ def create_members_global_stackset(deployment_targets, regions, url):
         cfn_client.create_stack_instances(
             StackSetName = MEMBERS_GLOBAL_STACKSET_NAME,
             DeploymentTargets = deployment_targets,
-            Regions = [regions[0]],
+            # Regions = [regions[0]],
+            Regions = main_region,
             OperationPreferences = {
                 'RegionConcurrencyType': 'PARALLEL',
                 'FailureTolerancePercentage': 90,
@@ -259,11 +262,14 @@ def cyngular_function(event, context):
         if event['RequestType'] == 'Create':
             try:                            
                 management_account_id = boto3.client('sts').get_caller_identity()['Account']
+                main_region = context.invoked_function_arn.split(':')[3]
 
                 is_org, root_id = is_org_deployment()
                 deployment_targets = {'OrganizationalUnitIds': [root_id]} if is_org else {'Accounts': [management_account_id]}
                 regions = list(set(os.environ['ClientRegions'].split(',')))
                 logger.info(f"deploy targets -> {deployment_targets}")
+                logger.info(f"regions -> {regions}")
+                logger.info(f"main region -> {main_region}")
 
                 stack2_url = os.environ['Stack2URL']
                 stackset1_url = os.environ['StackSet1URL']
@@ -280,7 +286,7 @@ def cyngular_function(event, context):
 
                 if is_org:
                     logger.info("STARING CYNGULAR STACKSET1")
-                    create_members_global_stackset(deployment_targets, regions, stackset1_url)
+                    create_members_global_stackset(deployment_targets, regions, main_region, stackset1_url)
 
                     logger.info("STARING CYNGULAR STACKSET2")
                     create_members_regional_stackset(deployment_targets, regions, stackset2_url)

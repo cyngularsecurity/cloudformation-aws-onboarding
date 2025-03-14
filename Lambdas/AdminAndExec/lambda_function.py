@@ -1,9 +1,11 @@
 import boto3
 import time
 import os
-import cfnresponse
 import logging
 import botocore
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html#cfn-lambda-function-code-cfnresponsemodule-source-python
+import cfnresponse
 
 # Constants
 # EXECUTION_ROLE_NAME = "AWSCloudFormationStackSetExecutionRole"
