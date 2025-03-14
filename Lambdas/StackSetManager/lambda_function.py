@@ -91,7 +91,7 @@ def create_mgmt_regional_stackset(management_account_id, regions, url):
                 }
             ]
         )
-        cfn_client.create_stack_instances(
+        result = cfn_client.create_stack_instances(
             StackSetName = MGMT_REGIONAL_STACKSET_NAME,
             DeploymentTargets = {
                 "Accounts": [management_account_id]
@@ -104,9 +104,9 @@ def create_mgmt_regional_stackset(management_account_id, regions, url):
                 'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
             }
         )
-        wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
+        wait_for_ss_operation(MGMT_REGIONAL_STACKSET_NAME, result["OperationId"])
     except Exception as e:
-        logging.error(f"Error creating execution-role on members: {e}")
+        logging.error(f"Error creating stackset {MGMT_REGIONAL_STACKSET_NAME}: {e}")
 
 def create_members_global_stackset(deployment_targets, regions, main_region, url):
     try:
@@ -169,10 +169,9 @@ def create_members_global_stackset(deployment_targets, regions, main_region, url
                 }
             ]
         )
-        cfn_client.create_stack_instances(
+        result = cfn_client.create_stack_instances(
             StackSetName = MEMBERS_GLOBAL_STACKSET_NAME,
             DeploymentTargets = deployment_targets,
-            # Regions = [regions[0]],
             Regions = main_region,
             OperationPreferences = {
                 'RegionConcurrencyType': 'PARALLEL',
@@ -181,9 +180,9 @@ def create_members_global_stackset(deployment_targets, regions, main_region, url
                 'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
             }
         )
-        wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
+        wait_for_ss_operation(MEMBERS_GLOBAL_STACKSET_NAME, result["OperationId"])
     except Exception as e:
-        logging.error(f"Error creating execution-role on members: {e}")
+        logging.error(f"Error creating stackset {MEMBERS_GLOBAL_STACKSET_NAME}: {e}")
 
 def create_members_regional_stackset(deployment_targets, regions, url):
     try:
@@ -226,7 +225,7 @@ def create_members_regional_stackset(deployment_targets, regions, url):
         )
         wait_for_ss_operation(MEMBERS_REGIONAL_STACKSET_NAME, result["OperationId"])
     except Exception as e:
-        logging.error(f"Error creating execution-role on members: {e}")
+        logging.error(f"Error creating stackset {MEMBERS_REGIONAL_STACKSET_NAME}: {e}")
 
 def invoke_lambda(func_name):
     try:

@@ -5,18 +5,18 @@ import logging
 import json
 
 def get_account_ids_lst(management_account_id):
-    child_accounts = []
+    member_accounts = []
     try:
         org_client = boto3.client('organizations')
         paginator = org_client.get_paginator('list_accounts')
 
         for page in paginator.paginate():
-            child_accounts.extend(
+            member_accounts.extend(
                 account['Id'] for account in page['Accounts'] if account['Id'] != management_account_id
             )
     except Exception as e:
-        logging.critical("CloudServiceFunctions (ERROR) - while trying to get account ids for organization: " + str(e))
-    return child_accounts
+        logging.critical("CyngularFunctions (ERROR) - while trying to get account ids for organization: " + str(e))
+    return member_accounts
 
 def update_bucket(bucket_name, management_account_id):
     try:
