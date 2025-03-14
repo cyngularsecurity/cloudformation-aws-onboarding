@@ -248,7 +248,7 @@ Resources:
               AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
             Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: cyngular-readonly-policy
+        - PolicyName: !Sub "cyngular-readonly-policy-${ClientName}"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -473,7 +473,7 @@ Resources:
               Service: "lambda.amazonaws.com"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: "ManagerLambdaRolePolicy"
+        - PolicyName: !Sub "cyngular-manager-lambda-policy-${ClientName}"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -557,7 +557,7 @@ Resources:
               Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: "AdminExecLambdaRolePolicy"
+        - PolicyName: !Sub "cyngular-admin-exec-lambda-policy-${ClientName}"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -955,8 +955,8 @@ Resources:
             - "https://${bucket_name}.s3.amazonaws.com/stacks/MembersRegional.yaml"
             - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
 
-          # UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
-          BucketPolicyLambdaArn: !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
+          UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
+          # BucketPolicyLambdaArn: !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
 
           CyngularAccountId: !Ref CyngularAccountId
           S3BucketArn: !GetAtt CyngularS3Bucket.Arn

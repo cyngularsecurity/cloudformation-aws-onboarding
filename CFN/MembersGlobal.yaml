@@ -15,9 +15,9 @@ Parameters:
   S3BucketArn:
     Description: "The Arn of the Cyngular managed S3 Bucket"
     Type: String
-  BucketPolicyLambdaArn:
-    Description: "The Arn of the 'Cyngular Update Bucket Policy' Lambda"
-    Type: String
+  # BucketPolicyLambdaArn:
+  #   Description: "The Arn of the 'Cyngular Update Bucket Policy' Lambda"
+  #   Type: String
   EnableDNS:
     Description: "DNS Service - Whether to Create Route 53 Resolver, for vpc flows logs"
     Type: String
@@ -46,7 +46,7 @@ Resources:
               AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
             Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: cyngular-readonly-policy
+        - PolicyName: !Sub "cyngular-readonly-policy-${ClientName}"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -183,7 +183,7 @@ Resources:
               Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: cyngular-lambdas-policy
+        - PolicyName: !Sub "cyngular-lambdas-policy-${ClientName}"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -770,12 +770,12 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRuleLambdaVFL.Arn
 
-  UpdateCyngularBucketPolicyTrigger:
-    Type: Custom::UpdateCyngularBucketPolicy
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
+  # UpdateCyngularBucketPolicyTrigger:
+  #   Type: Custom::UpdateCyngularBucketPolicy
+  #   DeletionPolicy: Retain
+  #   UpdateReplacePolicy: Retain
 
-    Version: "1.0"
-    Properties:
-      ServiceToken: !Ref BucketPolicyLambdaArn
-      ServiceTimeout: 1200
+  #   Version: "1.0"
+  #   Properties:
+  #     ServiceToken: !Ref BucketPolicyLambdaArn
+  #     ServiceTimeout: 1200

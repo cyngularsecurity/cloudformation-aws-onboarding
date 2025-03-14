@@ -137,10 +137,10 @@ def create_members_global_stackset(deployment_targets, regions, main_region, url
                     'ParameterKey': 'S3BucketArn',
                     'ParameterValue': os.environ['S3BucketArn']
                 },
-                {
-                    'ParameterKey': 'BucketPolicyLambdaArn',
-                    'ParameterValue': os.environ['BucketPolicyLambdaArn']
-                },
+                # {
+                #     'ParameterKey': 'BucketPolicyLambdaArn',
+                #     'ParameterValue': os.environ['BucketPolicyLambdaArn']
+                # },
                 {
                     'ParameterKey': 'ClientRegions',
                     'ParameterValue': ','.join(regions)
@@ -268,18 +268,18 @@ def cyngular_function(event, context):
                 deployment_targets = {'OrganizationalUnitIds': [root_id]} if is_org else {'Accounts': [management_account_id]}
                 regions = list(set(os.environ['ClientRegions'].split(',')))
                 logger.info(f"deploy targets -> {deployment_targets}")
-                logger.info(f"regions -> {regions}")
+                logger.info(f"all regions -> {regions}")
                 logger.info(f"main region -> {main_region}")
 
                 stack2_url = os.environ['Stack2URL']
                 stackset1_url = os.environ['StackSet1URL']
                 stackset2_url = os.environ['StackSet2URL']
-                # lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
+                lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
                 logger.info("Updating Bucket Policy")
                 
-                # invoke_lambda(lambda_E_name)
-                # time.sleep(60)
+                invoke_lambda(lambda_E_name)
+                time.sleep(60)
 
                 logger.info("STARING CYNGULAR STACK2")
                 create_mgmt_regional_stackset(management_account_id, regions, stack2_url)
