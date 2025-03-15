@@ -2,6 +2,7 @@ import boto3
 import time
 import os
 import logging
+import json
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html#cfn-lambda-function-code-cfnresponsemodule-source-python
 import cfnresponse
@@ -98,7 +99,7 @@ def create_mgmt_regional_stackset(management_account_id, regions, url):
             },
             Regions = regions,
             OperationPreferences = {
-                'RegionConcurrencyType': 'PARALLEL',
+                'RegionConcurrencyType': 'SEQUENTIAL',
                 'FailureTolerancePercentage': 90,
                 'MaxConcurrentPercentage': 100,
                 'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'

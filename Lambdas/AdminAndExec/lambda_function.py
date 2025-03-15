@@ -1,8 +1,10 @@
-import boto3
 import time
 import os
 import logging
+
+import boto3
 import botocore
+from botocore.exceptions import WaiterError
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html#cfn-lambda-function-code-cfnresponsemodule-source-python
 import cfnresponse
@@ -62,8 +64,12 @@ def check_role_existence(role_name):
 def wait_for_stack(stack_name):
     try:
         cfn_client = boto3.client('cloudformation')
-        waiter = cfn_client.get_waiter('stack_create_complete')
-        waiter.wait(StackName=stack_name)
+        try:
+            waiter = cfn_client.get_waiter('stack_create_complete')
+            waiter.wait(StackName=stack_name)
+        except WaiterError as e:
+            print(f"Waiter error: {e}")
+
     except Exception as e:
         raise Exception(f"Unexpected error occurred while waiting for stack '{stack_name}': {e}")
 

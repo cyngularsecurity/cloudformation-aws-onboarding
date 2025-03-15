@@ -25,11 +25,7 @@ def update_bucket(bucket_name, management_account_id, is_org):
             Bucket=bucket_name
         )
 
-        if is_org:
-            account_ids_list = get_account_ids_lst(management_account_id)
-        else:
-            account_ids_list = [management_account_id]
-
+        account_ids_list = get_account_ids_lst(management_account_id) if is_org else [management_account_id]
         account_arns_list=[]
         for account_id in account_ids_list:
             account_arns_list.append(f"\"arn:aws:logs:*:{account_id}:*\"")
