@@ -30,7 +30,7 @@ def is_org_deployment():
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             logging.info("Known Error: Access denied when calling ListRoots. This account is part of an organization but not the management account.")
-            raise
+            raise ## TODO: validate return of a cfn response error
         logging.error(f"Unexpected ClientError occurred: {e}")
         raise
     except Exception as e:
@@ -99,7 +99,7 @@ def create_mgmt_regional_stackset(management_account_id, regions, url):
             },
             Regions = regions,
             OperationPreferences = {
-                'RegionConcurrencyType': 'SEQUENTIAL',
+                'RegionConcurrencyType': 'SEQUENTIAL', # to allow r53 realtime update to the bucket policy per region
                 'FailureTolerancePercentage': 90,
                 'MaxConcurrentPercentage': 100,
                 'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'
@@ -218,7 +218,7 @@ def create_members_regional_stackset(deployment_targets, regions, url):
             DeploymentTargets = deployment_targets,
             Regions = regions,
             OperationPreferences = {
-                'RegionConcurrencyType': 'PARALLEL',
+                'RegionConcurrencyType': 'SEQUENTIAL',
                 'FailureTolerancePercentage': 90,
                 'MaxConcurrentPercentage': 100,
                 'ConcurrencyMode': 'SOFT_FAILURE_TOLERANCE'

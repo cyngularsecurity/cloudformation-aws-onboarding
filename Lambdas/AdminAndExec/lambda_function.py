@@ -174,14 +174,9 @@ def create_role_stack(stack_name, template_url, role_name, parameters=None):
                 EnableTerminationProtection=True,
                 DisableRollback=True,
                 Parameters=stackset_params
-                # Parameters = [
-                #     {
-                #         'ParameterKey': 'AdministratorAccountId',
-                #         'ParameterValue': management_account_id
-                #     }
-                # ]
             )
             wait_for_stack(stack_name)
+            logging.info(f"Successfully created role {role_name}")
     except Exception as e:
         logging.error(f"Error creating role stack {stack_name}: {e}")
         raise
