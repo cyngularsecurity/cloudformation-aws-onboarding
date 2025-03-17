@@ -65,7 +65,7 @@ Parameters:
     MaxLength: 15
 
   OrganizationId:
-    Description: "Specify the Company Organization id | leave empty if not"
+    Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
     Type: String
     Default: ""
 

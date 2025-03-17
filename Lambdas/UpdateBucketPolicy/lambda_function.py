@@ -20,13 +20,13 @@ def get_account_ids_lst(management_account_id):
 
 def update_bucket(bucket_name, management_account_id, is_org):
     try:
-        s3_client=boto3.client('s3')
-        response=s3_client.get_bucket_policy(
+        s3_client = boto3.client('s3')
+        response = s3_client.get_bucket_policy(
             Bucket=bucket_name
         )
 
         account_ids_list = get_account_ids_lst(management_account_id) if is_org else [management_account_id]
-        account_arns_list=[]
+        account_arns_list = []
         for account_id in account_ids_list:
             account_arns_list.append(f"\"arn:aws:logs:*:{account_id}:*\"")
         new_statement = '''[
@@ -68,10 +68,10 @@ def update_bucket(bucket_name, management_account_id, is_org):
         statement_policy=reponse_policy['Statement']
         statement_policy.extend(new_statement_json)
         new_policy = {}
-        new_policy['Statement']=statement_policy
-        new_policy['Version']='2012-10-17'
+        new_policy['Statement'] = statement_policy
+        new_policy['Version'] = '2012-10-17'
 
-        response=s3_client.put_bucket_policy(
+        response = s3_client.put_bucket_policy(
             Bucket=bucket_name,
             Policy=json.dumps(new_policy)
         )

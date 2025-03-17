@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Configure the CyngularCloudFormationStackSetAdministrationRole to enable use of AWS CloudFormation StackSets.'
+Description: >-
+  Configure the CyngularCloudFormationStackSetAdministrationRole to enable use of AWS CloudFormation StackSets.
 
 Resources:
   AdministrationRole:
@@ -25,3 +26,8 @@ Resources:
                   - 'sts:AssumeRole'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:iam::*:role/CyngularCloudFormationStackSetExecutionRole'
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: CFNRegion
+          Value: !Ref 'AWS::Region'
