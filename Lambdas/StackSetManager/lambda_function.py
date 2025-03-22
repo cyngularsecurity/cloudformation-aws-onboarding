@@ -173,7 +173,7 @@ def create_members_global_stackset(deployment_targets, regions, main_region, url
         result = cfn_client.create_stack_instances(
             StackSetName = MEMBERS_GLOBAL_STACKSET_NAME,
             DeploymentTargets = deployment_targets,
-            Regions = main_region,
+            Regions = [main_region],
             OperationPreferences = {
                 'RegionConcurrencyType': 'PARALLEL',
                 'FailureTolerancePercentage': 90,
@@ -197,6 +197,9 @@ def create_members_regional_stackset(deployment_targets, regions, url):
             AutoDeployment = {
                 'Enabled': True,
                 'RetainStacksOnAccountRemoval': False
+            },
+            ManagedExecution = {
+                'Active': True
             },
             Parameters = [
                 {

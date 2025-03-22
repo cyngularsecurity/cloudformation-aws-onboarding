@@ -324,6 +324,10 @@ Resources:
                   - 'kms:Describe*'
                   - 'kms:Get*'
                   - 'kms:List*'
+                  - 'kms:Encrypt'
+                  - 'kms:ReEncrypt*'
+                  - 'kms:Decrypt'
+                  - 'kms:CreateGrant'
 
                   - "events:ListRules"
                   - "events:ListTargetsByRule"
@@ -361,27 +365,20 @@ Resources:
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
-              - Sid: 'KmsPartial'
-                Effect: Allow
-                Resource: '*'
-                Action:
-                  - "kms:DescribeKey"
-                  - "kms:Encrypt"
-                  - "kms:ReEncrypt*"
-                  - "kms:Decrypt"
-                  - "kms:CreateGrant"
 
               - Sid: 'CyngularKmsKey'
                 Effect: Allow
                 Resource:
                   # - '*'
-                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/${ClientName}-kms-key"
+                  # - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/${ClientName}-kms-key"
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:*"
 
                 Action:
                   - "kms:DescribeKey"
+                  - "kms:Decrypt"
+
                   - "kms:Encrypt"
                   - "kms:ReEncrypt*"
-                  - "kms:Decrypt"
                   - "kms:CreateGrant"
 
               - Sid: 'ListRegionsOnAccounts'
@@ -588,6 +585,7 @@ Resources:
                   - "iam:CreateRole"
                   - "iam:AttachRolePolicy"
                   - "iam:PutRolePolicy"
+                  - "iam:TagRole"
 
                   - "logs:*"
               - Sid: 'GetStackSetTemplates'

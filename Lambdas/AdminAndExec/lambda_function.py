@@ -1,6 +1,7 @@
 import time
 import os
 import logging
+import traceback
 
 import boto3
 import botocore
@@ -60,6 +61,8 @@ def check_role_existence(role_name):
         return False
     except Exception as e:
         raise Exception(f"Unexpected error occurred while checking IAM role '{role_name}': {e}")
+    # except:
+    #     raise Exception(f"Error: {traceback.format_exc()}")
 
 def wait_for_stack(stack_name):
     try:
