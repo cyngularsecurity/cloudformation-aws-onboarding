@@ -265,7 +265,8 @@ def cyngular_function(event, context):
     logger.setLevel(logging.INFO)
     logger.info('STARTING CYNGULAR\'S FUNCTION...')
     try:
-        if event['RequestType'] == 'Create':
+        # if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+        if event['RequestType'] != 'Delete':
             try:                            
                 management_account_id = boto3.client('sts').get_caller_identity()['Account']
                 main_region = context.invoked_function_arn.split(':')[3]

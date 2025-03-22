@@ -102,6 +102,15 @@ Parameters:
     AllowedValues: ["true", "false"]
     Default: "true"
 
+  LambdaStackSetManagerOverride:
+    Description: "Override the StackSetManager Lambda"
+    Type: Number
+    Default: 1
+  LambdaAdminAndExecOverride:
+    Description: "Override the Admin and Execution Lambda"
+    Type: Number
+    Default: 1
+
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
   CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
@@ -877,6 +886,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaAdminAndExec.Arn
       ServiceTimeout: 1200
+      OVERRIDE_LAMBDA_TRIGGER: !Ref LambdaAdminAndExecOverride
 
   LambdaAdminAndExec:
     Type: AWS::Lambda::Function
@@ -925,6 +935,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaStackSetManager.Arn
       ServiceTimeout: 1200
+      OVERRIDE_LAMBDA_TRIGGER: !Ref LambdaStackSetManagerOverride
 
   LambdaStackSetManager:
     Type: AWS::Lambda::Function
