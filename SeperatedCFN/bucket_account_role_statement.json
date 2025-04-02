@@ -1,0 +1,11 @@
+{
+	"Action": [
+		"s3:*"
+	],
+	"Resource": [
+        "arn:aws:s3:::{Company Bucket Name}",
+        "arn:aws:s3:::{Company Bucket Name}/*"
+	],
+	"Effect": "Allow",
+	"Sid": "CyngularBucketAdmin"
+}

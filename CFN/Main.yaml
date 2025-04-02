@@ -103,11 +103,12 @@ Parameters:
     Default: "true"
 
   LambdaStackSetManagerOverride:
-    Description: "Override the StackSetManager Lambda"
+    Description: "change to override the 'StackSet Manager' Lambda Trigger"
     Type: Number
     Default: 1
+
   LambdaAdminAndExecOverride:
-    Description: "Override the Admin and Execution Lambda"
+    Description: "change to override the 'Admin and Execution' Lambda Trigger"
     Type: Number
     Default: 1
 

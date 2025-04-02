@@ -4,8 +4,8 @@ import os
 import logging
 
 def dnslogs(curr_region):
+    logging.info(f'STARTING DNSLOGS...')
     try:
-        logging.info(f'STARTING DNSLOGS...')
         r_53_client = boto3.client('route53resolver', region_name=curr_region)
         ec2_client = boto3.client('ec2', region_name=curr_region)
         

@@ -29,7 +29,7 @@ def osinternals(curr_region):
                 logging.critical(e)
     except Exception as e:
         logging.critical(e)
-        raise Exception(traceback.format_exc())
+        # raise Exception(traceback.format_exc())
 
 
 def cyngular_function(event, context):

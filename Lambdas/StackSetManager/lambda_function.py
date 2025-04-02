@@ -284,7 +284,6 @@ def cyngular_function(event, context):
                 lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
                 logger.info("Updating Bucket Policy")
-                
                 invoke_lambda(lambda_E_name, is_org)
                 time.sleep(60)
 

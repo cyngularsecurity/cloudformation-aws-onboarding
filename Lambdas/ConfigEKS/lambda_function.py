@@ -71,27 +71,23 @@ def ekslogs(curr_region, logger, role_arn):
                 'enabled': True
             }]
         }
-        eks_client = boto3.client('eks', region_name=curr_region)
-        logger.info('EKS client created successfully')
-        
+        eks_client = boto3.client('eks', region_name=curr_region)        
         clusters = eks_client.list_clusters()['clusters']
         logger.info(f'Found {len(clusters)} clusters in region {curr_region}')
 
         for cluster_name in clusters:
+            logger.info(f'CONFIGURING EKSLOGS ON CLUSTER: {cluster_name}')
             try:
-                logger.info(f'CONFIGURING EKSLOGS ON CLUSTER: {cluster_name}')
                 eks_client.update_cluster_config(
                     name=cluster_name,
                     logging=wanted_cluster_logging_config
                 )
                 logger.info(f'COMMAND SUCCEEDED.')
-                
             except Exception as e:
                 if 'No changes needed for the logging config provided' not in str(e):
                     logger.critical(f'COMMAND FAILED - {str(e)}')
                 else:
                     logger.info(f'No changes needed for cluster {cluster_name}')
-    
             create_access_entry(eks_client, logger, cluster_name, role_arn)
 
     except Exception as e:

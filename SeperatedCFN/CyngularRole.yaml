@@ -1,0 +1,179 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Cyngular OnBoarding stack template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+      - Label:
+          default: "Cyngular Info"
+        Parameters:
+          - CyngularAccountId
+
+    ParameterLabels:
+      ClientName:
+        default: "Company Name"
+      CyngularAccountId:
+        default: "Cyngular Account Id"
+
+Parameters:
+  ClientName:
+    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    MinLength: 3
+    MaxLength: 15
+  
+  CyngularAccountId:
+    Description: "The Cyngular Account ID to assume the read only role [851565895544]"
+    Type: String
+    Default: "851565895544"
+
+Resources:
+  ClientCyngularRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-readonly-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: cyngular-readonly-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: 'ReadOnly'
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - iam:List*
+                  - iam:Get*
+                  - iam:GenerateServiceLastAccessedDetails
+
+                  - organizations:Describe*
+                  - organizations:List*
+
+                  - ce:List*
+                  - ce:Get*
+                  - ce:Describe*
+
+                  - s3:List*
+                  - s3:Describe*
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
+                  - s3:GetBucketPolicyStatus
+                  - s3:GetEncryptionConfiguration
+                  - s3:GetBucketOwnershipControls
+                  - s3:GetBucketTagging
+                  - s3:GetIntelligentTieringConfiguration
+                  - s3:GetAccountPublicAccessBlock
+                  - s3:GetBucketPublicAccessBlock
+
+                  - logs:List*
+                  - logs:Describe*
+                  - logs:Get*
+                  - logs:FilterLogEvents
+                  - logs:StartQuery
+                  - cloudwatch:GetMetricStatistics
+
+                  - ec2:List*
+                  - ec2:CreateTags
+                  - ec2:Describe*
+                  - ec2:GetImageBlockPublicAccessState
+                  - ecr:Describe*
+                  - ecr:List*
+                  - eks:Describe*
+                  - eks:List*
+                  - ecs:List*
+                  - ecs:Describe*
+                  - lambda:List*
+                  - lambda:Get*
+                  - rds:List*
+                  - rds:Describe*
+
+                  - cloudformation:Describe*
+                  - cloudformation:List*
+                  - cloudformation:Get*
+                  
+                  - tag:GetResources
+
+                  - route53:Get*
+                  - route53:List*
+                  - route53:TestDNSAnswer
+
+                  - cloudtrail:GetTrail
+                  - cloudtrail:DescribeTrails
+                  - cloudtrail:GetTrailStatus
+                  - cloudtrail:LookupEvents
+                  - cloudtrail:ListTags
+                  - cloudtrail:ListTrails
+                  - cloudtrail:GetEventSelectors
+                  - cloudtrail:GetInsightSelectors
+
+                  - kms:Describe*
+                  - kms:Get*
+                  - kms:List*
+
+                  - events:ListRules
+                  - events:ListTargetsByRule
+                  - events:ListEventBuses
+                  - events:DescribeEventBus
+                  - events:DescribeRule
+                  - events:TestEventPattern
+                  - events:PutRule
+                  - events:PutTargets
+
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:GetMetricData
+
+
+              - Sid: 'Ec2CyngularSnapshot'
+                Effect: Allow
+                Action:
+                  - ec2:DeleteSnapshot
+                  - ec2:ModifySnapshotAttribute
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*
+              - Sid: 'Ec2CreateSnapshot'
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - ec2:CopySnapshot
+                  - ec2:CreateSnapshot
+                  - ec2:CreateSnapshots
+              - Sid: 'KmsPartial'
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:Decrypt
+                  - kms:CreateGrant
+              - Sid: 'CyngularKmsKey'
+                Effect: Allow
+                Resource: '*'
+                Action:
+                  - kms:*
+                Condition:
+                  StringLike:
+                    aws:ResourceTag/Name: cyngular*
+              - Sid: 'ListRegionsOnAccounts'
+                Effect: Allow
+                Action:
+                  - account:ListRegions
+                Resource:
+                  - arn:aws:account::*:account/o-*/*
+                  - arn:aws:account::*:account
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
