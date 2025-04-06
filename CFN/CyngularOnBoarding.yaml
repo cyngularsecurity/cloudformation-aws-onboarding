@@ -1579,12 +1579,13 @@ Resources:
                 except Exception as e:
                     logging.info(f"Error creating execution-role on childs: {e}")
 
-            def create_management_execution_role(management_account_id):
+            def create_management_execution_role(management_account_id, url):
                 cfn_client = boto3.client('cloudformation')
                 if not check_role_existence("AWSCloudFormationStackSetExecutionRole"):
                     cfn_client.create_stack(
                         StackName='cyngular-managment-execution-role',
-                        TemplateBody=EXECUTION_ROLE_TEMPLATE,
+                        TemplateURL=url,
+                        # TemplateBody=EXECUTION_ROLE_TEMPLATE,
                         Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
                         Parameters = [
                             {
@@ -1623,7 +1624,7 @@ Resources:
                             regions = list(set(os.getenv('CLIENT_REGIONS', '').split(',')))
 
                             logger.info("CREATING ROLES ON MANAGEMENT ACCOUNT")
-                            create_management_execution_role(mgmt_acc_id)
+                            create_management_execution_role(mgmt_acc_id, exec_stack_url)
                             create_management_admin_role(admin_stack_url)
 
                             if is_org:

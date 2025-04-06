@@ -384,12 +384,12 @@ Resources:
                   - !Sub "arn:aws:kms:*:${CyngularAccountId}:*"
 
                 Action:
-                  - "kms:DescribeKey"
-                  - "kms:Decrypt"
-
-                  - "kms:Encrypt"
-                  - "kms:ReEncrypt*"
-                  - "kms:CreateGrant"
+                  # - "kms:DescribeKey"
+                  # - "kms:Decrypt"
+                  # - "kms:Encrypt"
+                  # - "kms:ReEncrypt*"
+                  # - "kms:CreateGrant"
+                  - "kms:*"
 
               - Sid: 'ListRegionsOnAccounts'
                 Effect: "Allow"
