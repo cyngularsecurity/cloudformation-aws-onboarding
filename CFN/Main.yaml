@@ -578,7 +578,7 @@ Resources:
                   - "cloudformation:CreateStack"
                   - "cloudformation:CreateStackSet"
                   - "cloudformation:CreateStackInstances"
-                  - "cloudformation:CreateChangSet"
+                  # - "cloudformation:CreateChangSet"
                   - "cloudformation:DeleteStackInstances"
                   - "cloudformation:DeleteStackSet"
                   - "cloudformation:ListStackSetOperationResults"
