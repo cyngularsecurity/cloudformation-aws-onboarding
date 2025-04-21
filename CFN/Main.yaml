@@ -182,9 +182,7 @@ Resources:
                 !Sub "arn:aws:iam::${CyngularAccountId}:root"                
               ]
             Action:
-              - 's3:*'
-              - "access-analyzer:ValidatePolicy"
-              - "access-analyzer:ListPolicyGenerations"
+              - "s3:*"
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
