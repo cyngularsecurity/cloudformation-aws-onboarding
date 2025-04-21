@@ -8,7 +8,6 @@ Metadata:
       - Label:
           default: "Client Info"
         Parameters:
-        Parameters:
           - ClientName
       - Label:
           default: "Cyngular Info"
@@ -35,6 +34,14 @@ Parameters:
     Type: String
     Default: "851565895544"
 
+  CloudTrailBucket:
+    Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
+    Type: String
+    Default: ""
+
+Conditions:
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
+
 Resources:
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
@@ -42,10 +49,12 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -54,10 +63,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+
         - Key: cyngular-os
           Value: true
         - Key: cyngular-visibility
           Value: true
+        - !If
+            - CreateCloudTrail
+            - Key: cyngular-cloudtrail
+              Value: true
+            - !Ref AWS::NoValue
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -78,6 +93,61 @@ Resources:
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+
+          - !If
+            - CreateCloudTrail
+            - Sid: 'CloudTrailAclCheck'
+              Effect: Allow
+              Principal:
+                Service: "cloudtrail.amazonaws.com"
+              Action: 's3:GetBucketAcl'
+              Resource: !GetAtt CyngularS3Bucket.Arn
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+            - !Ref "AWS::NoValue"
+
+          - !If 
+            - CreateCloudTrail
+            - Sid: 'CloudTrailWrite'
+              Effect: Allow
+              Principal: 
+                Service: "cloudtrail.amazonaws.com"
+              Action:
+                - 's3:PutObject'
+              Resource: 
+                - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
+              Condition:
+                StringEquals:
+                  s3:x-amz-acl: "bucket-owner-full-control"
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+            - !Ref "AWS::NoValue"
+
+  ClientCloudTrail:
+    DependsOn: S3BucketPolicy
+    Condition: CreateCloudTrail
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: cyngular-cloudtrail
+      S3BucketName: !Ref CyngularS3Bucket
+      InsightSelectors:
+        - InsightType: ApiCallRateInsight
+        - InsightType: ApiErrorRateInsight
+      EventSelectors:
+        - IncludeManagementEvents: true
+          ExcludeManagementEventSources:
+            - kms.amazonaws.com
+          DataResources:
+            - Type: AWS::Lambda::Function
+              Values:
+                - arn:aws:lambda
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IsOrganizationTrail: false
+      IncludeGlobalServiceEvents: true
+      Tags:
+        - Key: Name
+          Value: cyngular-cloudtrail
 
   ClientCyngularRole:
     Type: AWS::IAM::Role
@@ -151,34 +221,34 @@ Resources:
                   
                   - tag:GetResources
 
-                  - route53:Get*
-                  - route53:List*
-                  - route53:TestDNSAnswer
+                  - 'route53:Get*'
+                  - 'route53:List*'
+                  - 'route53:TestDNSAnswer'
 
-                  - cloudtrail:GetTrail
-                  - cloudtrail:DescribeTrails
-                  - cloudtrail:GetTrailStatus
-                  - cloudtrail:LookupEvents
-                  - cloudtrail:ListTags
-                  - cloudtrail:ListTrails
-                  - cloudtrail:GetEventSelectors
-                  - cloudtrail:GetInsightSelectors
+                  - 'cloudtrail:GetTrail'
+                  - 'cloudtrail:DescribeTrails'
+                  - 'cloudtrail:GetTrailStatus'
+                  - 'cloudtrail:LookupEvents'
+                  - 'cloudtrail:ListTags'
+                  - 'cloudtrail:ListTrails'
+                  - 'cloudtrail:GetEventSelectors'
+                  - 'cloudtrail:GetInsightSelectors'
 
-                  - kms:Describe*
-                  - kms:Get*
-                  - kms:List*
+                  - 'kms:Describe*'
+                  - 'kms:Get*'
+                  - 'kms:List*'
 
-                  - events:ListRules
-                  - events:ListTargetsByRule
-                  - events:ListEventBuses
-                  - events:DescribeEventBus
-                  - events:DescribeRule
-                  - events:TestEventPattern
-                  - events:PutRule
-                  - events:PutTargets
+                  - "events:ListRules"
+                  - "events:ListTargetsByRule"
+                  - "events:ListEventBuses"
+                  - "events:DescribeEventBus"
+                  - "events:DescribeRule"
+                  - "events:TestEventPattern"
+                  - "events:PutRule"
+                  - "events:PutTargets"
 
-                  - cloudwatch:ListMetrics
-                  - cloudwatch:GetMetricData
+                  - "cloudwatch:ListMetrics"
+                  - "cloudwatch:GetMetricData"
 
 
               - Sid: 'Ec2CyngularSnapshot'
@@ -201,9 +271,9 @@ Resources:
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
-                  - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+                  - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
-                  - s3:*
+                  - "s3:*"
               - Sid: 'KmsPartial'
                 Effect: Allow
                 Resource: '*'
@@ -219,9 +289,9 @@ Resources:
                   StringLike:
                     aws:ResourceTag/Name: cyngular*
               - Sid: 'ListRegionsOnAccounts'
-                Effect: Allow
+                Effect: "Allow"
                 Action:
-                  - account:ListRegions
+                  - "account:ListRegions"
                 Resource:
                   - arn:aws:account::*:account/o-*/*
                   - arn:aws:account::*:account

@@ -183,6 +183,8 @@ Resources:
               ]
             Action:
               - 's3:*'
+              - "access-analyzer:ValidatePolicy"
+              - "access-analyzer:ListPolicyGenerations"
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
@@ -266,78 +268,78 @@ Resources:
                 Effect: Allow
                 Resource: '*'
                 Action:
-                  - iam:List*
-                  - iam:Get*
-                  - iam:GenerateServiceLastAccessedDetails
+                  - "iam:List*"
+                  - "iam:Get*"
+                  - "iam:Generate*"
+                  - "organizations:Describe*"
+                  - "organizations:List*"
 
-                  - organizations:Describe*
-                  - organizations:List*
+                  - "tag:GetResources"
 
-                  - ce:List*
-                  - ce:Get*
-                  - ce:Describe*
+                  - "ce:List*"
+                  - "ce:Get*"
+                  - "ce:Describe*"
 
-                  - s3:List*
-                  - s3:Describe*
-                  - s3:GetBucketAcl
-                  - s3:GetBucketLocation
-                  - s3:GetBucketPolicy
-                  - s3:GetBucketPolicyStatus
-                  - s3:GetEncryptionConfiguration
-                  - s3:GetBucketOwnershipControls
-                  - s3:GetBucketTagging
-                  - s3:GetIntelligentTieringConfiguration
-                  - s3:GetAccountPublicAccessBlock
-                  - s3:GetBucketPublicAccessBlock
+                  - "s3:List*"
+                  - "s3:Describe*"
+                  - "s3:GetBucketAcl"
+                  - "s3:GetBucketLocation"
+                  - "s3:GetBucketPolicy"
+                  - "s3:GetBucketPolicyStatus"
+                  - "s3:GetEncryptionConfiguration"
+                  - "s3:GetBucketOwnershipControls"
+                  - "s3:GetBucketTagging"
+                  - "s3:GetIntelligentTieringConfiguration"
+                  - "s3:GetAccountPublicAccessBlock"
+                  - "s3:GetBucketPublicAccessBlock"
 
-                  - logs:List*
-                  - logs:Describe*
-                  - logs:Get*
-                  - logs:FilterLogEvents
-                  - logs:StartQuery
-                  - cloudwatch:GetMetricStatistics
+                  - "logs:List*"
+                  - "logs:Describe*"
+                  - "logs:Get*"
+                  - "logs:FilterLogEvents"
+                  - "logs:StartQuery"
+                  - "cloudwatch:GetMetricStatistics"
 
-                  - ec2:List*
-                  - ec2:CreateTags
-                  - ec2:Describe*
-                  - ec2:GetImageBlockPublicAccessState
-                  - ecr:Describe*
-                  - ecr:List*
-                  - eks:Describe*
-                  - eks:List*
-                  - ecs:List*
-                  - ecs:Describe*
-                  - lambda:List*
-                  - lambda:Get*
-                  - rds:List*
-                  - rds:Describe*
+                  - "ec2:List*"
+                  - "ec2:CreateTags"
+                  - "ec2:Describe*"
+                  - "ec2:GetImageBlockPublicAccessState"
 
-                  - cloudformation:Describe*
-                  - cloudformation:List*
-                  - cloudformation:Get*
+                  - "ecr:Describe*"
+                  - "ecr:List*"
+                  - "eks:Describe*"
+                  - "eks:List*"
+                  - "ecs:List*"
+                  - "ecs:Describe*"
+                  - "lambda:List*"
+                  - "lambda:Get*"
+                  - "rds:List*"
+                  - "rds:Describe*"
+
+                  - "cloudformation:Describe*"
+                  - "cloudformation:List*"
+                  - "cloudformation:Get*"
                   
-                  - tag:GetResources
+                  - "route53:Get*"
+                  - "route53:List*"
+                  - "route53:TestDNSAnswer"
 
-                  - 'route53:Get*'
-                  - 'route53:List*'
-                  - 'route53:TestDNSAnswer'
+                  - "cloudtrail:GetTrail"
+                  - "cloudtrail:DescribeTrails"
+                  - "cloudtrail:GetTrailStatus"
+                  - "cloudtrail:LookupEvents"
+                  - "cloudtrail:ListTags"
+                  - "cloudtrail:ListTrails"
+                  - "cloudtrail:GetEventSelectors"
+                  - "cloudtrail:GetInsightSelectors"
 
-                  - 'cloudtrail:GetTrail'
-                  - 'cloudtrail:DescribeTrails'
-                  - 'cloudtrail:GetTrailStatus'
-                  - 'cloudtrail:LookupEvents'
-                  - 'cloudtrail:ListTags'
-                  - 'cloudtrail:ListTrails'
-                  - 'cloudtrail:GetEventSelectors'
-                  - 'cloudtrail:GetInsightSelectors'
-
-                  - 'kms:Describe*'
-                  - 'kms:Get*'
-                  - 'kms:List*'
-                  - 'kms:Encrypt'
-                  - 'kms:ReEncrypt*'
-                  - 'kms:Decrypt'
-                  - 'kms:CreateGrant'
+                  - "kms:Describe*"
+                  - "kms:Get*"
+                  - "kms:List*"
+                  - "kms:Encrypt"
+                  - "kms:ReEncrypt*"
+                  - "kms:Decrypt"
+                  - "kms:CreateGrant"
 
                   - "events:ListRules"
                   - "events:ListTargetsByRule"
@@ -350,33 +352,32 @@ Resources:
 
                   - "cloudwatch:ListMetrics"
                   - "cloudwatch:GetMetricData"
-
-
-              - Sid: 'Ec2CyngularSnapshot'
+              - Sid: "Ec2CyngularSnapshot"
                 Effect: Allow
                 Action:
-                  - ec2:DeleteSnapshot
-                  - ec2:ModifySnapshotAttribute
-                Resource: '*'
+                  - "ec2:DeleteSnapshot"
+                  - "ec2:ModifySnapshotAttribute"
+                Resource: "*"
                 Condition:
                   StringLike:
                     aws:ResourceTag/Name: cyngular*
-              - Sid: 'Ec2CreateSnapshot'
+              - Sid: "Ec2CreateSnapshot"
                 Effect: Allow
-                Resource: '*'
+                Resource: "*"
                 Action:
-                  - ec2:CopySnapshot
-                  - ec2:CreateSnapshot
-                  - ec2:CreateSnapshots
-              - Sid: 'CyngularBucketAdmin'
+                  - "ec2:CopySnapshot"
+                  - "ec2:CreateSnapshot"
+                  - "ec2:CreateSnapshots"
+              - Sid: "CyngularBucketAdmin"
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
-
-              - Sid: 'CyngularKmsKey'
+                  - "access-analyzer:ValidatePolicy"
+                  - "access-analyzer:ListPolicyGenerations"
+              - Sid: "CyngularKmsKey"
                 Effect: Allow
                 Resource:
                   # - '*'
@@ -390,14 +391,13 @@ Resources:
                   # - "kms:ReEncrypt*"
                   # - "kms:CreateGrant"
                   - "kms:*"
-
-              - Sid: 'ListRegionsOnAccounts'
+              - Sid: "ListRegionsOnAccounts"
                 Effect: "Allow"
                 Action:
                   - "account:ListRegions"
                 Resource:
-                  - arn:aws:account::*:account/o-*/*
-                  - arn:aws:account::*:account
+                  - "arn:aws:account::*:account/o-*/*"
+                  - "arn:aws:account::*:account"
       Tags:
         - Key: Vendor
           Value: "Cyngular Security"
@@ -419,33 +419,33 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: 'CyngularGeneral'
+              - Sid: "CyngularGeneral"
                 Effect: Allow
-                Resource: '*'
+                Resource: "*"
                 Action:
-                  - ssm:*
-                  - logs:*
-                  - route53resolver:*
-  
-                  - organizations:ListAccounts
-                  # - organizations:ListOrganizationalUnitsForParent
+                  - "ssm:*"
+                  - "logs:*"
+                  - "route53resolver:*"
+                  - "organizations:ListAccounts"
 
-                  - ec2:Describe*
-                  - ec2:CreateFlowLogs
-                  - ec2:DeleteFlowLogs
-                  - ec2:CreateTags
-                  - ec2:DeleteTags
-                  - eks:List*
-                  - eks:UpdateClusterConfig
+                  - "ec2:Describe*"
+                  - "ec2:CreateFlowLogs"
+                  - "ec2:DeleteFlowLogs"
+                  - "ec2:CreateTags"
+                  - "ec2:DeleteTags"
+                  - "eks:List*"
+                  - "eks:UpdateClusterConfig"
 
-                  - events:PutRule
-                  - lambda:UpdateFunctionConfiguration
+                  - "events:PutRule"
+                  - "lambda:UpdateFunctionConfiguration"
 
-                  # - sts:GetCallerIdentity
-                  # - lambda:InvokeFunction
-                  - events:DisableRule
+                  - "events:DisableRule"
 
-              - Sid: 'CyngularBucketAdmin'
+                  # - "organizations:ListOrganizationalUnitsForParent"
+                  # - "sts:GetCallerIdentity"
+                  # - "lambda:InvokeFunction"
+
+              - Sid: "CyngularBucketAdmin"
                 Effect: Allow
                 Resource:
                   - !GetAtt CyngularS3Bucket.Arn
@@ -453,7 +453,7 @@ Resources:
                 Action:
                   - "s3:*"
 
-              - Sid: 'EditEKS'
+              - Sid: "EditEKS"
                 Effect: Allow
                 Resource:
                   - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
@@ -491,56 +491,56 @@ Resources:
                   - lambda:GetFunction
                 Resource:
                   - !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
-              - Sid: 'StackSetManager'
+              - Sid: "StackSetManager"
                 Effect: Allow
                 Resource: "*"
                 Action:
-                  - cloudformation:GetTemplateSummary
-                  - cloudformation:ListStackSetOperationResults
-                  - cloudformation:DescribeStacks
-                  - cloudformation:DescribeStackSet
-                  - cloudformation:DescribeStackSetOperation
-                  - cloudformation:CreateStack
-                  - cloudformation:CreateStackSet
-                  - cloudformation:CreateStackInstances
-                  - cloudformation:DeleteStackSet
-                  - cloudformation:DeleteStackInstances
-                  - cloudformation:TagResource
-              - Sid: 'OrgManager'
+                  - "cloudformation:GetTemplateSummary"
+                  - "cloudformation:ListStackSetOperationResults"
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:DescribeStackSet"
+                  - "cloudformation:DescribeStackSetOperation"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:CreateStackSet"
+                  - "cloudformation:CreateStackInstances"
+                  - "cloudformation:DeleteStackSet"
+                  - "cloudformation:DeleteStackInstances"
+                  - "cloudformation:TagResource"
+              - Sid: "OrgManager"
                 Effect: Allow
                 Resource: "*"
                 Action:
-                  - organizations:ListAccounts
-                  - organizations:ListRoots
+                  - "organizations:ListAccounts"
+                  - "organizations:ListRoots"
               - Sid: 'LogsManager'
                 Effect: Allow
                 Action: logs:*
                 Resource: "arn:aws:logs:*:*:*"
-              - Sid: 'StacksetRoles'
+              - Sid: "StacksetRoles"
                 Effect: Allow
                 Resource: "*"
                 Action:
-                  - iam:GetRole
-                  - iam:getRolePolicy
-                  - iam:PutRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:AttachRolePolicy
-                  - iam:DeleteRolePolicy
+                  - "iam:GetRole"
+                  - "iam:getRolePolicy"
+                  - "iam:PutRolePolicy"
+                  - "iam:DetachRolePolicy"
+                  - "iam:AttachRolePolicy"
+                  - "iam:DeleteRolePolicy"
 
-              - Sid: 'PassRoleToStackSet'
+              - Sid: "PassRoleToStackSet"
                 Effect: Allow
                 Resource: !Sub 
                   - "arn:aws:iam::${AWS::AccountId}:role/${template_name}"
                   - template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
 
                 Action:
-                  - iam:PassRole
+                  - "iam:PassRole"  
                 # Condition:
                 #   StringEquals:
                 #     iam:RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/cyngular-stackset-role-${ClientName}"
 
-              - Sid: 'GetStackSetTemplates'
-                Effect: "Allow"
+              - Sid: "GetStackSetTemplates"
+                Effect: Allow
                 Resource:
                   - !Sub
                     - "arn:aws:s3:::${bucket_name}/stacks/*"
@@ -598,8 +598,8 @@ Resources:
                   - "iam:TagRole"
 
                   - "logs:*"
-              - Sid: 'GetStackSetTemplates'
-                Effect: "Allow"
+              - Sid: "GetStackSetTemplates"
+                Effect: Allow
                 Resource:
                   - !Sub
                     - "arn:aws:s3:::${bucket_name}/stacks/*"
