@@ -274,6 +274,9 @@ Resources:
 
                   - "tag:GetResources"
 
+                  - "access-analyzer:ValidatePolicy"
+                  - "access-analyzer:ListPolicyGenerations"
+
                   - "ce:List*"
                   - "ce:Get*"
                   - "ce:Describe*"
@@ -373,21 +376,13 @@ Resources:
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
-                  - "access-analyzer:ValidatePolicy"
-                  - "access-analyzer:ListPolicyGenerations"
               - Sid: "CyngularKmsKey"
                 Effect: Allow
                 Resource:
                   # - '*'
-                  # - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/${ClientName}-kms-key"
                   - !Sub "arn:aws:kms:*:${CyngularAccountId}:*"
 
                 Action:
-                  # - "kms:DescribeKey"
-                  # - "kms:Decrypt"
-                  # - "kms:Encrypt"
-                  # - "kms:ReEncrypt*"
-                  # - "kms:CreateGrant"
                   - "kms:*"
               - Sid: "ListRegionsOnAccounts"
                 Effect: "Allow"

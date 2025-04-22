@@ -71,6 +71,9 @@ Resources:
                   - organizations:EnableAWSServiceAccess
                   - organizations:RegisterDelegatedAdministrator
 
+                  - "access-analyzer:ValidatePolicy"
+                  - "access-analyzer:ListPolicyGenerations"
+
                   - ce:GetCostAndUsage
                   - ce:GetDimensionValues
 
