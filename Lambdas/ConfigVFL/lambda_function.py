@@ -1,5 +1,4 @@
 import boto3
-import traceback
 import os
 import logging
 
@@ -20,8 +19,8 @@ def vpcflowlogs(curr_region, bucket_name):
             ResourceIds=vpc_id_list,
             ResourceType='VPC',
             TrafficType='ALL',
-            LogDestinationType = 's3',
-            LogDestination = f"arn:aws:s3:::{bucket_name}",
+            LogDestinationType='s3',
+            LogDestination=f"arn:aws:s3:::{bucket_name}",
             TagSpecifications=[
                 {
                     'ResourceType': 'vpc-flow-log',

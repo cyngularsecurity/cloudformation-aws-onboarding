@@ -379,8 +379,8 @@ Resources:
               - Sid: "CyngularKmsKey"
                 Effect: Allow
                 Resource:
-                  # - '*'
-                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:*"
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/*${ClientName}*"
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:key/*${ClientName}*"
 
                 Action:
                   - "kms:*"
