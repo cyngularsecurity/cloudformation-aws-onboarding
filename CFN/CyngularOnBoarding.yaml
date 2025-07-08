@@ -538,6 +538,7 @@ Resources:
                   - "cloudformation:DescribeStackSet"
                   - "cloudformation:DescribeStackSetOperation"
                   - "cloudformation:DescribeStackEvents"
+                  # AFFECTS EXISTING RESOURCES: Can create new CloudFormation stacks that might deploy or modify resources
                   - "cloudformation:CreateStack"
                   - "cloudformation:CreateStackSet"
                   - "cloudformation:CreateStackInstances"
@@ -546,6 +547,7 @@ Resources:
                   - "cloudformation:DeleteStackSet"
                   - "cloudformation:ListStackSetOperationResults"
                   - "cloudformation:ListStackInstances"
+                  # AFFECTS EXISTING RESOURCES: Can update existing CloudFormation stack sets
                   - "cloudformation:UpdateStackSet"
                   - "cloudformation:UpdateStackInstances"
                   - "cloudformation:ExecuteChangeSet"
@@ -555,8 +557,11 @@ Resources:
                   
                   - "iam:GetRole"
                   - "iam:getRolePolicy"
+                  # AFFECTS EXISTING RESOURCES: Can create new IAM roles
                   - "iam:CreateRole"
+                  # AFFECTS EXISTING RESOURCES: Can attach policies to existing IAM roles
                   - "iam:AttachRolePolicy"
+                  # AFFECTS EXISTING RESOURCES: Can modify policies of existing IAM roles
                   - "iam:PutRolePolicy"
 
                   - "logs:*"
@@ -573,6 +578,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: "cyngular-lambda-config-os"
+      # This Lambda has permissions through LambdasRole to modify existing resources:
+      # - Create/delete EC2 Flow Logs on existing VPCs
+      # - Add/remove tags on existing EC2 resources
+      # - Update configurations of existing EKS clusters
+      # - Create EventBridge rules that might affect existing event processing
+      # - Update configurations of existing Lambda functions
       Description: "Created by Cyngular Security | Configure OS Service"
       Role: !GetAtt LambdasRole.Arn
       Environment:

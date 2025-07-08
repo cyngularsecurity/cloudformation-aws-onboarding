@@ -28,6 +28,7 @@ Parameters:
   # ClientMainRegion:
   #   Description: "The main region of the client"
   #   Type: String
+
   # ClientManagementAccountId:
   #   Description: "The management account id of the client"
   #   Type: String

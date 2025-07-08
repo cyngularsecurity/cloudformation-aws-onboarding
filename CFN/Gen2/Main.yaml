@@ -49,6 +49,7 @@ Mappings:
   VARS:
     "Cyngular":
       TemplateBucket: "cyngular-onboarding-templates"
+      TemplatePath: "stacks/Gen2"
       LambdasBucketPrefix: "cyngular-onboarding"
       # ExecRoleTemplateName: "AWSCloudFormationStackSetExecutionRole"
       # AdminRoleTemplateName: "AWSCloudFormationStackSetAdministrationRole"
@@ -379,8 +380,8 @@ Resources:
               - Sid: "CyngularKmsKey"
                 Effect: Allow
                 Resource:
-                  # - '*'
-                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:*"
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/*${ClientName}*"
+                  - !Sub "arn:aws:kms:*:${CyngularAccountId}:key/*${ClientName}*"
 
                 Action:
                   - "kms:*"
@@ -947,16 +948,19 @@ Resources:
           ClientRegions: !Join [",", !Ref ClientRegions]
 
           Stack2URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/ManagementRegional.yaml"
+            - "https://${bucket_name}.s3.amazonaws.com/${path}/ManagementRegional.yaml"
             - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              path: !FindInMap [VARS, Cyngular, TemplatePath]
 
           StackSet1URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/MembersGlobal.yaml"
+            - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersGlobal.yaml"
             - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              path: !FindInMap [VARS, Cyngular, TemplatePath]
 
           StackSet2URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/MembersRegional.yaml"
+            - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersRegional.yaml"
             - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              path: !FindInMap [VARS, Cyngular, TemplatePath]
 
           UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
           # BucketPolicyLambdaArn: !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
