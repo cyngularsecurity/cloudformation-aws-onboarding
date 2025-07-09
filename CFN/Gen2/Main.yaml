@@ -19,8 +19,8 @@ Metadata:
           default: "Services"
         Parameters:
           - CloudTrailBucket
-          - EnableDNS
           - EnableVPCFlowLogs
+          - EnableDNS
           - EnableEKS
       - Label:
           default: "Cyngular Info"
@@ -36,12 +36,12 @@ Metadata:
         default: "Organization Id"
       CloudTrailBucket:
         default: "CloudTrail Bucket Name"
+      EnableVPCFlowLogs:
+        default: "VPCFlowLogs Enabled"
       EnableDNS:
         default: "DNS Enabled"
       EnableEKS:
         default: "EKS Enabled"
-      EnableVPCFlowLogs:
-        default: "VPCFlowLogs Enabled"
       CyngularAccountId:
         default: "Cyngular Account Id"
 
@@ -104,22 +104,22 @@ Parameters:
     Default: "true"
 
   LambdaStackSetManagerOverride:
-    Description: "change to override the 'StackSet Manager' Lambda Trigger"
+    Description: "change to override (retrigger) the 'StackSet Manager' Lambda Trigger"
     Type: Number
     Default: 1
 
   LambdaAdminAndExecOverride:
-    Description: "change to override the 'Admin and Execution' Lambda Trigger"
+    Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
     Type: Number
     Default: 1
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
-  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
 
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
+  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
   ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
-  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
 
 Resources:
   CyngularS3Bucket:
@@ -947,20 +947,20 @@ Resources:
           ClientName: !Ref ClientName
           ClientRegions: !Join [",", !Ref ClientRegions]
 
-          Stack2URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/${path}/ManagementRegional.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              path: !FindInMap [VARS, Cyngular, TemplatePath]
+          # Stack2URL: !Sub
+          #   - "https://${bucket_name}.s3.amazonaws.com/${path}/ManagementRegional.yaml"
+          #   - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+          #     path: !FindInMap [VARS, Cyngular, TemplatePath]
 
           StackSet1URL: !Sub
             - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersGlobal.yaml"
             - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
               path: !FindInMap [VARS, Cyngular, TemplatePath]
 
-          StackSet2URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersRegional.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              path: !FindInMap [VARS, Cyngular, TemplatePath]
+          # StackSet2URL: !Sub
+          #   - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersRegional.yaml"
+          #   - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+          #     path: !FindInMap [VARS, Cyngular, TemplatePath]
 
           UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
           # BucketPolicyLambdaArn: !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
