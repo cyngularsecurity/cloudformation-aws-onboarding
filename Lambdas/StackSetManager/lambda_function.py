@@ -278,24 +278,24 @@ def cyngular_function(event, context):
                 logger.info(f"all regions -> {regions}")
                 logger.info(f"main region -> {main_region}")
 
-                stack2_url = os.environ['Stack2URL']
+                # stack2_url = os.environ['Stack2URL']
                 stackset1_url = os.environ['StackSet1URL']
-                stackset2_url = os.environ['StackSet2URL']
+                # stackset2_url = os.environ['StackSet2URL']
                 lambda_E_name = os.environ['UpdateBucketPolicyLambdaName']
 
                 logger.info("Updating Bucket Policy")
                 invoke_lambda(lambda_E_name, is_org)
                 time.sleep(60)
 
-                logger.info("STARING CYNGULAR STACK2")
-                create_mgmt_regional_stackset(management_account_id, regions, stack2_url)
+                # logger.info("STARING CYNGULAR STACK2")
+                # create_mgmt_regional_stackset(management_account_id, regions, stack2_url)
 
                 if is_org:
                     logger.info("STARING CYNGULAR STACKSET1")
                     create_members_global_stackset(deployment_targets, regions, main_region, stackset1_url)
 
-                    logger.info("STARING CYNGULAR STACKSET2")
-                    create_members_regional_stackset(deployment_targets, regions, stackset2_url)
+                    # logger.info("STARING CYNGULAR STACKSET2")
+                    # create_members_regional_stackset(deployment_targets, regions, stackset2_url)
                 logger.info("DONE WITH ALL CYNGULAR STACKS!")
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, {'msg' : 'Done'})
 
