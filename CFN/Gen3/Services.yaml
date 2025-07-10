@@ -22,7 +22,7 @@ Metadata:
           default: "Override Parameters"
         Parameters:
           - ServiceManagerOverride
-          - AdminAndExecOverride
+          # - AdminAndExecOverride
 
 Mappings:
   VARS:
@@ -65,10 +65,10 @@ Parameters:
     Type: Number
     Default: 1
 
-  AdminAndExecOverride:
-    Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
-    Type: Number
-    Default: 1
+  # AdminAndExecOverride:
+  #   Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
+  #   Type: Number
+  #   Default: 1
 
 Resources:
   ServiceManagerRole:
@@ -264,7 +264,7 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/Gen3/ServiceManager.zip"
+        S3Key: "lambdas/ServiceManager.zip"
       Tags:
         - Key: Name
           Value: !Sub "cyngular-service-manager-${ClientName}"
@@ -295,7 +295,7 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/Gen3/RegionProcessor.zip"
+        S3Key: "lambdas/RegionProcessor.zip"
       Tags:
         - Key: Name
           Value: !Sub "cyngular-region-processor-${ClientName}"
@@ -304,55 +304,55 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  AdminAndExecLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
-      Description: "Created by Cyngular Security | Creates admin and execution roles for StackSet"
-      Role: !GetAtt AdminAndExecRole.Arn
-      Runtime: "python3.12"
-      Handler: lambda_function.lambda_handler
-      Timeout: 900
-      Environment:
-        Variables:
-          ORGANIZATION_ID:
-            Fn::ImportValue:
-              !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
-          ADMIN_TEMPLATE_URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
-          EXEC_TEMPLATE_URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
+  # AdminAndExecLambda:
+  #   Type: AWS::Lambda::Function
+  #   Properties:
+  #     FunctionName: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
+  #     Description: "Created by Cyngular Security | Creates admin and execution roles for StackSet"
+  #     Role: !GetAtt AdminAndExecRole.Arn
+  #     Runtime: "python3.12"
+  #     Handler: lambda_function.lambda_handler
+  #     Timeout: 900
+  #     Environment:
+  #       Variables:
+  #         ORGANIZATION_ID:
+  #           Fn::ImportValue:
+  #             !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
+  #         ADMIN_TEMPLATE_URL: !Sub
+  #           - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+  #           - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+  #             template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
+  #         EXEC_TEMPLATE_URL: !Sub
+  #           - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+  #           - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+  #             template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
 
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/Gen3/AdminAndExec.zip"
-      Tags:
-        - Key: Name
-          Value: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
+  #     Code:
+  #       S3Bucket: !Sub
+  #         - "${bucket_name}-${AWS::Region}"
+  #         - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+  #       S3Key: "lambdas/AdminAndExec.zip"
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
+  #       - Key: Vendor
+  #         Value: "Cyngular Security"
+  #       - Key: ClientName
+  #         Value: !Ref ClientName
 
-  AdminAndExecTrigger:
-    Type: Custom::AdminAndExec
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Version: "1.0"
-    Properties:
-      ServiceToken: !GetAtt AdminAndExecLambda.Arn
-      ServiceTimeout: 1200
-      OVERRIDE_LAMBDA_TRIGGER: !Ref AdminAndExecOverride
+  # AdminAndExecTrigger:
+  #   Type: Custom::AdminAndExec
+  #   DeletionPolicy: Retain
+  #   UpdateReplacePolicy: Retain
+  #   Version: "1.0"
+  #   Properties:
+  #     ServiceToken: !GetAtt AdminAndExecLambda.Arn
+  #     ServiceTimeout: 1200
+  #     OVERRIDE_LAMBDA_TRIGGER: !Ref AdminAndExecOverride
 
   ServiceManagerTrigger:
     Type: Custom::ServiceManager
-    DependsOn: [AdminAndExecTrigger]
+    # DependsOn: [AdminAndExecTrigger]
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Version: "1.0"
@@ -394,8 +394,8 @@ Outputs:
     Export:
       Name: !Join [ ":", ["CyngularSecurity", "RegionProcessorFunctionName", !Ref ClientName ] ]
 
-  AdminAndExecFunctionName:
-    Description: "Name of the Admin and Exec Lambda function"
-    Value: !Ref AdminAndExecLambda
-    Export:
-      Name: !Join [ ":", ["CyngularSecurity", "AdminAndExecFunctionName", !Ref ClientName ] ]
+  # AdminAndExecFunctionName:
+  #   Description: "Name of the Admin and Exec Lambda function"
+  #   Value: !Ref AdminAndExecLambda
+  #   Export:
+  #     Name: !Join [ ":", ["CyngularSecurity", "AdminAndExecFunctionName", !Ref ClientName ] ]
