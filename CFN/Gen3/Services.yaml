@@ -1,0 +1,401 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Cyngular Gen3 Lambda Stack - Creates Lambda functions, roles, and StackSet resources
+
+Metadata:
+  Vendor:
+    Description: Cyngular Security
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+      - Label:
+          default: "Services"
+        Parameters:
+          - EnableVPCFlowLogs
+          - EnableDNS
+          - EnableEKS
+      - Label:
+          default: "Override Parameters"
+        Parameters:
+          - ServiceManagerOverride
+          - AdminAndExecOverride
+
+Mappings:
+  VARS:
+    "Cyngular":
+      TemplateBucket: "cyngular-onboarding-templates"
+      TemplatePath: "stacks/Gen3"
+      LambdasBucketPrefix: "cyngular-onboarding"
+      ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
+      AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
+
+Parameters:
+  ClientName:
+    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    MinLength: 3
+    MaxLength: 15
+
+  EnableDNS:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  EnableEKS:
+    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  EnableVPCFlowLogs:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  ServiceManagerOverride:
+    Description: "change to override (retrigger) the 'Service Manager' Lambda Trigger"
+    Type: Number
+    Default: 1
+
+  AdminAndExecOverride:
+    Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
+    Type: Number
+    Default: 1
+
+Resources:
+  ServiceManagerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-service-manager-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: !Sub "cyngular-service-manager-policy-${ClientName}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: "InvokeRegionProcessor"
+                Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: !GetAtt RegionProcessorLambda.Arn
+              - Sid: "GetRegions"
+                Effect: Allow
+                Action:
+                  - "ec2:DescribeRegions"
+                  - "account:ListRegions"
+                Resource: "*"
+              - Sid: "StackSetOperations"
+                Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStackSet"
+                  - "cloudformation:DescribeStackSetOperation"
+                  - "cloudformation:ListStackSetOperationResults"
+                Resource: "*"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  RegionProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-region-processor-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: !Sub "cyngular-region-processor-policy-${ClientName}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: "RegionProcessorGeneral"
+                Effect: Allow
+                Resource: "*"
+                Action:
+                  - "ssm:*"
+                  - "route53resolver:*"
+                  - "organizations:ListAccounts"
+                  - "ec2:Describe*"
+                  - "ec2:CreateFlowLogs"
+                  - "ec2:DeleteFlowLogs"
+                  - "ec2:CreateTags"
+                  - "ec2:DeleteTags"
+                  - "eks:List*"
+                  - "eks:UpdateClusterConfig"
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
+                  - "eks:DescribeCluster"
+                  - "events:PutRule"
+                  - "events:DisableRule"
+                  - "lambda:UpdateFunctionConfiguration"
+              - Sid: "CyngularBucketAdmin"
+                Effect: Allow
+                Resource:
+                  - !Sub
+                    - "arn:aws:s3:::${bucket_name}"
+                    - bucket_name:
+                        Fn::ImportValue:
+                          !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+                  - !Sub
+                    - "arn:aws:s3:::${bucket_name}/*"
+                    - bucket_name:
+                        Fn::ImportValue:
+                          !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+                Action:
+                  - "s3:*"
+              - Sid: "EditEKS"
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+                  - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+                Action:
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
+                  - "eks:DescribeCluster"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  AdminAndExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: !Sub "cyngular-admin-exec-lambda-policy-${ClientName}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Resource: "*"
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:DescribeStackSet"
+                  - "cloudformation:DescribeStackSetOperation"
+                  - "cloudformation:DescribeStackEvents"
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:CreateStackSet"
+                  - "cloudformation:CreateStackInstances"
+                  - "cloudformation:DeleteStackInstances"
+                  - "cloudformation:DeleteStackSet"
+                  - "cloudformation:ListStackSetOperationResults"
+                  - "cloudformation:ListStackInstances"
+                  - "cloudformation:UpdateStackSet"
+                  - "cloudformation:UpdateStackInstances"
+                  - "cloudformation:ExecuteChangeSet"
+                  - "organizations:ListAccounts"
+                  - "organizations:ListRoots"
+                  - "iam:GetRole"
+                  - "iam:getRolePolicy"
+                  - "iam:CreateRole"
+                  - "iam:AttachRolePolicy"
+                  - "iam:PutRolePolicy"
+                  - "iam:TagRole"
+              - Sid: "GetStackSetTemplates"
+                Effect: Allow
+                Resource:
+                  - !Sub
+                    - "arn:aws:s3:::${bucket_name}/stacks/*"
+                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+                Action:
+                  - "s3:GetObject"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  ServiceManagerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-service-manager-${ClientName}"
+      Description: "Created by Cyngular Security | Orchestrates service configuration across regions"
+      Role: !GetAtt ServiceManagerRole.Arn
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
+      Environment:
+        Variables:
+          CLIENT_NAME: !Ref ClientName
+          REGION_PROCESSOR_FUNCTION_NAME: !Ref RegionProcessorLambda
+          ENABLE_DNS: !Ref EnableDNS
+          ENABLE_EKS: !Ref EnableEKS
+          ENABLE_VPC_FLOW_LOGS: !Ref EnableVPCFlowLogs
+          CYNGULAR_BUCKET:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ] ]
+          CYNGULAR_ROLE_ARN:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "ReadonlyRoleArn", !Ref ClientName ] ]
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/Gen3/ServiceManager.zip"
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-service-manager-${ClientName}"
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  RegionProcessorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-region-processor-${ClientName}"
+      Description: "Created by Cyngular Security | Processes service configuration per region"
+      Role: !GetAtt RegionProcessorRole.Arn
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
+      Environment:
+        Variables:
+          CLIENT_NAME: !Ref ClientName
+          CYNGULAR_BUCKET:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ] ]
+          CYNGULAR_ROLE_ARN:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "ReadonlyRoleArn", !Ref ClientName ] ]
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/Gen3/RegionProcessor.zip"
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-region-processor-${ClientName}"
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  AdminAndExecLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
+      Description: "Created by Cyngular Security | Creates admin and execution roles for StackSet"
+      Role: !GetAtt AdminAndExecRole.Arn
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
+      Environment:
+        Variables:
+          ORGANIZATION_ID:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
+          ADMIN_TEMPLATE_URL: !Sub
+            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
+          EXEC_TEMPLATE_URL: !Sub
+            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
+
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/Gen3/AdminAndExec.zip"
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  AdminAndExecTrigger:
+    Type: Custom::AdminAndExec
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt AdminAndExecLambda.Arn
+      ServiceTimeout: 1200
+      OVERRIDE_LAMBDA_TRIGGER: !Ref AdminAndExecOverride
+
+  ServiceManagerTrigger:
+    Type: Custom::ServiceManager
+    DependsOn: [AdminAndExecTrigger]
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt ServiceManagerLambda.Arn
+      ServiceTimeout: 1200
+      OVERRIDE_LAMBDA_TRIGGER: !Ref ServiceManagerOverride
+
+  ServiceManagerScheduledRule:
+    Type: AWS::Events::Rule
+    DependsOn: [ServiceManagerTrigger]
+    Properties:
+      Name: !Sub "${ServiceManagerLambda}-rule"
+      Description: "Scheduled execution for service manager"
+      ScheduleExpression: "rate(60 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt ServiceManagerLambda.Arn
+          Id: "ServiceManagerTarget"
+
+  ServiceManagerScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ServiceManagerLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ServiceManagerScheduledRule.Arn
+
+Outputs:
+  ServiceManagerFunctionName:
+    Description: "Name of the Service Manager Lambda function"
+    Value: !Ref ServiceManagerLambda
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "ServiceManagerFunctionName", !Ref ClientName ] ]
+
+  RegionProcessorFunctionName:
+    Description: "Name of the Region Processor Lambda function"
+    Value: !Ref RegionProcessorLambda
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "RegionProcessorFunctionName", !Ref ClientName ] ]
+
+  AdminAndExecFunctionName:
+    Description: "Name of the Admin and Exec Lambda function"
+    Value: !Ref AdminAndExecLambda
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "AdminAndExecFunctionName", !Ref ClientName ] ]

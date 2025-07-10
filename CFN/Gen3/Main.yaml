@@ -1,7 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular
-  Main OnBoarding stack template
+  Cyngular Gen3 OnBoarding stack template with managed StackSet
 
 Metadata:
   Vendor:
@@ -13,7 +12,6 @@ Metadata:
           default: "Client Info"
         Parameters:
           - ClientName
-          - ClientRegions
           - OrganizationId
       - Label:
           default: "Services"
@@ -30,8 +28,6 @@ Metadata:
     ParameterLabels:
       ClientName:
         default: "Company Name"
-      ClientRegions:
-        default: "Company Regions"
       OrganizationId:
         default: "Organization Id"
       CloudTrailBucket:
@@ -49,10 +45,8 @@ Mappings:
   VARS:
     "Cyngular":
       TemplateBucket: "cyngular-onboarding-templates"
-      TemplatePath: "stacks/Gen2"
+      TemplatePath: "stacks/Gen3"
       LambdasBucketPrefix: "cyngular-onboarding"
-      # ExecRoleTemplateName: "AWSCloudFormationStackSetExecutionRole"
-      # AdminRoleTemplateName: "AWSCloudFormationStackSetAdministrationRole"
       ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
       AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
 
@@ -69,11 +63,6 @@ Parameters:
     Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
     Type: String
     Default: ""
-
-  ClientRegions:
-    Description: "The region codes in which the client operates in (comma-separated for example; us-east-1,us-east-2), make sure all regions specified are enabled in the relevent accounts"
-    Type: CommaDelimitedList
-    AllowedValues: [me-south-1, us-east-1, us-east-2, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-south-1, ap-northeast-1, ap-northeast-2, ap-northeast-3, af-south-1, eu-west-1, eu-west-2, eu-west-3, eu-central-1, eu-central-2, eu-north-1, eu-south-1, eu-south-2, ca-central-1, sa-east-1, il-central-1, af-north-1, ap-east-1, ap-south-2, ap-southeast-3, ap-southeast-4, ap-southeast-5, ca-west-1, me-central-1]
 
   CyngularAccountId:
     Description: "The Cyngular Account ID to assume the read only role [851565895544]"
@@ -103,19 +92,18 @@ Parameters:
     AllowedValues: ["true", "false"]
     Default: "true"
 
-  LambdaStackSetManagerOverride:
-    Description: "change to override (retrigger) the 'StackSet Manager' Lambda Trigger"
+  ServiceManagerOverride:
+    Description: "change to override (retrigger) the 'Service Manager' Lambda Trigger"
     Type: Number
     Default: 1
 
-  LambdaAdminAndExecOverride:
+  AdminAndExecOverride:
     Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
     Type: Number
     Default: 1
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
-
   CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
   ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
   ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
@@ -128,12 +116,10 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
-
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -142,7 +128,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
-
         - Key: cyngular-os
           Value: true
         - Key: cyngular-visibility
@@ -187,7 +172,6 @@ Resources:
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
-
           - !If
             - CreateCloudTrail
             - Sid: 'CloudTrailAclCheck'
@@ -200,7 +184,6 @@ Resources:
                 StringEquals:
                   AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
             - !Ref "AWS::NoValue"
-
           - !If 
             - CreateCloudTrail
             - Sid: 'CloudTrailWrite'
@@ -272,16 +255,12 @@ Resources:
                   - "iam:Generate*"
                   - "organizations:Describe*"
                   - "organizations:List*"
-
                   - "tag:GetResources"
-
                   - "access-analyzer:ValidatePolicy"
                   - "access-analyzer:ListPolicyGenerations"
-
                   - "ce:List*"
                   - "ce:Get*"
                   - "ce:Describe*"
-
                   - "s3:List*"
                   - "s3:Describe*"
                   - "s3:GetBucketAcl"
@@ -294,19 +273,16 @@ Resources:
                   - "s3:GetIntelligentTieringConfiguration"
                   - "s3:GetAccountPublicAccessBlock"
                   - "s3:GetBucketPublicAccessBlock"
-
                   - "logs:List*"
                   - "logs:Describe*"
                   - "logs:Get*"
                   - "logs:FilterLogEvents"
                   - "logs:StartQuery"
                   - "cloudwatch:GetMetricStatistics"
-
                   - "ec2:List*"
                   - "ec2:CreateTags"
                   - "ec2:Describe*"
                   - "ec2:GetImageBlockPublicAccessState"
-
                   - "ecr:Describe*"
                   - "ecr:List*"
                   - "eks:Describe*"
@@ -317,15 +293,12 @@ Resources:
                   - "lambda:Get*"
                   - "rds:List*"
                   - "rds:Describe*"
-
                   - "cloudformation:Describe*"
                   - "cloudformation:List*"
                   - "cloudformation:Get*"
-                  
                   - "route53:Get*"
                   - "route53:List*"
                   - "route53:TestDNSAnswer"
-
                   - "cloudtrail:GetTrail"
                   - "cloudtrail:DescribeTrails"
                   - "cloudtrail:GetTrailStatus"
@@ -334,7 +307,6 @@ Resources:
                   - "cloudtrail:ListTrails"
                   - "cloudtrail:GetEventSelectors"
                   - "cloudtrail:GetInsightSelectors"
-
                   - "kms:Describe*"
                   - "kms:Get*"
                   - "kms:List*"
@@ -342,7 +314,6 @@ Resources:
                   - "kms:ReEncrypt*"
                   - "kms:Decrypt"
                   - "kms:CreateGrant"
-
                   - "events:ListRules"
                   - "events:ListTargetsByRule"
                   - "events:ListEventBuses"
@@ -351,9 +322,9 @@ Resources:
                   - "events:TestEventPattern"
                   - "events:PutRule"
                   - "events:PutTargets"
-
                   - "cloudwatch:ListMetrics"
                   - "cloudwatch:GetMetricData"
+                  - "account:ListRegions"
               - Sid: "Ec2CyngularSnapshot"
                 Effect: Allow
                 Action:
@@ -382,46 +353,77 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/*${ClientName}*"
                   - !Sub "arn:aws:kms:*:${CyngularAccountId}:key/*${ClientName}*"
-
                 Action:
                   - "kms:*"
-              - Sid: "ListRegionsOnAccounts"
-                Effect: "Allow"
-                Action:
-                  - "account:ListRegions"
-                Resource:
-                  - "arn:aws:account::*:account/o-*/*"
-                  - "arn:aws:account::*:account"
       Tags:
         - Key: Vendor
           Value: "Cyngular Security"
 
-  LambdasRole:
+  ServiceManagerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "cyngular-lambdas-role-${ClientName}"
+      RoleName: !Sub "cyngular-service-manager-role-${ClientName}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: "Allow"
             Principal:
-              Service: 
-                - "lambda.amazonaws.com"
+              Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       Policies:
-        - PolicyName: !Sub "cyngular-lambdas-policy-${ClientName}"
+        - PolicyName: !Sub "cyngular-service-manager-policy-${ClientName}"
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
-              - Sid: "CyngularGeneral"
+              - Sid: "InvokeRegionProcessor"
+                Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: !GetAtt RegionProcessorLambda.Arn
+              - Sid: "GetRegions"
+                Effect: Allow
+                Action:
+                  # - "ec2:DescribeRegions"
+                  - "account:ListRegions"
+                Resource: "*"
+              - Sid: "StackSetOperations"
+                Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStackSet"
+                  - "cloudformation:DescribeStackSetOperation"
+                  - "cloudformation:ListStackSetOperationResults"
+                Resource: "*"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+
+  RegionProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-region-processor-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: !Sub "cyngular-region-processor-policy-${ClientName}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: "RegionProcessorGeneral"
                 Effect: Allow
                 Resource: "*"
                 Action:
                   - "ssm:*"
-                  - "logs:*"
                   - "route53resolver:*"
                   - "organizations:ListAccounts"
-
                   - "ec2:Describe*"
                   - "ec2:CreateFlowLogs"
                   - "ec2:DeleteFlowLogs"
@@ -429,16 +431,12 @@ Resources:
                   - "ec2:DeleteTags"
                   - "eks:List*"
                   - "eks:UpdateClusterConfig"
-
+                  - "eks:CreateAccessEntry"
+                  - "eks:AssociateAccessPolicy"
+                  - "eks:DescribeCluster"
                   - "events:PutRule"
-                  - "lambda:UpdateFunctionConfiguration"
-
                   - "events:DisableRule"
-
-                  # - "organizations:ListOrganizationalUnitsForParent"
-                  # - "sts:GetCallerIdentity"
-                  # - "lambda:InvokeFunction"
-
+                  - "lambda:UpdateFunctionConfiguration"
               - Sid: "CyngularBucketAdmin"
                 Effect: Allow
                 Resource:
@@ -446,7 +444,6 @@ Resources:
                   - !Sub ["${bucket_arn}/*", bucket_arn: !GetAtt CyngularS3Bucket.Arn]
                 Action:
                   - "s3:*"
-
               - Sid: "EditEKS"
                 Effect: Allow
                 Resource:
@@ -460,94 +457,8 @@ Resources:
         - Key: Vendor
           Value: "Cyngular Security"
 
-  ManagerLambdaRole:
+  AdminAndExecRole:
     Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "cyngular-manager-lambda-role-${ClientName}"
-      MaxSessionDuration: 43200
-
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: !Sub "cyngular-manager-lambda-policy-${ClientName}"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: 'InvokeBucketPolicyLambda'
-                Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                  - lambda:GetFunction
-                Resource:
-                  - !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
-              - Sid: "StackSetManager"
-                Effect: Allow
-                Resource: "*"
-                Action:
-                  - "cloudformation:GetTemplateSummary"
-                  - "cloudformation:ListStackSetOperationResults"
-                  - "cloudformation:DescribeStacks"
-                  - "cloudformation:DescribeStackSet"
-                  - "cloudformation:DescribeStackSetOperation"
-                  - "cloudformation:CreateStack"
-                  - "cloudformation:CreateStackSet"
-                  - "cloudformation:CreateStackInstances"
-                  - "cloudformation:DeleteStackSet"
-                  - "cloudformation:DeleteStackInstances"
-                  - "cloudformation:TagResource"
-              - Sid: "OrgManager"
-                Effect: Allow
-                Resource: "*"
-                Action:
-                  - "organizations:ListAccounts"
-                  - "organizations:ListRoots"
-              - Sid: 'LogsManager'
-                Effect: Allow
-                Action: logs:*
-                Resource: "arn:aws:logs:*:*:*"
-              - Sid: "StacksetRoles"
-                Effect: Allow
-                Resource: "*"
-                Action:
-                  - "iam:GetRole"
-                  - "iam:getRolePolicy"
-                  - "iam:PutRolePolicy"
-                  - "iam:DetachRolePolicy"
-                  - "iam:AttachRolePolicy"
-                  - "iam:DeleteRolePolicy"
-
-              - Sid: "PassRoleToStackSet"
-                Effect: Allow
-                Resource: !Sub 
-                  - "arn:aws:iam::${AWS::AccountId}:role/${template_name}"
-                  - template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
-
-                Action:
-                  - "iam:PassRole"  
-                # Condition:
-                #   StringEquals:
-                #     iam:RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/cyngular-stackset-role-${ClientName}"
-
-              - Sid: "GetStackSetTemplates"
-                Effect: Allow
-                Resource:
-                  - !Sub
-                    - "arn:aws:s3:::${bucket_name}/stacks/*"
-                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-                  # - !Sub
-                  #   - "${bucket_name}-${AWS::Region}/lambdas/*"
-                  #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-                Action:
-                  - "s3:GetObject"
-
-  LambdaAdminAndExecRole:
-    Type: AWS::IAM::Role
-    DependsOn: [CyngularS3Bucket]
     Properties:
       RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
       AssumeRolePolicyDocument:
@@ -557,6 +468,8 @@ Resources:
             Principal:
               Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       Policies:
         - PolicyName: !Sub "cyngular-admin-exec-lambda-policy-${ClientName}"
           PolicyDocument:
@@ -572,7 +485,6 @@ Resources:
                   - "cloudformation:CreateStack"
                   - "cloudformation:CreateStackSet"
                   - "cloudformation:CreateStackInstances"
-
                   - "cloudformation:DeleteStackInstances"
                   - "cloudformation:DeleteStackSet"
                   - "cloudformation:ListStackSetOperationResults"
@@ -580,18 +492,14 @@ Resources:
                   - "cloudformation:UpdateStackSet"
                   - "cloudformation:UpdateStackInstances"
                   - "cloudformation:ExecuteChangeSet"
-
                   - "organizations:ListAccounts"
                   - "organizations:ListRoots"
-
                   - "iam:GetRole"
                   - "iam:getRolePolicy"
                   - "iam:CreateRole"
                   - "iam:AttachRolePolicy"
                   - "iam:PutRolePolicy"
                   - "iam:TagRole"
-
-                  - "logs:*"
               - Sid: "GetStackSetTemplates"
                 Effect: Allow
                 Resource:
@@ -600,276 +508,130 @@ Resources:
                     - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
                 Action:
                   - "s3:GetObject"
-
-  LambdaOS:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: "cyngular-lambda-config-os"
-      Description: "Created by Cyngular Security | Configure OS Service"
-      Role: !GetAtt LambdasRole.Arn
-      Environment:
-        Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
-          FINAL_CRON: "cron(0 0 * * ? *)"
-          FIRST_RUN: "true"
-
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['ConfigOS', 'zip']]]]
       Tags:
-        - Key: Name
-          Value: "cyngular-lambda-config-os"
         - Key: Vendor
           Value: "Cyngular Security"
 
-  ScheduledRuleLambdaOS:
-    Type: AWS::Events::Rule
-    DependsOn: [StackSetManagerTrigger]
-    Properties:
-      Name: !Sub "${LambdaOS}-rule"
-      Description: "Function did not run yet"
-      ScheduleExpression: "rate(2 minutes)"
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt LambdaOS.Arn
-          Id: "TargetFunctionV1"
-
-  PermissionForEventsToInvokeLambdaOS:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref LambdaOS
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt ScheduledRuleLambdaOS.Arn
-
-  LambdaEKS:
+  ServiceManagerLambda:
     Type: AWS::Lambda::Function
-    Condition: ServiceEKS
     Properties:
-      FunctionName: "cyngular-lambda-config-eks"
-      Description: "Created by Cyngular Security | Configure EKS Logging"
-      Role: !GetAtt LambdasRole.Arn
-      Environment:
-        Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
-          FINAL_CRON: "cron(0 * * * ? *)"
-          FIRST_RUN: "true"
-          ROLE_ARN: !GetAtt ClientCyngularRole.Arn
-
+      FunctionName: !Sub "cyngular-service-manager-${ClientName}"
+      Description: "Created by Cyngular Security | Orchestrates service configuration across regions"
+      Role: !GetAtt ServiceManagerRole.Arn
       Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
+      Handler: lambda_function.lambda_handler
       Timeout: 900
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['ConfigEKS', 'zip']]]]
-      Tags:
-        - Key: Name
-          Value: "cyngular-lambda-config-eks"
-        - Key: Vendor
-          Value: "Cyngular Security"
-
-  ScheduledRuleLambdaEKS:
-    Type: AWS::Events::Rule
-    DependsOn: [StackSetManagerTrigger]
-    Condition: ServiceEKS
-    Properties:
-      Name: !Sub "${LambdaEKS}-rule"
-      Description: "Function did not run yet"
-      ScheduleExpression: "rate(2 minutes)"
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt LambdaEKS.Arn
-          Id: "TargetFunctionV1"
-
-  PermissionForEventsToInvokeLambdaEKS: 
-    Type: AWS::Lambda::Permission
-    Condition: ServiceEKS
-    Properties: 
-      FunctionName: !Ref LambdaEKS
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt ScheduledRuleLambdaEKS.Arn
-
-  LambdaDNS:
-    Type: AWS::Lambda::Function
-    Condition: ServiceDNS
-    Properties:
-      FunctionName: "cyngular-lambda-config-dns"
-      Description: "Created by Cyngular Security. | Configure DNS"
-      Role: !GetAtt LambdasRole.Arn
       Environment:
         Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
-          FINAL_CRON: "cron(0 * * * ? *)"
-          FIRST_RUN: "true"
+          CLIENT_NAME: !Ref ClientName
+          REGION_PROCESSOR_FUNCTION_NAME: !Ref RegionProcessorLambda
+          ENABLE_DNS: !Ref EnableDNS
+          ENABLE_EKS: !Ref EnableEKS
+          ENABLE_VPC_FLOW_LOGS: !Ref EnableVPCFlowLogs
           CYNGULAR_BUCKET: !Ref CyngularS3Bucket
-
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
+          CYNGULAR_ROLE_ARN: !GetAtt ClientCyngularRole.Arn
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['ConfigDNS', 'zip']]]]
+        S3Key: "lambdas/Gen3/ServiceManager.zip"
       Tags:
         - Key: Name
-          Value: "cyngular-lambda-config-dns"
+          Value: !Sub "cyngular-service-manager-${ClientName}"
         - Key: Vendor
           Value: "Cyngular Security"
 
-  ScheduledRuleLambdaDNS: 
-    Type: AWS::Events::Rule
-    DependsOn: [StackSetManagerTrigger]
-    Condition: ServiceDNS
-    Properties:
-      Name: !Sub "${LambdaDNS}-rule"
-      Description: "Function did not run yet"
-      ScheduleExpression: "rate(2 minutes)"
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt LambdaDNS.Arn
-          Id: "TargetFunctionV1"
-
-  PermissionForEventsToInvokeLambdaDNS: 
-    Type: AWS::Lambda::Permission
-    Condition: ServiceDNS
-    Properties: 
-      FunctionName: !Ref LambdaDNS
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt ScheduledRuleLambdaDNS.Arn
-
-  LambdaVFL:
+  RegionProcessorLambda:
     Type: AWS::Lambda::Function
-    Condition: ServiceVFL
     Properties:
-      FunctionName: "cyngular-lambda-config-vpcflowlogs"
-      Description: "Created by Cyngular Security. | Configure VPC FLOW LOGS"
-      Role: !GetAtt LambdasRole.Arn
+      FunctionName: !Sub "cyngular-region-processor-${ClientName}"
+      Description: "Created by Cyngular Security | Processes service configuration per region"
+      Role: !GetAtt RegionProcessorRole.Arn
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
       Environment:
         Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
-          FINAL_CRON: "cron(0 * * * ? *)"
-          FIRST_RUN: "true"
+          CLIENT_NAME: !Ref ClientName
           CYNGULAR_BUCKET: !Ref CyngularS3Bucket
-
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
+          CYNGULAR_ROLE_ARN: !GetAtt ClientCyngularRole.Arn
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['ConfigVFL', 'zip']]]]
+        S3Key: "lambdas/Gen3/RegionProcessor.zip"
       Tags:
         - Key: Name
-          Value: "cyngular-lambda-config-vpcflowlogs"
+          Value: !Sub "cyngular-region-processor-${ClientName}"
         - Key: Vendor
           Value: "Cyngular Security"
 
-  ScheduledRuleLambdaVFL:
-    Type: AWS::Events::Rule
-    DependsOn: [StackSetManagerTrigger]
-    Condition: ServiceVFL
-    Properties: 
-      Name: !Sub "${LambdaVFL}-rule"
-      Description: "Function did not run yet"
-      ScheduleExpression: "rate(2 minutes)"
-      State: "ENABLED"
-      Targets: 
-        - Arn: !GetAtt LambdaVFL.Arn
-          Id: "TargetFunctionV1"
-
-  PermissionForEventsToInvokeLambdaVFL: 
-    Type: AWS::Lambda::Permission
-    Condition: ServiceVFL
-    Properties:
-      FunctionName: !Ref LambdaVFL
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt ScheduledRuleLambdaVFL.Arn
-
-  LambdaRemoveVFL:
+  AdminAndExecLambda:
     Type: AWS::Lambda::Function
-    Condition: ServiceVFL
     Properties:
-      FunctionName: "cyngular-lambda-remove-vpcflowlogs"
-      Description: "Created by Cyngular Security. | Remove VPC FLOW LOGS"
-      Role: !GetAtt LambdasRole.Arn
-
+      FunctionName: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
+      Description: "Created by Cyngular Security | Creates admin and execution roles for StackSet"
+      Role: !GetAtt AdminAndExecRole.Arn
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
       Environment:
         Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
-
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
+          IS_ORG: !If [IsOrg, "true", "false"]
+          ADMIN_TEMPLATE_URL: !Sub
+            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
+          EXEC_TEMPLATE_URL: !Sub
+            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
+            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+              template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['RemoveVFL', 'zip']]]]
+        S3Key: "lambdas/Gen3/AdminAndExec.zip"
       Tags:
         - Key: Name
-          Value: "cyngular-lambda-remove-vpcflowlogs"
+          Value: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
         - Key: Vendor
           Value: "Cyngular Security"
 
-  LambdaRemoveDNS:
-    Type: AWS::Lambda::Function
-    Condition: ServiceDNS
+  ManagedStackSet:
+    Type: AWS::CloudFormation::StackSet
+    DependsOn: [AdminAndExecTrigger]
     Properties:
-      FunctionName: "cyngular-lambda-remove-dns"
-      Description: "Created by Cyngular Security. | Remove DNS"
-      Role: !GetAtt LambdasRole.Arn
+      StackSetName: !Sub "cyngular-member-accounts-${ClientName}"
+      Description: "Cyngular member accounts monitoring setup"
+      PermissionModel: SELF_MANAGED
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
 
-      Environment:
-        Variables:
-          CLIENT_REGIONS: !Join [" ", !Ref ClientRegions]
+      AdministrationRoleARN: !Sub
+        - "arn:aws:iam::${AWS::AccountId}:role/${template_name}"
+        - template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
+      ExecutionRoleName: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
+      TemplateURL: !Sub
+        - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersGlobal.yaml"
+        - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
+          path: !FindInMap [VARS, Cyngular, TemplatePath]
+      Parameters:
+        - ParameterKey: ClientName
+          ParameterValue: !Ref ClientName
+        - ParameterKey: CyngularAccountId
+          ParameterValue: !Ref CyngularAccountId
+        - ParameterKey: S3BucketArn
+          ParameterValue: !GetAtt CyngularS3Bucket.Arn
+        - ParameterKey: EnableDNS
+          ParameterValue: !Ref EnableDNS
+        - ParameterKey: EnableEKS
+          ParameterValue: !Ref EnableEKS
+        - ParameterKey: EnableVPCFlowLogs
+          ParameterValue: !Ref EnableVPCFlowLogs
 
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['RemoveDNS', 'zip']]]]
       Tags:
         - Key: Name
-          Value: "cyngular-lambda-remove-dns"
-        - Key: Vendor
-          Value: "Cyngular Security"
-
-  LambdaUpdateCyngularBucketPolicy:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: "cyngular-lambda-update-cyngular-bucket-policy"
-      Description: Created by Cyngular Security.
-      Role: !GetAtt LambdasRole.Arn
-      Environment:
-        Variables:
-          BUCKET_NAME: !Ref CyngularS3Bucket
-
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['UpdateBucketPolicy', 'zip']]]]
-      Tags:
-        - Key: Name
-          Value: "cyngular-lambda-update-cyngular-bucket-policy"
+          Value: !Sub "cyngular-member-accounts-${ClientName}"
         - Key: Vendor
           Value: "Cyngular Security"
 
@@ -877,109 +639,58 @@ Resources:
     Type: Custom::AdminAndExec
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
-
     Version: "1.0"
     Properties:
-      ServiceToken: !GetAtt LambdaAdminAndExec.Arn
+      ServiceToken: !GetAtt AdminAndExecLambda.Arn
       ServiceTimeout: 1200
-      OVERRIDE_LAMBDA_TRIGGER: !Ref LambdaAdminAndExecOverride
+      OVERRIDE_LAMBDA_TRIGGER: !Ref AdminAndExecOverride
 
-  LambdaAdminAndExec:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: "cyngular-lambda-admin-and-execution-roles"
-      Description: Created by Cyngular Security.
-
-      Role: !GetAtt LambdaAdminAndExecRole.Arn
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
-      Environment:
-        Variables:
-          CLIENT_REGIONS: !Join [",", !Ref ClientRegions]
-          IsOrg: !If [IsOrg, true, false]
-
-          ADMIN_TEMPLATE_URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
-
-          EXEC_TEMPLATE_URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
-
-
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['AdminAndExec', 'zip']]]]
-
-      Tags:
-        - Key: Name
-          Value: "cyngular-lambda-admin-and-execution-roles"
-        - Key: Vendor
-          Value: "Cyngular Security"
-
-  StackSetManagerTrigger:
-    DependsOn: [AdminAndExecTrigger]
-    Type: Custom::StackSetManager
+  ServiceManagerTrigger:
+    Type: Custom::ServiceManager
+    DependsOn: [ManagedStackSet]
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Version: "1.0"
     Properties:
-      ServiceToken: !GetAtt LambdaStackSetManager.Arn
+      ServiceToken: !GetAtt ServiceManagerLambda.Arn
       ServiceTimeout: 1200
-      OVERRIDE_LAMBDA_TRIGGER: !Ref LambdaStackSetManagerOverride
+      OVERRIDE_LAMBDA_TRIGGER: !Ref ServiceManagerOverride
 
-  LambdaStackSetManager:
-    Type: AWS::Lambda::Function
+  ServiceManagerScheduledRule:
+    Type: AWS::Events::Rule
+    DependsOn: [ServiceManagerTrigger]
     Properties:
-      FunctionName: "cyngular-lambda-stackset-manager"
-      Description: Created by Cyngular Security.
-      Role: !GetAtt ManagerLambdaRole.Arn
+      Name: !Sub "${ServiceManagerLambda}-rule"
+      Description: "Scheduled execution for service manager"
+      ScheduleExpression: "rate(60 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt ServiceManagerLambda.Arn
+          Id: "ServiceManagerTarget"
 
-      Runtime: "python3.12"
-      Handler: lambda_function.cyngular_function
-      Timeout: 900
-      Environment:
-        Variables:
-          ClientName: !Ref ClientName
-          ClientRegions: !Join [",", !Ref ClientRegions]
+  ServiceManagerScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ServiceManagerLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ServiceManagerScheduledRule.Arn
 
-          StackSet1URL: !Sub
-            - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersGlobal.yaml"
-            - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-              path: !FindInMap [VARS, Cyngular, TemplatePath]
+Outputs:
+  CyngularBucketName:
+    Description: "Name of the Cyngular S3 bucket"
+    Value: !Ref CyngularS3Bucket
+    Export:
+      Name: !Sub "${AWS::StackName}-CyngularBucket"
 
-          # Stack2URL: !Sub
-          #   - "https://${bucket_name}.s3.amazonaws.com/${path}/ManagementRegional.yaml"
-          #   - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-          #     path: !FindInMap [VARS, Cyngular, TemplatePath]
+  CyngularRoleArn:
+    Description: "ARN of the Cyngular readonly role"
+    Value: !GetAtt ClientCyngularRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CyngularRole"
 
-          # StackSet2URL: !Sub
-          #   - "https://${bucket_name}.s3.amazonaws.com/${path}/MembersRegional.yaml"
-          #   - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-          #     path: !FindInMap [VARS, Cyngular, TemplatePath]
-
-          UpdateBucketPolicyLambdaName: !Ref LambdaUpdateCyngularBucketPolicy
-          # BucketPolicyLambdaArn: !GetAtt LambdaUpdateCyngularBucketPolicy.Arn
-
-          CyngularAccountId: !Ref CyngularAccountId
-          S3BucketArn: !GetAtt CyngularS3Bucket.Arn
-          IsOrg: !If [IsOrg, true, false]
-
-          EnableDNS: !Ref EnableDNS
-          EnableEKS: !Ref EnableEKS
-          EnableVPCFlowLogs: !Ref EnableVPCFlowLogs
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['StackSetManager', 'zip']]]]
-      Tags:
-        - Key: Name
-          Value: "cyngular-lambda-stackset-manager"
-        - Key: Vendor
-          Value: "Cyngular Security"
+  StackSetName:
+    Description: "Name of the managed StackSet"
+    Value: !Ref ManagedStackSet
+    Export:
+      Name: !Sub "${AWS::StackName}-StackSet"
