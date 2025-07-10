@@ -1,0 +1,212 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Cyngular Gen3 Core Stack - Creates S3 bucket, bucket policy, and CloudTrail
+
+Metadata:
+  Vendor:
+    Description: Cyngular Security
+
+Parameters:
+  ClientName:
+    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    MinLength: 3
+    MaxLength: 15
+
+  OrganizationId:
+    Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
+    Type: String
+    Default: ""
+
+  CyngularAccountId:
+    Description: "The Cyngular Account ID to assume the read only role"
+    Type: String
+    Default: "851565895544"
+
+  CloudTrailBucket:
+    Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
+    Type: String
+    Default: ""
+
+  EnableDNS:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  EnableEKS:
+    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  EnableVPCFlowLogs:
+    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+Conditions:
+  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
+  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
+  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
+  ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
+
+Resources:
+  CyngularS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+        - Key: cyngular-os
+          Value: true
+        - Key: cyngular-visibility
+          Value: true
+        - Key: ClientName
+          Value: !Ref ClientName
+        - !If
+            - CreateCloudTrail
+            - Key: cyngular-cloudtrail
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceDNS
+            - Key: cyngular-dnslogs
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceVFL
+            - Key: cyngular-vpcflowlogs
+              Value: true
+            - !Ref AWS::NoValue
+        - !If
+            - ServiceEKS
+            - Key: cyngular-ekslogs
+              Value: true
+            - !Ref AWS::NoValue
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CyngularS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'LambdaRead'
+            Effect: Allow
+            Principal:
+              AWS: [
+                !Sub "arn:aws:iam::${AWS::AccountId}:root",
+                !Sub "arn:aws:iam::${CyngularAccountId}:root"                
+              ]
+            Action:
+              - "s3:*"
+            Resource:
+              - !GetAtt CyngularS3Bucket.Arn
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+          - !If
+            - CreateCloudTrail
+            - Sid: 'CloudTrailAclCheck'
+              Effect: Allow
+              Principal:
+                Service: "cloudtrail.amazonaws.com"
+              Action: 's3:GetBucketAcl'
+              Resource: !GetAtt CyngularS3Bucket.Arn
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+            - !Ref "AWS::NoValue"
+          - !If 
+            - CreateCloudTrail
+            - Sid: 'CloudTrailWrite'
+              Effect: Allow
+              Principal: 
+                Service: "cloudtrail.amazonaws.com"
+              Action: 
+                - 's3:PutObject'
+              Resource: 
+                - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
+                - !If 
+                  - IsOrg
+                  - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
+                  - !Ref "AWS::NoValue"
+              Condition:
+                StringEquals:
+                  s3:x-amz-acl: "bucket-owner-full-control"
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+            - !Ref "AWS::NoValue"
+
+  CyngularBucketAccessPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-bucket-access-policy-${ClientName}"
+      RoleName:
+        Fn::ImportValue:
+          !Join [ ":", ["CyngularSecurity", "ReadonlyRoleName", !Ref ClientName ]]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "CyngularBucketAdmin"
+            Effect: Allow
+            Resource:
+              - !GetAtt CyngularS3Bucket.Arn
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+            Action:
+              - "s3:*"
+
+  ClientCloudTrail:
+    DependsOn: S3BucketPolicy
+    Condition: CreateCloudTrail
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: cyngular-cloudtrail
+      S3BucketName: !Ref CyngularS3Bucket
+      InsightSelectors:
+        - InsightType: ApiCallRateInsight
+        - InsightType: ApiErrorRateInsight
+      EventSelectors:
+        - IncludeManagementEvents: true
+          ExcludeManagementEventSources:
+            - kms.amazonaws.com
+          DataResources:
+            - Type: AWS::Lambda::Function
+              Values:
+                - arn:aws:lambda
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IsOrganizationTrail: !If [IsOrg, true, false]
+      IncludeGlobalServiceEvents: true
+      Tags:
+        - Key: Name
+          Value: cyngular-cloudtrail
+        - Key: ClientName
+          Value: !Ref ClientName
+
+Outputs:
+  CyngularBucketName:
+    Description: "Name of the Cyngular S3 bucket"
+    Value: !Ref CyngularS3Bucket
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+
+  ClientCurrentOrganizationId:
+    Description: "The Company Organization id"
+    Value: !Ref OrganizationId
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
