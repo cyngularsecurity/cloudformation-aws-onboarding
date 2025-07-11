@@ -28,25 +28,32 @@ class ServiceManager:
         try:
             regions = []
 
-            # response = self.ec2_client.describe_regions()
-            # regions = [region['RegionName'] for region in response['Regions']]
+            response = self.ec2_client.describe_regions(AllRegions=False) ## only enabled
+            while 'NextToken' in response:
+                regions.extend([r['RegionName'] for r in response['Regions']])
+                response = self.ec2_client.describe_regions(NextToken=response['NextToken'])
             
-            response = self.account_client.list_regions(RegionOptStatusContains=['ENABLED'])
+            # Use RegionOptStatusContains parameter to filter only ENABLED regions
+            # response = self.account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
             # regions.extend([r['RegionName'] for r in response['Regions']])
             
-            while 'NextToken' in response:
-                response = account.list_regions(NextToken=response['NextToken'])
-                regions.extend([r['RegionName'] for r in response['Regions']])
+            # while 'NextToken' in response:
+            #     response = self.account_client.list_regions(
+            #         NextToken=response['NextToken'],
+            #         RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT']
+            #     )
+            #     regions.extend([r['RegionName'] for r in response['Regions']])
 
             logger.info(f"Found {len(regions)} enabled regions: {regions}")
             return regions
         except Exception as e:
             logger.error(f"Error getting enabled regions: {str(e)}")
-            # Fallback to current region only
-            current_lambda_arn = context.invoked_function_arn
-            current_lambda_region = current_lambda_arn.split(':')[3]
-            logger.info(f"Using current region: {current_lambda_region}")
-            return [current_lambda_region]
+            # # Fallback to current region only
+            # current_lambda_arn = context.invoked_function_arn
+            # current_lambda_region = current_lambda_arn.split(':')[3]
+            # logger.info(f"Using current region: {current_lambda_region}")
+            # return [current_lambda_region]
+            return []
 
     def get_services_to_configure(self) -> List[str]:
         """Get list of services that need to be configured"""
@@ -116,6 +123,8 @@ class ServiceManager:
         services = self.get_services_to_configure()
         
         results = {
+            'regions': regions,
+            'services': services,
             'total_tasks': len(regions) * len(services),
             'successful_tasks': 0,
             'failed_tasks': 0,
