@@ -12,16 +12,19 @@ curl -s https://raw.githubusercontent.com/Cyngular/Devops/main/Scripts/Gen3/zip.
 rain deploy ./CFN/Gen3/ReadonlyRole.yaml clipper-ro-role \
     --region ap-northeast-3 \
     --profile client_mgmt \
-    --params "ClientName=$ClientName,CyngularAccountId=$CyngularAccountId"
+    --params "ClientName=$ClientName,CyngularAccountId=$CyngularAccountId" \
+    --ignore-unknown-params
 ####
 rain deploy ./CFN/Gen3/Core.yaml clipper-core \
     --region ap-northeast-3 \
     --profile client_mgmt \
-    --params "ClientName=$ClientName,CyngularAccountId=$CyngularAccountId,OrganizationId=$OrganizationId,CloudTrailBucket=$CloudTrailBucket,EnableDNS=$EnableDNS,EnableEKS=$EnableEKS,EnableVPCFlowLogs=$EnableVPCFlowLogs"
+    --params "ClientName=$ClientName,CyngularAccountId=$CyngularAccountId,OrganizationId=$OrganizationId,CloudTrailBucket=$CloudTrailBucket,EnableDNS=$EnableDNS,EnableEKS=$EnableEKS,EnableVPCFlowLogs=$EnableVPCFlowLogs" \
+    --ignore-unknown-params
 
 ####
 rain deploy ./CFN/Gen3/Services.yaml clipper-services \
     --region ap-northeast-3 \
     --profile client_mgmt \
-    --params "ClientName=$ClientName,ServiceManagerOverride=$ServiceManagerOverride,EnableDNS=$EnableDNS,EnableEKS=$EnableEKS,EnableVPCFlowLogs=$EnableVPCFlowLogs"
+    --params "ClientName=$ClientName,ServiceManagerOverride=$ServiceManagerOverride,EnableDNS=$EnableDNS,EnableEKS=$EnableEKS,EnableVPCFlowLogs=$EnableVPCFlowLogs" \
+    --ignore-unknown-params
 ####

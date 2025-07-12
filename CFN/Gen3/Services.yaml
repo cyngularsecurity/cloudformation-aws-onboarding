@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Cyngular Gen3 Lambda Stack - Creates Lambda functions, roles, and StackSet resources
 
+Transform:
+  - 'AWS::LanguageExtensions'
+
 Metadata:
   Vendor:
     Description: Cyngular Security
@@ -27,11 +30,7 @@ Metadata:
 Mappings:
   VARS:
     "Cyngular":
-      TemplateBucket: "cyngular-onboarding-templates"
-      TemplatePath: "stacks/Gen3"
       LambdasBucketPrefix: "cyngular-onboarding"
-      ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
-      AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
 
 Parameters:
   ClientName:
@@ -182,62 +181,6 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  AdminAndExecRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "cyngular-admin-and-exec-roles-lambda-role-${ClientName}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      Policies:
-        - PolicyName: !Sub "cyngular-admin-exec-lambda-policy-${ClientName}"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Resource: "*"
-                Action:
-                  - "cloudformation:DescribeStacks"
-                  - "cloudformation:DescribeStackSet"
-                  - "cloudformation:DescribeStackSetOperation"
-                  - "cloudformation:DescribeStackEvents"
-                  - "cloudformation:CreateStack"
-                  - "cloudformation:CreateStackSet"
-                  - "cloudformation:CreateStackInstances"
-                  - "cloudformation:DeleteStackInstances"
-                  - "cloudformation:DeleteStackSet"
-                  - "cloudformation:ListStackSetOperationResults"
-                  - "cloudformation:ListStackInstances"
-                  - "cloudformation:UpdateStackSet"
-                  - "cloudformation:UpdateStackInstances"
-                  - "cloudformation:ExecuteChangeSet"
-                  - "organizations:ListAccounts"
-                  - "organizations:ListRoots"
-                  - "iam:GetRole"
-                  - "iam:getRolePolicy"
-                  - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
-                  - "iam:PutRolePolicy"
-                  - "iam:TagRole"
-              - Sid: "GetStackSetTemplates"
-                Effect: Allow
-                Resource:
-                  - !Sub
-                    - "arn:aws:s3:::${bucket_name}/stacks/*"
-                    - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-                Action:
-                  - "s3:GetObject"
-      Tags:
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
 
   ServiceManagerLambda:
     Type: AWS::Lambda::Function
@@ -248,13 +191,13 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      PackageType: "Image"
+      # PackageType: "Image"
       Code:
-        ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cyngular-service-manager:latest"
-        # S3Bucket: !Sub
-        #   - "${bucket_name}-${AWS::Region}"
-        #   - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        # S3Key: "lambdas/ServiceManager.zip"
+        # ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cyngular-service-manager:latest"
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/ServiceManager.zip"
 
       Environment:
         Variables:
@@ -307,52 +250,6 @@ Resources:
           Value: "Cyngular Security"
         - Key: ClientName
           Value: !Ref ClientName
-
-  # AdminAndExecLambda:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     FunctionName: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
-  #     Description: "Created by Cyngular Security | Creates admin and execution roles for StackSet"
-  #     Role: !GetAtt AdminAndExecRole.Arn
-  #     Runtime: "python3.12"
-  #     Handler: lambda_function.lambda_handler
-  #     Timeout: 900
-  #     Environment:
-  #       Variables:
-  #         ORGANIZATION_ID:
-  #           Fn::ImportValue:
-  #             !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
-  #         ADMIN_TEMPLATE_URL: !Sub
-  #           - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-  #           - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-  #             template_name: !FindInMap [VARS, Cyngular, AdminRoleTemplateName]
-  #         EXEC_TEMPLATE_URL: !Sub
-  #           - "https://${bucket_name}.s3.amazonaws.com/stacks/${template_name}.yaml"
-  #           - bucket_name: !FindInMap [VARS, Cyngular, TemplateBucket]
-  #             template_name: !FindInMap [VARS, Cyngular, ExecRoleTemplateName]
-
-  #     Code:
-  #       S3Bucket: !Sub
-  #         - "${bucket_name}-${AWS::Region}"
-  #         - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-  #       S3Key: "lambdas/AdminAndExec.zip"
-  #     Tags:
-  #       - Key: Name
-  #         Value: !Sub "cyngular-admin-and-exec-roles-${ClientName}"
-  #       - Key: Vendor
-  #         Value: "Cyngular Security"
-  #       - Key: ClientName
-  #         Value: !Ref ClientName
-
-  # AdminAndExecTrigger:
-  #   Type: Custom::AdminAndExec
-  #   DeletionPolicy: Retain
-  #   UpdateReplacePolicy: Retain
-  #   Version: "1.0"
-  #   Properties:
-  #     ServiceToken: !GetAtt AdminAndExecLambda.Arn
-  #     ServiceTimeout: 1200
-  #     OVERRIDE_LAMBDA_TRIGGER: !Ref AdminAndExecOverride
 
   ServiceManagerTrigger:
     Type: Custom::ServiceManager

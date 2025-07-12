@@ -28,7 +28,7 @@ def dnslogs(curr_region, bucket_name):
                     Name='cyngular_dns',
                     DestinationArn=f"arn:aws:s3:::{bucket_name}",  # REPLACE WITH YOUR BUCKET ARN
                     CreatorRequestId=str(uuid.uuid4()),  # Ensures idempotency
-                    Tags=[{'Key': 'Purpose', 'Value': 'DNS Logging'}]
+                    Tags=[{'Key': 'Purpose', 'Value': 'DNS Logging'},{'Key': 'Vendor', 'Value': 'Cyngular Security'}]
                 )
                 cyngular_resolver_id = response['ResolverQueryLogConfig']['Id']
                 logging.info(f'NEW QLC CREATED: {cyngular_resolver_id}')
@@ -50,10 +50,10 @@ def dnslogs(curr_region, bucket_name):
                 )
                 logging.info(f'SUCCESS: {vpc_id} associated')
             except Exception as e:
-                if 'ResourceInUseException' in str(e):
-                    logging.info(f'1. Already associated: {vpc_id}')
                 if 'InvalidRequestException' in str(e) and "The specified resource is already associated with the specified query logging configuration" in str(e):
-                    logging.info(f'2. Already associated: {vpc_id}, with requested config')
+                    logging.info(f'1. Already associated: {vpc_id}, with requested config')
+                if 'ResourceInUseException' in str(e):
+                    logging.info(f'2. Already associated: {vpc_id}')
                 else:
                     logging.error(f'3. Association failed for {vpc_id}: {str(e)}')
 
