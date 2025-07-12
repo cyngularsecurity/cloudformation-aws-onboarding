@@ -2,9 +2,40 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Cyngular Gen3 Core Stack - Creates S3 bucket, bucket policy, and CloudTrail
 
+Transform:
+  - 'AWS::LanguageExtensions'
+
 Metadata:
   Vendor:
     Description: Cyngular Security
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+      - Label:
+          default: "Services"
+        Parameters:
+          - EnableVPCFlowLogs
+          - EnableDNS
+          - EnableEKS
+      - Label:
+          default: "Override Parameters"
+        Parameters:
+          - CloudTrailBucket
+          - OrganizationId
+          - CyngularAccountId
+
+Mappings:
+  VARS:
+    "Cyngular":
+      LambdasBucketPrefix: "cyngular-onboarding"
+      # TemplateBucket: "cyngular-onboarding-templates"
+      # TemplatePath: "stacks/Gen3"
+      # ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
+      # AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
 
 Parameters:
   ClientName:
@@ -197,6 +228,96 @@ Resources:
           Value: cyngular-cloudtrail
         - Key: ClientName
           Value: !Ref ClientName
+
+  UpdateBucketPolicyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-update-bucket-policy-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  CyngularLambdaUpdateBucketPolicyPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-update-bucket-policy-policy-${ClientName}"
+      RoleName: !Ref UpdateBucketPolicyRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "CyngularLambdaUpdateBucketPolicy"
+            Effect: Allow
+            Resource: "*"
+            Action:
+              # - "logs:*"
+              - "organizations:ListAccounts"
+
+          - Sid: "CyngularBucketAdmin"
+            Effect: Allow
+            Resource:
+              - !GetAtt CyngularS3Bucket.Arn
+              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+            Action:
+              - "s3:*"
+
+  UpdateBucketPolicyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-update-bucket-policy-${ClientName}"
+      Description: "Created by Cyngular Security | Updates the Cyngular S3 bucket policy"
+      Role: !GetAtt UpdateBucketPolicyRole.Arn
+      Environment:
+        Variables:
+          BUCKET_NAME:
+            Fn::ImportValue:
+              !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+
+      Runtime: "python3.12"
+      Handler: lambda_function.lambda_handler
+      Timeout: 900
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+        S3Key: !Join ['', ['lambdas/', !Join ['.', ['UpdateBucketPolicy', 'zip']]]]
+      Tags:
+        - Key: Name
+          Value: !Sub "cyngular-update-bucket-policy-${ClientName}"
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  UpdateBucketPolicyScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${UpdateBucketPolicyLambda}-rule"
+      Description: "Scheduled execution for Update Bucket Policy | Runs daily at 00:00"
+      ScheduleExpression: "cron(0 0 * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt UpdateBucketPolicyLambda.Arn
+          Id: "UpdateBucketPolicyTarget"
+
+  UpdateBucketPolicyScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateBucketPolicyLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt UpdateBucketPolicyScheduledRule.Arn
 
 Outputs:
   CyngularBucketName:

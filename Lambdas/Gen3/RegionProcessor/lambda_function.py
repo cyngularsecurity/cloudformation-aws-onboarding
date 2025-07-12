@@ -2,7 +2,7 @@ import json
 import logging
 import traceback
 from typing import Dict, Any
-from .utils import process_dns_service, process_vfl_service, process_eks_service, process_os_service
+from utils import process_dns_service, process_vfl_service, process_eks_service, process_os_service
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -13,7 +13,6 @@ class RegionProcessor:
         self.client_name = client_name
         self.cyngular_bucket = cyngular_bucket
         self.cyngular_role_arn = cyngular_role_arn
-
 
     def process_service(self, service: str) -> Dict[str, Any]:
         """Process a specific service for the region"""
@@ -29,7 +28,6 @@ class RegionProcessor:
             return {'success': False, 'error': f'Unknown service: {service}'}
         
         try:
-            # Call each service function with only the parameters it needs
             if service == 'dns':
                 result = service_map[service](self.region, self.cyngular_bucket)
             elif service == 'vfl':
@@ -40,7 +38,7 @@ class RegionProcessor:
                 result = service_map[service](self.region)
             else:
                 return {'success': False, 'error': f'Unknown service: {service}'}
-                
+
             result['service'] = service
             result['region'] = self.region
             return result
@@ -57,7 +55,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main lambda handler"""
     logger.info(f"Received event: {json.dumps(event)}")
 
-    # Extract parameters from event
     service = event.get('service')
     region = event.get('region')
     client_name = event.get('client_name')
