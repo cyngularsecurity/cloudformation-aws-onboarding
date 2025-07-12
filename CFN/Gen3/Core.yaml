@@ -283,6 +283,7 @@ Resources:
           BUCKET_NAME:
             Fn::ImportValue:
               !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+          IS_ORG: !If [IsOrg, true, false]
 
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
