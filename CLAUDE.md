@@ -134,6 +134,45 @@ Before deployment, ensure:
 - **Better Error Handling**: Improved monitoring and debugging capabilities
 - **Scalable**: Service Manager orchestrates across all enabled regions automatically
 
+## Git Workflow Automation
+
+The project includes automated git workflow scripts for managing releases through the standard branch flow: `dev → main → release/3.8`.
+
+### Git Workflow Commands
+```bash
+# Push current dev changes and create MR to main
+./Scripts/git-workflow.sh dev-to-main
+
+# Create MR from main to release/3.8 (after main MR is merged)
+./Scripts/git-workflow.sh main-to-release
+
+# Show current git status and available commands
+./Scripts/git-workflow.sh status
+```
+
+### Workflow Process
+1. **Development**: Work on `dev` branch
+2. **Integration**: Use `dev-to-main` to push dev and create MR to main
+3. **Release**: After main MR is merged, use `main-to-release` to create MR to release/3.8
+
+### Prerequisites for Git Automation
+- GitLab CLI installed (`brew install glab`)
+- Authenticated with GitLab (`glab auth login`)
+- Working from a clean git repository (no uncommitted changes)
+
+### Manual Git Commands (Alternative)
+```bash
+# Push dev and create MR manually
+git checkout dev
+git push origin dev
+glab mr create --source-branch dev --target-branch main --title "Merge dev to main"
+
+# Create release MR manually  
+git checkout main
+git pull origin main
+glab mr create --source-branch main --target-branch release/3.8 --title "Release merge"
+```
+
 ## Development Notes
 
 - All CloudFormation templates follow AWS best practices with proper parameter validation
