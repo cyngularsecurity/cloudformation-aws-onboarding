@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Cyngular Gen3 Readonly Role Stack - Creates IAM role for Cyngular access
 
+Transform:
+  - 'AWS::LanguageExtensions'
+
 Metadata:
   Vendor:
     Description: Cyngular Security

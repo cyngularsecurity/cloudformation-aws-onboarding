@@ -29,9 +29,8 @@ class ServiceManager:
             regions = []
 
             response = self.ec2_client.describe_regions(AllRegions=False) ## only enabled
-            while 'NextToken' in response:
-                regions.extend([r['RegionName'] for r in response['Regions']])
-                response = self.ec2_client.describe_regions(NextToken=response['NextToken'])
+
+            regions = [r['RegionName'] for r in response['Regions']]
             
             # Use RegionOptStatusContains parameter to filter only ENABLED regions
             # response = self.account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
