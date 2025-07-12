@@ -1,6 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular Gen3 Core Stack - Creates S3 bucket, bucket policy, and CloudTrail
+  Cyngular Template -2-
+  Creates:
+    - S3 bucket
+    - S3 bucket policy
+    - Readonly Role [S3 Bucket] access policy
+    - CloudTrail Trail
+
+    - Update-bucket-policy lambda
+    - Update-bucket-policy role
+    - Update-bucket-policy role policy
+    - EventBridge rule [Update-bucket-policy lambda]
+    - Lambda permission for event
 
 Transform:
   - 'AWS::LanguageExtensions'
@@ -139,7 +150,7 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: 'LambdaRead'
+          - Sid: "CyngularLambdaBucketAdmin"
             Effect: Allow
             Principal:
               AWS: [
@@ -193,7 +204,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: "CyngularBucketAdmin"
+          - Sid: "CyngularRoleBucketAdmin"
             Effect: Allow
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
@@ -280,9 +291,7 @@ Resources:
       Role: !GetAtt UpdateBucketPolicyRole.Arn
       Environment:
         Variables:
-          BUCKET_NAME:
-            Fn::ImportValue:
-              !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+          BUCKET_NAME: !Ref CyngularS3Bucket
           IS_ORG: !If [IsOrg, true, false]
 
       Runtime: "python3.12"

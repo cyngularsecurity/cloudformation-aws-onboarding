@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular Gen3 Lambda Stack - Creates Lambda functions, roles, and StackSet resources
+  Cyngular Template -3-
+  Creates:
+    - IAM Role for Service Manager
+    - IAM Role for Region Processor
+    - Lambda Stack - Creates Lambda functions, roles, and StackSet resources
 
 Transform:
   - 'AWS::LanguageExtensions'
@@ -25,7 +29,6 @@ Metadata:
           default: "Override Parameters"
         Parameters:
           - ServiceManagerOverride
-          # - AdminAndExecOverride
 
 Mappings:
   VARS:
@@ -64,11 +67,6 @@ Parameters:
     Type: Number
     Default: 1
 
-  # AdminAndExecOverride:
-  #   Description: "change to override (retrigger) the 'Admin and Execution' Lambda Trigger"
-  #   Type: Number
-  #   Default: 1
-
 Resources:
   ServiceManagerRole:
     Type: AWS::IAM::Role
@@ -83,34 +81,37 @@ Resources:
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      Policies:
-        - PolicyName: !Sub "cyngular-service-manager-policy-${ClientName}"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: "InvokeRegionProcessor"
-                Effect: Allow
-                Action:
-                  - "lambda:InvokeFunction"
-                Resource: !GetAtt RegionProcessorLambda.Arn
-              - Sid: "GetRegions"
-                Effect: Allow
-                Action:
-                  - "ec2:DescribeRegions"
-                  - "account:ListRegions"
-                Resource: "*"
-              - Sid: "StackSetOperations"
-                Effect: Allow
-                Action:
-                  - "cloudformation:DescribeStackSet"
-                  - "cloudformation:DescribeStackSetOperation"
-                  - "cloudformation:ListStackSetOperationResults"
-                Resource: "*"
       Tags:
         - Key: Vendor
           Value: "Cyngular Security"
         - Key: ClientName
           Value: !Ref ClientName
+
+  ServiceManagerRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-service-manager-policy-${ClientName}"
+      RoleName: !Ref ServiceManagerRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "InvokeRegionProcessor"
+            Effect: Allow
+            Action:
+              - "lambda:InvokeFunction"
+            Resource: !GetAtt RegionProcessorLambda.Arn
+          - Sid: "GetRegions"
+            Effect: Allow
+            Action:
+              - "ec2:DescribeRegions"
+            Resource: "*"
+          # - Sid: "StackSetOperations"
+          #   Effect: Allow
+          #   Action:
+          #     - "cloudformation:DescribeStackSet"
+          #     - "cloudformation:DescribeStackSetOperation"
+          #     - "cloudformation:ListStackSetOperationResults"
+          #   Resource: "*"
 
   RegionProcessorRole:
     Type: AWS::IAM::Role
