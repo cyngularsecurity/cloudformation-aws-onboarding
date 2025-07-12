@@ -79,14 +79,14 @@ def update_bucket(bucket_name, management_account_id, is_org):
     except Exception as e:
         logging.critical(str(e))
 
-def cyngular_function(event, context):
+def lambda_handler(event, context):
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.info('STARTING CYNGULAR\'S FUNCTION...')
     try:
         logger.info('UPDATING CYNGULAR BUCKET POLICY')
-        is_org = event['is_org']
+        is_org = os.environ['IS_ORG']
         cyngular_bucket_name = os.environ['BUCKET_NAME']
         mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
 
