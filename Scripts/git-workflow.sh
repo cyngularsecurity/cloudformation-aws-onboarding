@@ -47,49 +47,48 @@ remote_branch_exists() {
     git show-ref --verify --quiet refs/remotes/origin/$1
 }
 
-# Function to check GitLab CLI authentication
-check_glab_auth() {
-    if ! command -v glab >/dev/null 2>&1; then
-        print_warning "GitLab CLI (glab) not found. Install with: brew install glab"
-        return 1
+# Function to get GitLab project path from remote URL
+get_gitlab_project_path() {
+    local remote_url=$(git config --get remote.origin.url)
+    # Handle both SSH and HTTPS URLs
+    if [[ $remote_url == git@* ]]; then
+        # SSH format: git@gitlab.com:group/project.git
+        echo "$remote_url" | sed 's/git@gitlab\.com://' | sed 's/\.git$//'
+    else
+        # HTTPS format: https://gitlab.com/group/project.git
+        echo "$remote_url" | sed 's|https://gitlab\.com/||' | sed 's/\.git$//'
     fi
-    
-    if ! glab auth status >/dev/null 2>&1; then
-        print_error "GitLab CLI not authenticated. Please run:"
-        echo "  glab auth login"
-        echo "  Or visit: https://gitlab.com/-/user_settings/personal_access_tokens"
-        return 1
-    fi
-    
-    return 0
 }
 
-# Function to create merge request
+# Function to push branch and show MR link
 create_mr() {
     local source_branch=$1
     local target_branch=$2
     local title=$3
     
-    print_status "Creating merge request from $source_branch to $target_branch..."
+    print_status "Pushing $source_branch branch to remote..."
     
-    if check_glab_auth; then
-        if glab mr create \
-            --source-branch "$source_branch" \
-            --target-branch "$target_branch" \
-            --title "$title" \
-            --description "Automated merge request from $source_branch to $target_branch" \
-            --remove-source-branch 2>/dev/null; then
-            print_success "Merge request created successfully!"
-        else
-            print_warning "Failed to create MR automatically. Create manually at:"
-            echo "  https://gitlab.com/$(git config --get remote.origin.url | sed 's/.*:\(.*\)\.git/\1/')/-/merge_requests/new?merge_request%5Bsource_branch%5D=$source_branch&merge_request%5Btarget_branch%5D=$target_branch"
-        fi
+    # Push the branch to remote
+    if git push origin "$source_branch"; then
+        print_success "Branch $source_branch pushed successfully!"
+        
+        # Get project path for GitLab URL
+        local project_path=$(get_gitlab_project_path)
+        local mr_url="https://gitlab.com/$project_path/-/merge_requests/new"
+        mr_url="${mr_url}?merge_request%5Bsource_branch%5D=${source_branch}"
+        mr_url="${mr_url}&merge_request%5Btarget_branch%5D=${target_branch}"
+        mr_url="${mr_url}&merge_request%5Btitle%5D=$(echo "$title" | sed 's/ /%20/g')"
+        
+        print_success "Create merge request at:"
+        echo "  🔗 $mr_url"
+        echo ""
+        print_status "Merge Request Details:"
+        echo "  📤 Source: $source_branch"
+        echo "  📥 Target: $target_branch"
+        echo "  📝 Title: $title"
     else
-        print_warning "Please create merge request manually:"
-        echo "  Source: $source_branch"
-        echo "  Target: $target_branch"
-        echo "  Title: $title"
-        echo "  URL: https://gitlab.com/$(git config --get remote.origin.url | sed 's/.*:\(.*\)\.git/\1/')/-/merge_requests/new?merge_request%5Bsource_branch%5D=$source_branch"
+        print_error "Failed to push $source_branch branch to remote"
+        return 1
     fi
 }
 
@@ -114,11 +113,7 @@ push_to_main() {
     print_status "Pulling latest changes from origin/dev..."
     git pull origin dev
     
-    # Push dev branch to remote
-    print_status "Pushing dev branch to remote..."
-    git push origin dev
-    
-    # Create MR from dev to main
+    # Push and create MR from dev to main
     create_mr "dev" "main" "Merge dev to main - $(date '+%Y-%m-%d %H:%M')"
 }
 
@@ -134,23 +129,19 @@ push_to_release() {
     print_status "Pulling latest changes from origin/main..."
     git pull origin main
     
-    # Check if release/3.8 branch exists locally
-    if ! branch_exists "release/3.8"; then
-        if remote_branch_exists "release/3.8"; then
-            print_status "Creating local release/3.8 branch from remote..."
-            git checkout -b release/3.8 origin/release/3.8
-        else
-            print_error "release/3.8 branch doesn't exist locally or remotely!"
-            exit 1
-        fi
-    else
-        print_status "Switching to release/3.8 branch..."
-        git checkout release/3.8
-        print_status "Pulling latest changes from origin/release/3.8..."
-        git pull origin release/3.8
+    # Ensure main is pushed (in case of local commits)
+    print_status "Ensuring main branch is up to date on remote..."
+    git push origin main
+    
+    # Check if release/3.8 branch exists remotely
+    if ! remote_branch_exists "release/3.8"; then
+        print_error "release/3.8 branch doesn't exist on remote!"
+        print_status "Available release branches:"
+        git branch -r | grep "origin/release/" || echo "  No release branches found"
+        exit 1
     fi
     
-    # Create MR from main to release/3.8
+    # Create MR from main to release/3.8 (no need to switch branches)
     create_mr "main" "release/3.8" "Release merge: main to release/3.8 - $(date '+%Y-%m-%d %H:%M')"
 }
 
