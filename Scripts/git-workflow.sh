@@ -47,6 +47,23 @@ remote_branch_exists() {
     git show-ref --verify --quiet refs/remotes/origin/$1
 }
 
+# Function to check GitLab CLI authentication
+check_glab_auth() {
+    if ! command -v glab >/dev/null 2>&1; then
+        print_warning "GitLab CLI (glab) not found. Install with: brew install glab"
+        return 1
+    fi
+    
+    if ! glab auth status >/dev/null 2>&1; then
+        print_error "GitLab CLI not authenticated. Please run:"
+        echo "  glab auth login"
+        echo "  Or visit: https://gitlab.com/-/user_settings/personal_access_tokens"
+        return 1
+    fi
+    
+    return 0
+}
+
 # Function to create merge request
 create_mr() {
     local source_branch=$1
@@ -55,19 +72,24 @@ create_mr() {
     
     print_status "Creating merge request from $source_branch to $target_branch..."
     
-    if command -v glab >/dev/null 2>&1; then
-        glab mr create \
+    if check_glab_auth; then
+        if glab mr create \
             --source-branch "$source_branch" \
             --target-branch "$target_branch" \
             --title "$title" \
             --description "Automated merge request from $source_branch to $target_branch" \
-            --remove-source-branch
-        print_success "Merge request created successfully!"
+            --remove-source-branch 2>/dev/null; then
+            print_success "Merge request created successfully!"
+        else
+            print_warning "Failed to create MR automatically. Create manually at:"
+            echo "  https://gitlab.com/$(git config --get remote.origin.url | sed 's/.*:\(.*\)\.git/\1/')/-/merge_requests/new?merge_request%5Bsource_branch%5D=$source_branch&merge_request%5Btarget_branch%5D=$target_branch"
+        fi
     else
-        print_warning "GitLab CLI (glab) not found. Please create merge request manually:"
+        print_warning "Please create merge request manually:"
         echo "  Source: $source_branch"
         echo "  Target: $target_branch"
         echo "  Title: $title"
+        echo "  URL: https://gitlab.com/$(git config --get remote.origin.url | sed 's/.*:\(.*\)\.git/\1/')/-/merge_requests/new?merge_request%5Bsource_branch%5D=$source_branch"
     fi
 }
 
