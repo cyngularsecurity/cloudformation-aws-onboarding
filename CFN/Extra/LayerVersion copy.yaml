@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  LayerVersion:
+    RetentionPolicy: Delete
+
+Resources:
+  AioBoto3LayerPython39:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: aioboto3-layer-python39
+      Description: aioboto3 library for Python 3.9
+      ContentUri: aioboto3-python3.9-layer.zip
+      CompatibleRuntimes:
+        - python3.9
+      LicenseInfo: Apache-2.0
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: makefile
+
+  # Repeat for other Python versions...
