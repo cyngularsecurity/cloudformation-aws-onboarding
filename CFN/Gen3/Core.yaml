@@ -310,6 +310,15 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
+  UpdateBucketPolicyTrigger:
+    Type: Custom::UpdateBucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt UpdateBucketPolicyLambda.Arn
+      ServiceTimeout: 1200
+
   UpdateBucketPolicyScheduledRule:
     Type: AWS::Events::Rule
     Properties:

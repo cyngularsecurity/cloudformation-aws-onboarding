@@ -37,6 +37,7 @@ aws sts get-caller-identity --profile $RUNTIME_PROFILE
 STACK_PARAMS="ClientName=$ClientName,\
 CyngularAccountId=${CyngularAccountId:-"851565895544"},\
 OrganizationId=${OrganizationId:-""},\
+ExcludedRegions=${ExcludedRegions:-""},\
 CloudTrailBucket=${CloudTrailBucket:-""},\
 EnableDNS=${EnableDNS:-"true"},\
 EnableEKS=${EnableEKS:-"true"},\
@@ -49,6 +50,7 @@ echo "Deploying with the parameters:"
 echo "  ClientName: $ClientName"
 echo "  CyngularAccountId: $CyngularAccountId"
 echo "  OrganizationId: ${OrganizationId:-'<not set>'}"
+echo "  ExcludedRegions: ${ExcludedRegions:-'<not set>'}"
 echo "  CloudTrailBucket: ${CloudTrailBucket:-'<will be created>'}"
 echo "  EnableDNS: $EnableDNS"
 echo "  EnableEKS: $EnableEKS"
@@ -67,7 +69,10 @@ echo ""
 
 # Deploy ReadonlyRole stack
 echo "Deploying ReadonlyRole stack..."
-rain deploy ./CFN/Gen3/ReadonlyRole.yaml clipper-ro-role \
+# rain forecast --experimental CFN/Gen3/ReadonlyRole.yaml ${ClientName}-ro-role \
+#     --params ClientName=${ClientName}
+
+rain deploy ./CFN/Gen3/ReadonlyRole.yaml ${ClientName}-ro-role \
     --region ap-northeast-3 \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
@@ -75,7 +80,7 @@ rain deploy ./CFN/Gen3/ReadonlyRole.yaml clipper-ro-role \
 
 # Deploy Core stack
 echo "Deploying Core stack..."
-rain deploy ./CFN/Gen3/Core.yaml clipper-core \
+rain deploy ./CFN/Gen3/Core.yaml ${ClientName}-core \
     --region ap-northeast-3 \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
@@ -83,7 +88,7 @@ rain deploy ./CFN/Gen3/Core.yaml clipper-core \
 
 # Deploy Services stack
 echo "Deploying Services stack..."
-rain deploy ./CFN/Gen3/Services.yaml clipper-services \
+rain deploy ./CFN/Gen3/Services.yaml ${ClientName}-services \
     --region ap-northeast-3 \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
