@@ -3,8 +3,13 @@ Description: >-
   Cyngular Template -3-
   Creates:
     - IAM Role for Service Manager
+    - IAM Role policy for Service Manager
     - IAM Role for Region Processor
-    - Lambda Stack - Creates Lambda functions, roles, and StackSet resources
+    - IAM Role policy for Region Processor
+    - Lambda functions for Service Manager and Region Processor
+    - Trigger for Service Manager
+    - Scheduled Rule for Service Manager
+    - Permission for Service Manager
 
 Transform:
   - 'AWS::LanguageExtensions'
@@ -67,6 +72,11 @@ Parameters:
     Type: Number
     Default: 1
 
+  ExcludedRegions:
+    Description: "List of regions to exclude from the service manager"
+    Type: List<String>
+    Default: []
+
 Resources:
   ServiceManagerRole:
     Type: AWS::IAM::Role
@@ -105,13 +115,6 @@ Resources:
             Action:
               - "ec2:DescribeRegions"
             Resource: "*"
-          # - Sid: "StackSetOperations"
-          #   Effect: Allow
-          #   Action:
-          #     - "cloudformation:DescribeStackSet"
-          #     - "cloudformation:DescribeStackSetOperation"
-          #     - "cloudformation:ListStackSetOperationResults"
-          #   Resource: "*"
 
   RegionProcessorRole:
     Type: AWS::IAM::Role
@@ -126,11 +129,20 @@ Resources:
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      Policies:
-        - PolicyName: !Sub "cyngular-region-processor-policy-${ClientName}"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  RegionProcessorRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-region-processor-policy-${ClientName}"
+      RoleName: !Ref RegionProcessorRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
               - Sid: "RegionProcessorGeneral"
                 Effect: Allow
                 Resource: "*"
@@ -144,14 +156,11 @@ Resources:
                   - "ec2:CreateTags"
                   - "ec2:DeleteTags"
                   - "eks:List*"
+                  - "eks:DescribeCluster"
                   - "eks:UpdateClusterConfig"
                   - "eks:CreateAccessEntry"
                   - "eks:AssociateAccessPolicy"
-                  - "eks:DescribeCluster"
-                  - "events:PutRule"
-                  - "events:DisableRule"
                   - "logs:CreateLogDelivery"
-                  - "lambda:UpdateFunctionConfiguration"
               - Sid: "CyngularBucketAdmin"
                 Effect: Allow
                 Resource:
@@ -176,12 +185,6 @@ Resources:
                   - "eks:CreateAccessEntry"
                   - "eks:AssociateAccessPolicy"
                   - "eks:DescribeCluster"
-      Tags:
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
-
 
   ServiceManagerLambda:
     Type: AWS::Lambda::Function
@@ -192,9 +195,7 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      # PackageType: "Image"
       Code:
-        # ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/cyngular-service-manager:latest"
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
@@ -207,6 +208,7 @@ Resources:
           ENABLE_DNS: !Ref EnableDNS
           ENABLE_EKS: !Ref EnableEKS
           ENABLE_VPC_FLOW_LOGS: !Ref EnableVPCFlowLogs
+          EXCLUDED_REGIONS: !Ref ExcludedRegions
           CYNGULAR_BUCKET:
             Fn::ImportValue:
               !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ] ]
@@ -254,7 +256,6 @@ Resources:
 
   ServiceManagerTrigger:
     Type: Custom::ServiceManager
-    # DependsOn: [AdminAndExecTrigger]
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Version: "1.0"
@@ -295,9 +296,3 @@ Outputs:
     Value: !Ref RegionProcessorLambda
     Export:
       Name: !Join [ ":", ["CyngularSecurity", "RegionProcessorFunctionName", !Ref ClientName]]
-
-  # AdminAndExecFunctionName:
-  #   Description: "Name of the Admin and Exec Lambda function"
-  #   Value: !Ref AdminAndExecLambda
-  #   Export:
-  #     Name: !Join [ ":", ["CyngularSecurity", "AdminAndExecFunctionName", !Ref ClientName]]

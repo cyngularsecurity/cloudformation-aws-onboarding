@@ -3,8 +3,6 @@ import json
 import logging
 import os
 import time
-import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any
 import cfnresponse
 
@@ -22,27 +20,21 @@ class ServiceManager:
         self.enable_eks = os.environ.get('ENABLE_EKS', 'false').lower() == 'true'
         self.enable_vpc_flow_logs = os.environ.get('ENABLE_VPC_FLOW_LOGS', 'false').lower() == 'true'
 
-        # concurrency limits
-        self.max_workers = int(os.environ.get('MAX_CONCURRENT_WORKERS', '8'))
-        self.invocation_delay = float(os.environ.get('INVOCATION_DELAY_SECONDS', '0.1'))
-
         self.lambda_client = boto3.client('lambda')
         self.ec2_client = boto3.client('ec2')
 
     def get_enabled_regions(self) -> List[str]:
         """Get list of enabled regions for the account"""
         try:
-            excluded_regions = os.environ.get('EXCLUDED_REGIONS', '').split(',')
-            response = self.ec2_client.describe_regions(AllRegions=False)
-            regions = [
-                r['RegionName'] for r in response['Regions']
-                if r['RegionName'] not in excluded_regions
-            ]
-            
+            regions = []
+            response = self.ec2_client.describe_regions(AllRegions=False) ## only enabled
+            regions = [r['RegionName'] for r in response['Regions']]
+
             logger.info(f"Found {len(regions)} enabled regions: {regions}")
             return regions
         except Exception as e:
             logger.error(f"Error getting enabled regions: {str(e)}")
+            ## Fallback to current region only
             current_lambda_region = context.invoked_function_arn.split(':')[3]
             logger.info(f"Using current region: {current_lambda_region}")
             return [current_lambda_region]
@@ -61,8 +53,8 @@ class ServiceManager:
         logger.info(f"Services to configure: {services}")
         return services
 
-    def invoke_region_processor_task(self, service: str, region: str) -> Dict[str, Any]:
-        """Single task to invoke region processor - designed for thread pool"""
+    def invoke_region_processor(self, service: str, region: str) -> Dict[str, Any]:
+        """Invoke the region processor lambda for a specific service and region"""
         payload = {
             'service': service,
             'region': region,
@@ -72,9 +64,6 @@ class ServiceManager:
         }
         
         try:
-            if self.invocation_delay > 0:
-                time.sleep(self.invocation_delay)
-            
             response = self.lambda_client.invoke(
                 FunctionName=self.region_processor_function,
                 InvocationType='RequestResponse',
@@ -110,66 +99,36 @@ class ServiceManager:
             }
 
     def process_all_services(self) -> Dict[str, Any]:
-        """Process all enabled services across all regions in parallel"""
+        """Process all enabled services across all regions"""
         regions = self.get_enabled_regions()
         services = self.get_services_to_configure()
 
-        tasks = [
-            (service, region) for service in services
-            for region in regions
-        ]
-
-        logger.info(f"Starting parallel processing of {len(tasks)} tasks across {len(regions)} regions and {len(services)} services")
-        
-        start_time = time.time()
-        successful_results = []
-        failed_results = []
-
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_task = {
-                executor.submit(self.invoke_region_processor_task, service, region): (service, region)
-                for service, region in tasks
-            }
-            
-            for future in as_completed(future_to_task):
-                service, region = future_to_task[future]
-                try:
-                    result = future.result()
-                    if result['success']:
-                        successful_results.append(result)
-                    else:
-                        failed_results.append(result)
-                except Exception as e:
-                    logger.error(f"Task {service}/{region} generated exception: {str(e)}")
-                    failed_results.append({
-                        'success': False,
-                        'service': service,
-                        'region': region,
-                        'error': str(e)
-                    })
-        
-        end_time = time.time()
-
-        final_results = {
+        results = {
             'regions': regions,
             'services_processed': services,
-            'total_tasks': len(tasks),
-            'services_done': len(successful_results),
-            'services_failed': len(failed_results),
-            'success_rate': (len(successful_results) / len(tasks) * 100) if tasks else 0,
-            'processing_time_seconds': round(end_time - start_time, 2),
-            'max_workers': self.max_workers,
-            'successful_results': successful_results,
-            'failed_results': failed_results
+            'total_tasks': len(regions) * len(services),
+            'services_done': 0,
+            'services_failed': 0,
+            'results': []
         }
 
-        logger.info(f"Parallel processing complete in {final_results['processing_time_seconds']}s. "
-                   f"Success: {final_results['services_done']}, Failed: {final_results['services_failed']}, "
-                   f"Success Rate: {final_results['success_rate']:.2%}")
+        for service in services:
+            for region in regions:
+                logger.info(f"Processing {service} in {region}")
+                result = self.invoke_region_processor(service, region)
+                results['results'].append(result)
 
-        return final_results
+                if result['success']:
+                    results['services_done'] += 1
+                else:
+                    results['services_failed'] += 1
 
-    # [Rest of the CloudFormation and event handling methods remain the same as original]
+                # Add a small delay to avoid throttling
+                time.sleep(0.1)
+
+        logger.info(f"Processing complete. Success: {results['services_done']}, Failed: {results['services_failed']}")
+        return results
+
     def handle_cloudformation_event(self, event: Dict[str, Any], context: Any) -> None:
         """Handle CloudFormation custom resource events"""
         try:
@@ -179,23 +138,20 @@ class ServiceManager:
             if request_type in ['Create', 'Update']:
                 results = self.process_all_services()
 
-                success_threshold = float(os.environ.get('SUCCESS_THRESHOLD', '0.8'))
-
-                if results['success_rate'] >= success_threshold:
-                    logger.info(f"Operation successful with {results['success_rate']:.2%} success rate")
-                    cfnresponse.send(event, context, cfnresponse.SUCCESS, {
-                        'message': f"Success: {results['services_done']}/{results['total_tasks']} tasks completed"
-                    })
+                # Determine if the overall operation was successful
+                if results['services_failed'] == 0:
+                    # cfnresponse.send(event, context, cfnresponse.SUCCESS, results)
+                    logger.info(f"results: {results}")
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, {'message': 'Success'})
                 else:
-                    error_msg = f"Failed: Only {results['services_done']}/{results['total_tasks']} tasks completed"
-                    logger.warning(f"Operation failed: {error_msg}")
+                    error_msg = f"Failed to configure {results['services_failed']} tasks out of {results['total_tasks']}"
+                    logger.info(f"error_msg: {error_msg} | results: {results}")
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'message': error_msg})
-
+                    
             elif request_type == 'Delete':
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, {
-                    'message': 'Delete operation completed'
-                })
-
+                # (clean up resources)
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {'message': 'Delete operation completed'})
+                
         except Exception as e:
             logger.error(f"Error handling CloudFormation event: {str(e)}")
             cfnresponse.send(event, context, cfnresponse.FAILED, {'message': str(e)})
@@ -208,10 +164,10 @@ class ServiceManager:
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main lambda handler"""
     logger.info(f"Received event: {json.dumps(event)}")
-
+    
     try:
         service_manager = ServiceManager()
-
+    
         # Check if this is a CloudFormation custom resource event
         if 'RequestType' in event and 'StackId' in event:
             service_manager.handle_cloudformation_event(event, context)
