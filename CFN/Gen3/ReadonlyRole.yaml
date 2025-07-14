@@ -148,6 +148,9 @@ Resources:
 
               - "account:ListRegions"
 
+              - "codebuild:ListBuilds"
+              - "codebuild:BatchGetBuilds"
+
           - Sid: "Ec2CyngularSnapshot"
             Effect: Allow
             Action:

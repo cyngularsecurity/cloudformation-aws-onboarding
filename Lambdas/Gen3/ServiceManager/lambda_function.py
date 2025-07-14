@@ -12,6 +12,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 class ServiceManager:
+    # concurrency limits
+    MAX_CONCURRENT_WORKERS = 8
+    INVOCATION_DELAY_SECONDS = 0.1
+
     def __init__(self):        
         self.client_name = os.environ.get('CLIENT_NAME')
         self.region_processor_function = os.environ.get('REGION_PROCESSOR_FUNCTION_NAME')
@@ -21,10 +25,6 @@ class ServiceManager:
         self.enable_dns = os.environ.get('ENABLE_DNS', 'false').lower() == 'true'
         self.enable_eks = os.environ.get('ENABLE_EKS', 'false').lower() == 'true'
         self.enable_vpc_flow_logs = os.environ.get('ENABLE_VPC_FLOW_LOGS', 'false').lower() == 'true'
-
-        # concurrency limits
-        self.max_workers = int(os.environ.get('MAX_CONCURRENT_WORKERS', '8'))
-        self.invocation_delay = float(os.environ.get('INVOCATION_DELAY_SECONDS', '0.1'))
 
         self.lambda_client = boto3.client('lambda')
         self.ec2_client = boto3.client('ec2')
@@ -72,15 +72,15 @@ class ServiceManager:
         }
         
         try:
-            if self.invocation_delay > 0:
-                time.sleep(self.invocation_delay)
+            if self.INVOCATION_DELAY_SECONDS > 0:
+                time.sleep(self.INVOCATION_DELAY_SECONDS)
             
             response = self.lambda_client.invoke(
                 FunctionName=self.region_processor_function,
                 InvocationType='RequestResponse',
                 Payload=json.dumps(payload)
             )
-            
+
             response_payload = json.loads(response['Payload'].read())
             
             if response['StatusCode'] == 200:
@@ -120,17 +120,17 @@ class ServiceManager:
         ]
 
         logger.info(f"Starting parallel processing of {len(tasks)} tasks across {len(regions)} regions and {len(services)} services")
-        
+
         start_time = time.time()
         successful_results = []
         failed_results = []
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.MAX_CONCURRENT_WORKERS) as executor:
             future_to_task = {
                 executor.submit(self.invoke_region_processor_task, service, region): (service, region)
                 for service, region in tasks
             }
-            
+
             for future in as_completed(future_to_task):
                 service, region = future_to_task[future]
                 try:
@@ -147,7 +147,7 @@ class ServiceManager:
                         'region': region,
                         'error': str(e)
                     })
-        
+
         end_time = time.time()
 
         final_results = {
@@ -158,7 +158,7 @@ class ServiceManager:
             'services_failed': len(failed_results),
             'success_rate': (len(successful_results) / len(tasks) * 100) if tasks else 0,
             'processing_time_seconds': round(end_time - start_time, 2),
-            'max_workers': self.max_workers,
+            'max_workers': self.MAX_CONCURRENT_WORKERS,
             'successful_results': successful_results,
             'failed_results': failed_results
         }

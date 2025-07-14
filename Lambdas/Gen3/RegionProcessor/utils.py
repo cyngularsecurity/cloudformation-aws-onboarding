@@ -14,10 +14,10 @@ def process_dns_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
         
         r53_client = boto3.client('route53resolver', region_name=region)
         ec2_client = boto3.client('ec2', region_name=region)
-        
+
         region_query_log_configs = r53_client.list_resolver_query_log_configs()['ResolverQueryLogConfigs']
         cyngular_resolver_id = ''
-        
+
         for config in region_query_log_configs:
             if config.get('Name') == 'cyngular_dns':
                 cyngular_resolver_id = config['Id']
