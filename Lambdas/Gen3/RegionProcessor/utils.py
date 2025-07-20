@@ -107,7 +107,7 @@ def process_vfl_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
             ]
         )
         
-        logger.info(f'VPC FLOW LOGS COMMAND SUCCEEDED.')
+        logger.info(f'[{region} | VPC FLOW LOGS] COMMAND SUCCEEDED.')
         return {
             'success': True,
             'vpc_ids': vpc_id_list,
@@ -116,13 +116,13 @@ def process_vfl_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
 
     except Exception as e:
         if 'FlowLogAlreadyExists' in str(e):
-            logger.info('VPC Flow Logs already exist')
+            logger.info(f'[{region} | VPC FLOW LOGS] VPC Flow Logs already exist')
             return {'success': True, 'message': 'Flow logs already exist'}
         else:
-            logger.error(f'VPC Flow Logs processing failed: {str(e)}')
+            logger.error(f'[{region} | VPC FLOW LOGS] VPC Flow Logs processing failed: {str(e)}')
             return {'success': False, 'error': str(e)}
 
-def check_access_entry_exists(eks_client, cluster_name: str, role_arn: str) -> bool:
+def check_access_entry_exists(region: str, eks_client, cluster_name: str, role_arn: str) -> bool:
     """Check if EKS access entry exists for the role"""
     try:
         response = eks_client.list_access_entries(clusterName=cluster_name)
@@ -130,25 +130,25 @@ def check_access_entry_exists(eks_client, cluster_name: str, role_arn: str) -> b
             return role_arn in response['accessEntries']
         return False
     except eks_client.exceptions.ResourceNotFoundException:
-        logger.error(f'Cluster {cluster_name} not found')
+        logger.error(f'[{region} | EKS] Cluster {cluster_name} not found')
         return False
 
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidRequestException' and 'authentication mode' in str(e):
-            logger.warning(f'Cluster {cluster_name} has incompatible authentication mode for access entries')
+            logger.warning(f'[{region} | EKS] Cluster {cluster_name} has incompatible authentication mode for access entries')
             return False
     except Exception as e:
-        logger.error(f'Error checking access entries: {str(e)}')
+        logger.error(f'[{region} | EKS] Error checking access entries: {str(e)}')
         return False
 
-def create_access_entry(eks_client, cluster_name: str, role_arn: str) -> Dict[str, Any]:
+def create_cyngular_access_entry(region: str, eks_client, cluster_name: str, role_arn: str) -> Dict[str, Any]:
     """Create EKS access entry for the role"""
     try:
         cluster_info = eks_client.describe_cluster(name=cluster_name)
         auth_mode = cluster_info['cluster'].get('accessConfig', {}).get('authenticationMode', 'CONFIG_MAP')
         
         if auth_mode not in ['API', 'API_AND_CONFIG_MAP']:
-            logger.warning(f'Skipping access entry creation for cluster {cluster_name} - incompatible authentication mode: {auth_mode}')
+            logger.warning(f'[{region} | EKS] Skipping access entry creation for cluster {cluster_name} - incompatible authentication mode: {auth_mode}')
             return {'success': False, 'reason': 'Incompatible authentication mode'}
 
         eks_client.create_access_entry(
@@ -164,17 +164,17 @@ def create_access_entry(eks_client, cluster_name: str, role_arn: str) -> Dict[st
             accessScope={'type': 'cluster'}
         )
 
-        logger.info(f'Successfully created access entry for {cluster_name}')
+        logger.info(f'[{region} | EKS] Successfully created access entry for {cluster_name}')
         return {'success': True, 'cluster': cluster_name}
 
     except eks_client.exceptions.ResourceNotFoundException as e_not_found:
-        logger.error(f'Cluster {cluster_name} not found -- {str(e_not_found)}')
+        logger.error(f'[{region} | EKS] Cluster {cluster_name} not found -- {str(e_not_found)}')
         return {'success': False, 'error': str(e_not_found), 'cluster': cluster_name}
     except eks_client.exceptions.AccessDeniedException as e_access_denied:
-        logger.error(f'Access denied when creating access entry for cluster {cluster_name} -- {str(e_access_denied)}')
+        logger.error(f'[{region} | EKS] Access denied when creating access entry for cluster {cluster_name} -- {str(e_access_denied)}')
         return {'success': False, 'error': str(e_access_denied), 'cluster': cluster_name}
     except Exception as e:
-        logger.error(f'Failed to create access entry for {cluster_name}: {str(e)}')
+        logger.error(f'[{region} | EKS] Failed to create access entry for {cluster_name}: {str(e)}')
         return {'success': False, 'error': str(e), 'cluster': cluster_name}
 
 def process_eks_service(region: str, cyngular_role_arn: str) -> Dict[str, Any]:
@@ -237,10 +237,10 @@ def process_eks_service(region: str, cyngular_role_arn: str) -> Dict[str, Any]:
                         else:
                             raise e
 
-                if check_access_entry_exists(eks_client, cluster_name, cyngular_role_arn):
+                if check_access_entry_exists(region, eks_client, cluster_name, cyngular_role_arn):
                     logger.info(f'[{region} | EKS] Access entry already exists for {cluster_name}')
                 else:
-                    access_result = create_access_entry(eks_client, cluster_name, cyngular_role_arn)
+                    access_result = create_cyngular_access_entry(region, eks_client, cluster_name, cyngular_role_arn)
                     processed_clusters.append({
                         'cluster': cluster_name,
                         'logging_enabled': True,

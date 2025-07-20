@@ -5,7 +5,7 @@ import logging
 import os
 import time
 import traceback
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 import cfnresponse
 
 logger = logging.getLogger()

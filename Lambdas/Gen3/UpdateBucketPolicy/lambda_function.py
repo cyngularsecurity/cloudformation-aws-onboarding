@@ -1,5 +1,4 @@
 import boto3
-import traceback
 import os
 import logging
 import json

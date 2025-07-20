@@ -1,5 +1,4 @@
 import boto3
-import traceback
 import os
 import logging
 
@@ -16,8 +15,8 @@ def dnslogs(curr_region):
                 if region_query_log_config['Name'] == 'cyngular_dns':
                     cyngular_resolver_id = region_query_log_config['Id']
                     break
-            except:
-                pass
+            except Exception as e:
+                logging.critical(str(e))
 
         if cyngular_resolver_id:
             vpc_list = ec2_client.describe_vpcs()
@@ -25,14 +24,15 @@ def dnslogs(curr_region):
                 for vpc in vpc_list["Vpcs"]:
                     try:
                         vpc_id = vpc["VpcId"]
-                        logging.info (f'DELETING CONFIGURATION OF DNSLOGS ON VPC-ID: {vpc_id}')
+                        logging.info(f'DELETING CONFIGURATION OF DNSLOGS ON VPC-ID: {vpc_id}')
                         resp = r_53_client.disassociate_resolver_query_log_config(ResolverQueryLogConfigId = cyngular_resolver_id, ResourceId = vpc_id )
-                        logging.info(f'COMMAND SUCCEEDED.')
+                        logging.info(f'COMMAND SUCCEEDED. {resp}')
                     except Exception as e:
                         if "association doesn't exist" in str(e):
-                            logging.critical(f'{vpc_id} - ResolverWasNotAssociated')
+                            logging.critical(f'{vpc_id} - ResolverWasNotAssociated. {str(e)}')
                         else:
-                            logging.critical(str(e))
+                            logging.critical(f'{vpc_id} - {str(e)}')
+
     except Exception as e:
         logging.critical(str(e))
 
@@ -42,7 +42,7 @@ def cyngular_function(event, context):
     logger.setLevel(logging.INFO)
     try:
         logger.info ('STRATING CYNGULARS FUNCTION...')
-        logger.info(f'DELETING DNSLOGS...')
+        logger.info('DELETING DNSLOGS...')
         events_client = boto3.client('events')
         REGIONS = os.environ['CLIENT_REGIONS']
 
@@ -51,13 +51,13 @@ def cyngular_function(event, context):
             try:
                 dnslogs(curr_region)
             except Exception as e:
-                logger.critical(str(e))
+                logger.critical(f'{curr_region} - {str(e)}')
         logger.info('DEACTIVATING EVENT BUS RULE')
         response = events_client.disable_rule(
             Name='cyngular-lambda-config-dns-rule',
             EventBusName='default'
         )
-        logger.info('DONE!')
+        logger.info(f'DONE! {response}')
 
     except Exception as e:
-        logger.critical(str(e))
+        logger.critical(f'CYNGULARS FUNCTION FAILED. {str(e)}')

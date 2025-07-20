@@ -5,6 +5,7 @@ import os
 import time
 from typing import Dict, List, Any
 import cfnresponse
+import traceback
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,7 +36,7 @@ class ServiceManager:
         except Exception as e:
             logger.error(f"Error getting enabled regions: {str(e)}")
             ## Fallback to current region only
-            current_lambda_region = context.invoked_function_arn.split(':')[3]
+            current_lambda_region = os.environ.get('AWS_REGION')
             logger.info(f"Using current region: {current_lambda_region}")
             return [current_lambda_region]
 

@@ -16,11 +16,12 @@ class ServiceManager:
     MAX_CONCURRENT_WORKERS = 8
     INVOCATION_DELAY_SECONDS = 0.1
 
-    def __init__(self):        
+    def __init__(self, lambda_context):        
         self.client_name = os.environ.get('CLIENT_NAME')
         self.region_processor_function = os.environ.get('REGION_PROCESSOR_FUNCTION_NAME')
         self.cyngular_bucket = os.environ.get('CYNGULAR_BUCKET')
         self.cyngular_role_arn = os.environ.get('CYNGULAR_ROLE_ARN')
+        self.context = lambda_context
 
         self.enable_dns = os.environ.get('ENABLE_DNS', 'false').lower() == 'true'
         self.enable_eks = os.environ.get('ENABLE_EKS', 'false').lower() == 'true'
@@ -28,6 +29,8 @@ class ServiceManager:
 
         self.lambda_client = boto3.client('lambda')
         self.ec2_client = boto3.client('ec2')
+
+        self.fallback_lambda_region = self.context.invoked_function_arn.split(':')[3]
 
     def get_enabled_regions(self) -> List[str]:
         """Get list of enabled regions for the account"""
@@ -39,12 +42,12 @@ class ServiceManager:
                 if r['RegionName'] not in excluded_regions
             ]
             
-            logger.info(f"Found {len(regions)} enabled regions: {regions}")
+            logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Found {len(regions)} enabled regions: {regions}")
             return regions
         except Exception as e:
-            logger.error(f"Error getting enabled regions: {str(e)}")
-            current_lambda_region = context.invoked_function_arn.split(':')[3]
-            logger.info(f"Using current region: {current_lambda_region}")
+            logger.error(f"[{self.fallback_lambda_region} | ServiceManager] Error getting enabled regions: {str(e)}")
+            current_lambda_region = self.fallback_lambda_region
+            logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Using current region: {current_lambda_region}")
             return [current_lambda_region]
 
     def get_services_to_configure(self) -> List[str]:
@@ -58,7 +61,7 @@ class ServiceManager:
         if self.enable_vpc_flow_logs:
             services.append('vfl')
         
-        logger.info(f"Services to configure: {services}")
+        logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Services to configure: {services}")
         return services
 
     def invoke_region_processor_task(self, service: str, region: str) -> Dict[str, Any]:
@@ -84,7 +87,7 @@ class ServiceManager:
             response_payload = json.loads(response['Payload'].read())
             
             if response['StatusCode'] == 200:
-                logger.info(f"Successfully processed {service} in {region}")
+                logger.info(f"[{region} | ServiceManager] Successfully processed {service} in {region}")
                 return {
                     'success': True,
                     'service': service,
@@ -92,7 +95,7 @@ class ServiceManager:
                     'result': response_payload
                 }
             else:
-                logger.error(f"Failed to process {service} in {region}: {response_payload}")
+                logger.error(f"[{region} | ServiceManager] Failed to process {service} in {region}: {response_payload}")
                 return {
                     'success': False,
                     'service': service,
@@ -101,7 +104,7 @@ class ServiceManager:
                 }
                 
         except Exception as e:
-            logger.error(f"Error invoking region processor for {service} in {region}: {str(e)}")
+            logger.error(f"[{region} | ServiceManager] Error invoking region processor for {service} in {region}: {str(e)}")
             return {
                 'success': False,
                 'service': service,
@@ -140,7 +143,7 @@ class ServiceManager:
                     else:
                         failed_results.append(result)
                 except Exception as e:
-                    logger.error(f"Task {service}/{region} generated exception: {str(e)}")
+                    logger.error(f"[{region} | ServiceManager] Task {service}/{region} generated exception: {str(e)}")
                     failed_results.append({
                         'success': False,
                         'service': service,
@@ -163,7 +166,7 @@ class ServiceManager:
             'failed_results': failed_results
         }
 
-        logger.info(f"Parallel processing complete in {final_results['processing_time_seconds']}s. "
+        logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Parallel processing complete in {final_results['processing_time_seconds']}s. "
                    f"Success: {final_results['services_done']}, Failed: {final_results['services_failed']}, "
                    f"Success Rate: {final_results['success_rate']:.2%}")
 
@@ -182,13 +185,13 @@ class ServiceManager:
                 success_threshold = float(os.environ.get('SUCCESS_THRESHOLD', '0.8'))
 
                 if results['success_rate'] >= success_threshold:
-                    logger.info(f"Operation successful with {results['success_rate']:.2%} success rate")
+                    logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Operation successful with {results['success_rate']:.2%} success rate")
                     cfnresponse.send(event, context, cfnresponse.SUCCESS, {
                         'message': f"Success: {results['services_done']}/{results['total_tasks']} tasks completed"
                     })
                 else:
                     error_msg = f"Failed: Only {results['services_done']}/{results['total_tasks']} tasks completed"
-                    logger.warning(f"Operation failed: {error_msg}")
+                    logger.warning(f"[{self.fallback_lambda_region} | ServiceManager] Operation failed: {error_msg}")
                     cfnresponse.send(event, context, cfnresponse.FAILED, {'message': error_msg})
 
             elif request_type == 'Delete':
@@ -197,7 +200,7 @@ class ServiceManager:
                 })
 
         except Exception as e:
-            logger.error(f"Error handling CloudFormation event: {str(e)}")
+            logger.error(f"[{self.fallback_lambda_region} | ServiceManager] Error handling CloudFormation event: {str(e)}")
             cfnresponse.send(event, context, cfnresponse.FAILED, {'message': str(e)})
 
     def handle_scheduled_event(self, event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -210,7 +213,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Received event: {json.dumps(event)}")
 
     try:
-        service_manager = ServiceManager()
+        service_manager = ServiceManager(context)
 
         # Check if this is a CloudFormation custom resource event
         if 'RequestType' in event and 'StackId' in event:
@@ -227,7 +230,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             result = service_manager.process_all_services()
             return {'statusCode': 200, 'body': json.dumps(result)}
     except Exception as e:
-        logger.error(f"Error in lambda handler: {str(e)}")
+        logger.error(f"[{service_manager.fallback_lambda_region} | ServiceManager] Error in lambda handler: {str(e)}")
         logger.error(traceback.format_exc())
 
         return {
