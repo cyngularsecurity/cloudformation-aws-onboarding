@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudGoat-style simulation environment for Day 2 only (IAM Role + Secret)
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Simulation Configuration"
+        Parameters:
+          - EnvironmentName
+          - TrustedAccountId
+          - SecretName
+
+Parameters:
+  EnvironmentName:
+    Description: "Name of the simulation environment (used for resource naming)"
+    Type: String
+    Default: "AttackSim"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Environment name can include letters, numbers, and hyphens"
+    MinLength: 3
+    MaxLength: 20
+
+  TrustedAccountId:
+    Description: "AWS Account ID that will be trusted in the role's trust policy"
+    Type: String
+    Default: "248189932415"
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: "Account ID must be a 12-digit number"
+
+  SecretName:
+    Description: "Name for the secret that will be created"
+    Type: String
+    Default: "SimulatedSecret"
+    AllowedPattern: "^[a-zA-Z0-9/_+=.@-]+$"
+    ConstraintDescription: "Secret name can include letters, numbers, and the following characters: /_+=.@-"
+
+  SecretValues:
+    Description: "JSON string containing key-value pairs for the secret (e.g., {\"username\":\"admin\",\"password\":\"hunter2\"})"
+    Type: String
+    Default: '{"username":"admin","password":"hunter2","api_key":"sk_test_12345"}'
+    NoEcho: true
+
+Resources:
+  # IAM Role that will be targeted in the update_assume_rule_policy_attack
+  TargetIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentName}-AssumeRoleAttackRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${TrustedAccountId}:root"
+            Action: sts:AssumeRole
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Purpose
+          Value: "Security Simulation"
+
+  # IAM Role Policy for the target role
+  TargetIAMRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "${EnvironmentName}-AssumeRoleAttackPolicy"
+      RoleName: !Ref TargetIAMRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: "ReadSecrets"
+            Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+              - "secretsmanager:DescribeSecret"
+            Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretName}-*"
+          - Sid: "ListSecrets"
+            Effect: Allow
+            Action:
+              - "secretsmanager:ListSecrets"
+            Resource: "*"
+
+  # Secret to simulate enumeration and unauthorized access attacks
+  SampleSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Ref SecretName
+      Description: !Sub "Secret used for ${EnvironmentName} security simulation"
+      SecretString: !Ref SecretValues
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Purpose
+          Value: "Security Simulation"
+
+Outputs:
+  # Exported IAM Role name (used by the simulator code)
+  TargetRoleName:
+    Description: IAM Role for assume-role attack
+    Value: !Ref TargetIAMRole
+    Export:
+      Name: !Sub "${EnvironmentName}-TargetRoleName"
+
+  # Exported IAM Role ARN
+  TargetRoleARN:
+    Description: ARN of the IAM Role for assume-role attack
+    Value: !GetAtt TargetIAMRole.Arn
+    Export:
+      Name: !Sub "${EnvironmentName}-TargetRoleARN"
+
+  # Exported Secret name (used by the simulator code)
+  SecretName:
+    Description: Name of secret used in simulation
+    Value: !Ref SampleSecret
+    Export:
+      Name: !Sub "${EnvironmentName}-SecretName"
+
+  # Exported Secret ARN
+  SecretARN:
+    Description: ARN of the secret used in simulation
+    Value: !Ref SampleSecret
+    Export:
+      Name: !Sub "${EnvironmentName}-SecretARN"
