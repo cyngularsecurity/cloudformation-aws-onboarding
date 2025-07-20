@@ -2,7 +2,7 @@ import json
 import logging
 import traceback
 from typing import Dict, Any
-from utils import process_dns_service, process_vfl_service, process_eks_service, process_os_service
+from service_registry import SERVICE_REGISTRY
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -17,31 +17,32 @@ class RegionProcessor:
     def process_service(self, service: str) -> Dict[str, Any]:
         """Process a specific service for the region"""
         
-        service_map = {
-            'dns': process_dns_service,
-            'vfl': process_vfl_service,
-            'eks': process_eks_service,
-            'os': process_os_service
-        }
-        
-        if service not in service_map:
+        if service not in SERVICE_REGISTRY:
             return {'success': False, 'error': f'Unknown service: {service}'}
         
         try:
-            if service == 'dns':
-                result = service_map[service](self.region, self.cyngular_bucket)
-            elif service == 'vfl':
-                result = service_map[service](self.region, self.cyngular_bucket)
-            elif service == 'eks':
-                result = service_map[service](self.region, self.cyngular_role_arn)
-            elif service == 'os':
-                result = service_map[service](self.region)
-            else:
-                return {'success': False, 'error': f'Unknown service: {service}'}
-
+            service_config = SERVICE_REGISTRY[service]
+            handler = service_config.handler
+            required_params = service_config.required_params
+            
+            # Build parameters dynamically based on service requirements
+            params = []
+            for param in required_params:
+                if param == 'region':
+                    params.append(self.region)
+                elif param == 'cyngular_bucket':
+                    params.append(self.cyngular_bucket)
+                elif param == 'cyngular_role_arn':
+                    params.append(self.cyngular_role_arn)
+                else:
+                    logger.error(f'Unknown parameter {param} required for service {service}')
+                    return {'success': False, 'error': f'Unknown parameter: {param}'}
+            
+            result = handler(*params)
             result['service'] = service
             result['region'] = self.region
             return result
+            
         except Exception as e:
             logger.error(f'Error processing service {service}: {str(e)}')
             return {
