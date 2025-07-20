@@ -2,6 +2,8 @@ import boto3
 import os
 import logging
 import json
+import cfnresponse
+from typing import Dict, Any
 
 def get_account_ids_lst(management_account_id):
     member_accounts = []
@@ -78,19 +80,76 @@ def update_bucket(bucket_name, management_account_id, is_org):
     except Exception as e:
         logging.critical(str(e))
 
-def lambda_handler(event, context):
+def handle_cloudformation_event(event: Dict[str, Any], context: Any) -> None:
+    """Handle CloudFormation custom resource events."""
+    logger = logging.getLogger()
+    try:
+        request_type = event['RequestType']
+        logger.info(f"CloudFormation request type: {request_type}")
+        
+        if request_type in ['Create', 'Update']:
+            # Get environment variables
+            is_org = os.environ.get('IS_ORG', 'false').lower() == 'true'
+            cyngular_bucket_name = os.environ['BUCKET_NAME']
+            mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
+            
+            # Update bucket policy
+            update_bucket(cyngular_bucket_name, mgmt_acc_id, is_org)
+            
+            # Send success response
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                'message': f'Successfully updated bucket policy for {cyngular_bucket_name}',
+                'bucket_name': cyngular_bucket_name,
+                'is_organization': is_org
+            })
+            
+        elif request_type == 'Delete':
+            # For delete operations, just return success as we don't need to revert bucket policy
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                'message': 'Delete operation completed - bucket policy left intact'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error handling CloudFormation event: {str(e)}")
+        cfnresponse.send(event, context, cfnresponse.FAILED, {}, reason=str(e))
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Main lambda handler"""
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.info('STARTING CYNGULAR\'S FUNCTION...')
+    
     try:
-        logger.info('UPDATING CYNGULAR BUCKET POLICY')
-        is_org = os.environ['IS_ORG']
-        cyngular_bucket_name = os.environ['BUCKET_NAME']
-        mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
+        # Check if this is a CloudFormation custom resource event
+        if 'RequestType' in event and 'StackId' in event:
+            handle_cloudformation_event(event, context)
+            return {'statusCode': 200}
+        
+        # Direct invocation (backward compatibility)
+        else:
+            logger.info('UPDATING CYNGULAR BUCKET POLICY')
+            is_org = os.environ.get('IS_ORG', 'false').lower() == 'true'
+            cyngular_bucket_name = os.environ['BUCKET_NAME']
+            mgmt_acc_id = boto3.client('sts').get_caller_identity()['Account']
 
-        update_bucket(cyngular_bucket_name, mgmt_acc_id, is_org)
-        logger.info('DONE!')
+            update_bucket(cyngular_bucket_name, mgmt_acc_id, is_org)
+            logger.info('DONE!')
+            
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'message': f'Successfully updated bucket policy for {cyngular_bucket_name}',
+                    'bucket_name': cyngular_bucket_name,
+                    'is_organization': is_org
+                })
+            }
 
     except Exception as e:
         logger.critical(str(e))
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e)
+            })
+        }
