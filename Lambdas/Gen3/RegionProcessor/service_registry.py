@@ -10,8 +10,8 @@ class ServiceConfig:
     batch_capable: bool = False
 
 SERVICE_REGISTRY = {
-    'dns': ServiceConfig(process_dns_service, ['region', 'cyngular_bucket']),
-    'vfl': ServiceConfig(process_vfl_service, ['region', 'cyngular_bucket']),
-    'eks': ServiceConfig(process_eks_service, ['region', 'cyngular_role_arn']),
+    'dns': ServiceConfig(process_dns_service, ['region', 'cyngular_bucket', 'enable_param']),
+    'vfl': ServiceConfig(process_vfl_service, ['region', 'cyngular_bucket', 'enable_param']),
+    'eks': ServiceConfig(process_eks_service, ['region', 'cyngular_role_arn', 'enable_param', 'cyngular_bucket']),
     'os': ServiceConfig(process_os_service, ['region'])
 }

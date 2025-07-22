@@ -13,19 +13,19 @@ logger.setLevel(logging.INFO)
 
 class ServiceManager:
     # concurrency limits
-    MAX_CONCURRENT_WORKERS = 8
-    INVOCATION_DELAY_SECONDS = 0.1
+    MAX_CONCURRENT_WORKERS = 4
+    INVOCATION_DELAY_SECONDS = 0.1 ## TODO adjust accordingly
 
     def __init__(self, lambda_context):        
         self.client_name = os.environ.get('CLIENT_NAME')
-        self.region_processor_function = os.environ.get('REGION_PROCESSOR_FUNCTION_NAME')
+        self.region_processor_function = os.environ.get('REGIONAL_SERVICE_MANAGER_FUNCTION_NAME')
         self.cyngular_bucket = os.environ.get('CYNGULAR_BUCKET')
         self.cyngular_role_arn = os.environ.get('CYNGULAR_ROLE_ARN')
         self.context = lambda_context
 
-        self.enable_dns = os.environ.get('ENABLE_DNS', 'false').lower() == 'true'
-        self.enable_eks = os.environ.get('ENABLE_EKS', 'false').lower() == 'true'
-        self.enable_vpc_flow_logs = os.environ.get('ENABLE_VPC_FLOW_LOGS', 'false').lower() == 'true'
+        self.enable_dns = os.environ.get('ENABLE_DNS', 'false')
+        self.enable_eks = os.environ.get('ENABLE_EKS', 'false')
+        self.enable_vpc_flow_logs = os.environ.get('ENABLE_VPC_FLOW_LOGS', 'false')
 
         self.lambda_client = boto3.client('lambda')
         self.ec2_client = boto3.client('ec2')
@@ -54,11 +54,11 @@ class ServiceManager:
         """Get list of services that need to be configured"""
         services = ['os']
         
-        if self.enable_dns:
+        if self.enable_dns.lower() != 'false':
             services.append('dns')
-        if self.enable_eks:
+        if self.enable_eks.lower() != 'false':
             services.append('eks')
-        if self.enable_vpc_flow_logs:
+        if self.enable_vpc_flow_logs.lower() != 'false':
             services.append('vfl')
         
         logger.info(f"[{self.fallback_lambda_region} | ServiceManager] Services to configure: {services}")
@@ -66,12 +66,22 @@ class ServiceManager:
 
     def invoke_region_processor_task(self, service: str, region: str) -> Dict[str, Any]:
         """Single task to invoke region processor - designed for thread pool"""
+        # Get the enable parameter for this specific service
+        enable_param = None
+        if service == 'dns':
+            enable_param = self.enable_dns
+        elif service == 'eks':
+            enable_param = self.enable_eks
+        elif service == 'vfl':
+            enable_param = self.enable_vpc_flow_logs
+        
         payload = {
             'service': service,
             'region': region,
             'client_name': self.client_name,
             'cyngular_bucket': self.cyngular_bucket,
-            'cyngular_role_arn': self.cyngular_role_arn
+            'cyngular_role_arn': self.cyngular_role_arn,
+            'enable_param': enable_param
         }
         
         try:
@@ -80,27 +90,26 @@ class ServiceManager:
             
             response = self.lambda_client.invoke(
                 FunctionName=self.region_processor_function,
-                InvocationType='RequestResponse',
+                InvocationType='Event',  # Asynchronous - no waiting for response
                 Payload=json.dumps(payload)
             )
-
-            response_payload = json.loads(response['Payload'].read())
             
-            if response['StatusCode'] == 200:
-                logger.info(f"[{region} | ServiceManager] Successfully processed {service} in {region}")
+            # For Event invocations, AWS returns 202 immediately and runs async
+            if response['StatusCode'] == 202:
+                logger.info(f"[{region} | ServiceManager] Successfully invoked {service} processing for {region}")
                 return {
                     'success': True,
                     'service': service,
                     'region': region,
-                    'result': response_payload
+                    'status': 'invoked_async'
                 }
             else:
-                logger.error(f"[{region} | ServiceManager] Failed to process {service} in {region}: {response_payload}")
+                logger.error(f"[{region} | ServiceManager] Failed to invoke {service} for {region}: Status {response['StatusCode']}")
                 return {
                     'success': False,
                     'service': service,
                     'region': region,
-                    'error': response_payload
+                    'error': f"Invocation failed with status {response['StatusCode']}"
                 }
                 
         except Exception as e:

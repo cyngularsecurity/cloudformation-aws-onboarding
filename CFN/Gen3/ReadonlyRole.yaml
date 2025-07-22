@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Cyngular Template -1-
+  Cyngular Template - Cross-Account Access Role
   Creates:
-    - Readonly IAM role
-    - Readonly IAM role policy
+    - IAM role for Cyngular cross-account access
+    - IAM role policy with readonly permissions for security monitoring
 
 Transform:
   - 'AWS::LanguageExtensions'
@@ -11,6 +11,14 @@ Transform:
 Metadata:
   Vendor:
     Description: Cyngular Security
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+          - CyngularAccountId
 
 Parameters:
   ClientName:

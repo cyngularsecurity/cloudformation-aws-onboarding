@@ -8,11 +8,12 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 class RegionProcessor:
-    def __init__(self, region: str, client_name: str, cyngular_bucket: str, cyngular_role_arn: str):
+    def __init__(self, region: str, client_name: str, cyngular_bucket: str, cyngular_role_arn: str, enable_param: str = None):
         self.region = region
         self.client_name = client_name
         self.cyngular_bucket = cyngular_bucket
         self.cyngular_role_arn = cyngular_role_arn
+        self.enable_param = enable_param
 
     def process_service(self, service: str) -> Dict[str, Any]:
         """Process a specific service for the region"""
@@ -34,6 +35,8 @@ class RegionProcessor:
                     params.append(self.cyngular_bucket)
                 elif param == 'cyngular_role_arn':
                     params.append(self.cyngular_role_arn)
+                elif param == 'enable_param':
+                    params.append(self.enable_param)
                 else:
                     logger.error(f'Unknown parameter {param} required for service {service}')
                     return {'success': False, 'error': f'Unknown parameter: {param}'}
@@ -61,6 +64,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     client_name = event.get('client_name')
     cyngular_bucket = event.get('cyngular_bucket')
     cyngular_role_arn = event.get('cyngular_role_arn')
+    enable_param = event.get('enable_param')
 
     if not all([service, region, client_name, cyngular_bucket]):
         return {
@@ -72,7 +76,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     try:
-        processor = RegionProcessor(region, client_name, cyngular_bucket, cyngular_role_arn)
+        processor = RegionProcessor(region, client_name, cyngular_bucket, cyngular_role_arn, enable_param)
         result = processor.process_service(service)
         logger.info(f"Processing complete: {result}")
 

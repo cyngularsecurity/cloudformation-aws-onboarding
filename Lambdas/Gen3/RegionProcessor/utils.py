@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-def process_dns_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
+def process_dns_service(region: str, cyngular_bucket: str, enable_param: str) -> Dict[str, Any]:
     """Configure DNS logging for the region"""
     try:
         logger.info(f'STARTING DNS LOGS IN {region}...')
@@ -19,7 +19,7 @@ def process_dns_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
         cyngular_resolver_id = ''
 
         for config in region_query_log_configs:
-            if config.get('Name') == 'cyngular_dns':
+            if config.get('Name') == 'cyngular_dns': ## TODO Check cases where another named already exist, and attempt to connetc to cyngular, same for vfl
                 cyngular_resolver_id = config['Id']
                 logger.info(f'EXISTING QLC FOUND: {cyngular_resolver_id}')
                 break
@@ -44,7 +44,7 @@ def process_dns_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
         
         processed_vpcs = []
         for vpc in vpc_list:
-            vpc_id = vpc['VpcId']
+            vpc_id = vpc.get('VpcId')
             try:
                 logger.info(f'ASSOCIATING {vpc_id} WITH QLC')
                 r53_client.associate_resolver_query_log_config(
@@ -60,17 +60,24 @@ def process_dns_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
                 else:
                     logger.error(f'Association failed for {vpc_id}: {str(e)}')
 
+        # Determine which bucket to tag based on enable_param
+        bucket_to_tag = cyngular_bucket if enable_param.lower() == 'true' else enable_param
+        
+        # Tag the appropriate bucket for DNS logging
+        tagging_result = tag_cyngular_bucket(bucket_to_tag, {'cyngular-dnslogs': 'true'})
+        
         return {
             'success': True,
             'resolver_id': cyngular_resolver_id,
-            'processed_vpcs': processed_vpcs
+            'processed_vpcs': processed_vpcs,
+            'bucket_tagging': tagging_result
         }
 
     except Exception as e:
         logger.error(f'DNS processing failed: {str(e)}')
         return {'success': False, 'error': str(e)}
 
-def process_vfl_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
+def process_vfl_service(region: str, cyngular_bucket: str, enable_param: str) -> Dict[str, Any]:
     """Configure VPC Flow Logs for the region"""
     try:
         logger.info(f'STARTING VPC FLOW LOGS IN {region}...')
@@ -108,10 +115,18 @@ def process_vfl_service(region: str, cyngular_bucket: str) -> Dict[str, Any]:
         )
         
         logger.info(f'[{region} | VPC FLOW LOGS] COMMAND SUCCEEDED.')
+        
+        # Determine which bucket to tag based on enable_param
+        bucket_to_tag = cyngular_bucket if enable_param.lower() == 'true' else enable_param
+        
+        # Tag the appropriate bucket for VPC Flow Logs
+        tagging_result = tag_cyngular_bucket(bucket_to_tag, {'cyngular-vpcflowlogs': 'true'})
+        
         return {
             'success': True,
             'vpc_ids': vpc_id_list,
-            'flow_log_ids': response.get('FlowLogIds', [])
+            'flow_log_ids': response.get('FlowLogIds', []),
+            'bucket_tagging': tagging_result
         }
 
     except Exception as e:
@@ -177,7 +192,7 @@ def create_cyngular_access_entry(region: str, eks_client, cluster_name: str, rol
         logger.error(f'[{region} | EKS] Failed to create access entry for {cluster_name}: {str(e)}')
         return {'success': False, 'error': str(e), 'cluster': cluster_name}
 
-def process_eks_service(region: str, cyngular_role_arn: str) -> Dict[str, Any]:
+def process_eks_service(region: str, cyngular_role_arn: str, enable_param: str, cyngular_bucket: str) -> Dict[str, Any]:
     """Configure EKS access for the region"""
     try:
         logger.info(f'[{region} | EKS] STARTING CONFIGURATION...')
@@ -254,9 +269,13 @@ def process_eks_service(region: str, cyngular_role_arn: str) -> Dict[str, Any]:
                     'error': str(e)
                 })
 
+        # Tag the Cyngular bucket for EKS logging (EKS only uses default bucket)
+        tagging_result = tag_cyngular_bucket(cyngular_bucket, {'cyngular-ekslogs': 'true'})
+        
         return {
             'success': True,
-            'processed_clusters': processed_clusters
+            'processed_clusters': processed_clusters,
+            'bucket_tagging': tagging_result
         }
 
     except Exception as e:
@@ -273,7 +292,7 @@ def process_os_service(region: str) -> Dict[str, Any]:
         
         all_instances = ec2_client.describe_instances()
         instance_ids = []
-        
+
         for reservation in all_instances['Reservations']:
             for instance in reservation['Instances']:
                 if instance['State']['Name'] == 'running':
@@ -343,4 +362,88 @@ def process_os_service(region: str) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
     except Exception as e:
         logger.error(f'[{region} | OS INTERNALS | Exception] OS processing failed: {str(e)}')
+        return {'success': False, 'error': str(e)}
+
+def tag_cyngular_bucket(bucket_name: str, service_tags: dict) -> Dict[str, Any]:
+    """
+    Add service-specific tags to the Cyngular S3 bucket
+    
+    Args:
+        bucket_name: Name of the S3 bucket to tag
+        service_tags: Dictionary of tags to add (e.g., {'cyngular-dnslogs': 'true'})
+    
+    Returns:
+        Dictionary with success status and details
+    """
+    try:
+        logger.info(f'Tagging bucket {bucket_name} with tags: {service_tags}')
+        
+        s3_client = boto3.client('s3')
+        
+        # Get existing bucket tags
+        try:
+            response = s3_client.get_bucket_tagging(Bucket=bucket_name)
+            existing_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
+        except s3_client.exceptions.NoSuchTagSet:
+            existing_tags = {}
+        except Exception as e:
+            logger.warning(f'Could not retrieve existing tags for {bucket_name}: {str(e)}')
+            existing_tags = {}
+        
+        # Merge existing tags with new service tags
+        updated_tags = existing_tags.copy()
+        updated_tags.update(service_tags)
+        
+        # Convert back to TagSet format
+        tag_set = [{'Key': k, 'Value': v} for k, v in updated_tags.items()]
+        
+        # Apply updated tags to bucket
+        s3_client.put_bucket_tagging(
+            Bucket=bucket_name,
+            Tagging={'TagSet': tag_set}
+        )
+        
+        logger.info(f'Successfully tagged bucket {bucket_name} with service tags')
+        return {
+            'success': True,
+            'bucket': bucket_name,
+            'applied_tags': service_tags,
+            'all_tags': updated_tags
+        }
+        
+    except Exception as e:
+        logger.error(f'Failed to tag bucket {bucket_name}: {str(e)}')
+        return {'success': False, 'error': str(e)}
+
+def tag_custom_bucket_if_specified(enable_param: str, service_tag_key: str, default_bucket: str) -> Dict[str, Any]:
+    """
+    Tag custom bucket if specified in enable parameter, otherwise tag default bucket
+    
+    Args:
+        enable_param: The service enable parameter (true/false/custom-bucket-name)
+        service_tag_key: The tag key to apply (e.g., 'cyngular-dnslogs')
+        default_bucket: Default Cyngular bucket name
+    
+    Returns:
+        Dictionary with success status and details
+    """
+    try:
+        # Determine which bucket to tag
+        if enable_param.lower() == 'true':
+            bucket_to_tag = default_bucket
+            logger.info(f'Service enabled with default bucket: {bucket_to_tag}')
+        elif enable_param.lower() == 'false':
+            logger.info('Service disabled, skipping bucket tagging')
+            return {'success': True, 'message': 'Service disabled, no tagging needed'}
+        else:
+            # Custom bucket name provided
+            bucket_to_tag = enable_param
+            logger.info(f'Service enabled with custom bucket: {bucket_to_tag}')
+        
+        # Apply the service tag
+        service_tags = {service_tag_key: 'true'}
+        return tag_cyngular_bucket(bucket_to_tag, service_tags)
+        
+    except Exception as e:
+        logger.error(f'Failed to process bucket tagging for {service_tag_key}: {str(e)}')
         return {'success': False, 'error': str(e)}
