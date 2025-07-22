@@ -30,13 +30,52 @@ The project supports multiple generations of deployment architecture:
 - **MembersGlobal.yaml**: Global resources deployed to member accounts via StackSet
 
 ### 2. Lambda Functions (`Lambdas/Gen3/`)
-- **ServiceManager/**: Orchestrator lambda that manages service configuration across regions
-- **RegionProcessor/**: Worker lambda that processes individual services per region
+- **CyngularServiceOrchestrator/** (ServiceManager/): Orchestrator lambda that manages service configuration across regions
+- **CyngularRegionalServiceManager/** (RegionProcessor/): Worker lambda that processes individual services per region
+- **CyngularBucketPolicyManager/** (UpdateBucketPolicy/): Manages S3 bucket policies for log collection
 - **AdminAndExec/**: Creates StackSet administration and execution roles
-- Consolidated architecture with two-lambda design
+- Consolidated architecture with improved Lambda naming and functionality
 
+## Gen3 Services Overview
 
-### 2. Lambda Functions (`Lambdas/`)
+### Supported Security Services
+1. **DNS Logging Service** (`dns`)
+   - Configures Route53 Resolver Query Log Configs
+   - Associates VPCs with DNS logging
+   - Supports custom S3 bucket destinations
+   - Tags buckets with `cyngular-dnslogs: true`
+
+2. **VPC Flow Logs Service** (`vfl`) 
+   - Enables VPC Flow Logs for all VPCs in region
+   - Configures S3 destination for flow logs
+   - Supports custom S3 bucket destinations  
+   - Tags buckets with `cyngular-vpcflowlogs: true`
+
+3. **EKS Monitoring Service** (`eks`)
+   - Configures EKS cluster audit and authenticator logging
+   - Creates Cyngular access entries for cluster monitoring
+   - Associates AmazonEKSViewPolicy for readonly access
+   - Tags default Cyngular bucket with `cyngular-ekslogs: true`
+
+4. **OS Internals Service** (`os`)
+   - Deploys security monitoring agents to EC2 instances
+   - Configures audit rules and system monitoring
+   - Always enabled for comprehensive security coverage
+
+### Service Configuration Logic
+- **Enable Parameter = "true"**: Uses default Cyngular S3 bucket
+- **Enable Parameter = "false"**: Service disabled (not deployed)
+- **Enable Parameter = "bucket-name"**: Uses custom S3 bucket (DNS/VFL only)
+
+### Latest Implemented Features
+- **Intelligent S3 Bucket Tagging**: Automatically tags appropriate buckets based on service configuration
+- **Custom Bucket Support**: DNS and VFL services support custom S3 bucket destinations
+- **Asynchronous Service Processing**: Service Orchestrator invokes Regional Service Manager asynchronously
+- **Enhanced Error Handling**: Comprehensive logging and error tracking across service pipeline
+- **Official Function Naming**: Professional naming convention (CyngularServiceOrchestrator, etc.)
+- **Dynamic Parameter Passing**: Services receive enable parameters for intelligent bucket selection
+
+### 2. Lambda Functions (`Lambdas/`) - Legacy
 - **StackSetManager/**: Manages CloudFormation StackSet operations and deployments
 - **ConfigEKS/**: Configures EKS cluster access for monitoring
 - **ConfigDNS/**: Sets up DNS logging configuration
@@ -173,6 +212,39 @@ git pull origin main
 glab mr create --source-branch main --target-branch release/3.8 --title "Release merge"
 ```
 
+## Agentic Orchestration with Gemini CLI
+
+This project uses Gemini CLI for robust task orchestration and parallel processing.
+
+### Prerequisites
+- Gemini CLI installed locally: `/opt/homebrew/bin/gemini`
+
+### Usage
+```bash
+# Parallel code reviews
+gemini -p "Review this code for best practices" < file.py &
+
+# Generate documentation  
+gemini -p "Generate API documentation" < lambda_function.py > docs/api.md &
+
+# Security analysis
+gemini -p "Perform security analysis" < template.yaml &
+```
+
+Use background processes (`&`) for parallel execution and `wait` to synchronize completion.
+
+## State Management with Mem0 MCP Server
+
+Project requires Mem0 MCP server for maintaining context across development sessions.
+
+### Configuration
+- **Project**: `cyngular-aws-onboarding`
+- **Categories**: architecture, implementation, operations, guidelines
+
+Store memories about Lambda naming conventions, service configuration logic, deployment patterns, and development guidelines in the dedicated project space.
+
+**Note**: If the Mem0 project doesn't exist, please create it manually.
+
 ## Development Notes
 
 - All CloudFormation templates follow AWS best practices with proper parameter validation
@@ -180,3 +252,5 @@ glab mr create --source-branch main --target-branch release/3.8 --title "Release
 - The system supports both single-account and organization-wide deployments
 - Gen3 architecture uses managed StackSet resources for simplified operations
 - Service Manager automatically discovers and processes all enabled regions
+- Use Gemini CLI for complex analysis and code generation tasks
+- Maintain project state in Mem0 MCP server for context continuity
