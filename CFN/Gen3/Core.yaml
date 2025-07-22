@@ -99,9 +99,9 @@ Conditions:
 
 Resources:
   CyngularS3Bucket:
+    # DeletionPolicy: Retain
+    # UpdateReplacePolicy: Retain
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketEncryption:
