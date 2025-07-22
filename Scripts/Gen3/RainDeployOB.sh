@@ -10,15 +10,10 @@ fi
 
 source .env
 
-readonly RUNTIME_REGION="ap-northeast-3"
-readonly RUNTIME_PROFILE="client_mgmt"
-
 if [[ -z "${ClientName:-}" ]]; then
   echo "Error: ClientName is required in .env file"
   exit 1
 fi
-
-
 
 # LOCAL_ARTIFACTS_PATH="${LOCAL_ARTIFACTS_PATH:-"$(mktemp -d)"}"
 # chmod 700 "${LOCAL_ARTIFACTS_PATH}"

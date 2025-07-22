@@ -245,6 +245,12 @@ Resources:
               # - "eks:CreateAccessEntry"
               # - "eks:AssociateAccessPolicy"
 
+          - Sid: "PutMetricData"
+            Effect: Allow
+            Action:
+              - "cloudwatch:PutMetricData"
+            Resource: "*"
+
           - Sid: "RestrictedEKSConfigUpdate"
             Effect: Allow
             Resource: "*"

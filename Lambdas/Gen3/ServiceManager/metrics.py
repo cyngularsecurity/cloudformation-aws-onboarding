@@ -52,6 +52,10 @@ class MetricsCollector:
             dimensions: Additional dimensions (client_name and function_type are added automatically)
         """
         try:
+            # Validate that value is numeric
+            if not isinstance(value, (int, float)):
+                logger.warning(f"Invalid metric value for {metric_name}: {value} (type: {type(value)}). Expected numeric value. Skipping metric.")
+                return
             # Default dimensions
             metric_dimensions = [
                 {"Name": "ClientName", "Value": self.client_name},
@@ -225,6 +229,11 @@ class MetricsCollector:
             event_type: Type of invocation (CloudFormation, Scheduled, Direct, etc.)
             namespace: CloudWatch namespace to use
         """
+        # Defensive check - ensure event_type is a string and value is always 1
+        if not isinstance(event_type, str):
+            logger.warning(f"Invalid event_type type: {type(event_type)}. Using 'Unknown'.")
+            event_type = "Unknown"
+            
         self.put_metric(
             namespace=namespace,
             metric_name="Invocations",
