@@ -30,11 +30,11 @@ The project supports multiple generations of deployment architecture:
 - **MembersGlobal.yaml**: Global resources deployed to member accounts via StackSet
 
 ### 2. Lambda Functions (`Lambdas/Gen3/`)
-- **CyngularServiceOrchestrator/** (ServiceManager/): Orchestrator lambda that manages service configuration across regions
-- **CyngularRegionalServiceManager/** (RegionProcessor/): Worker lambda that processes individual services per region
-- **CyngularBucketPolicyManager/** (UpdateBucketPolicy/): Manages S3 bucket policies for log collection
+- **ServiceManager/** (CyngularServiceOrchestrator): Production-ready orchestrator lambda with metrics and error handling
+- **RegionProcessor/** (CyngularRegionalServiceManager): Production-ready worker lambda with parameter validation
+- **UpdateBucketPolicy/** (CyngularBucketPolicyManager): Manages S3 bucket policies for log collection
 - **AdminAndExec/**: Creates StackSet administration and execution roles
-- Consolidated architecture with improved Lambda naming and functionality
+- Consolidated architecture with production-grade Lambda functionality and monitoring
 
 ## Gen3 Services Overview
 
@@ -67,13 +67,17 @@ The project supports multiple generations of deployment architecture:
 - **Enable Parameter = "false"**: Service disabled (not deployed)
 - **Enable Parameter = "bucket-name"**: Uses custom S3 bucket (DNS/VFL only)
 
-### Latest Implemented Features
+### Latest Production-Ready Features
 - **Intelligent S3 Bucket Tagging**: Automatically tags appropriate buckets based on service configuration
 - **Custom Bucket Support**: DNS and VFL services support custom S3 bucket destinations
 - **Asynchronous Service Processing**: Service Orchestrator invokes Regional Service Manager asynchronously
-- **Enhanced Error Handling**: Comprehensive logging and error tracking across service pipeline
+- **Production-Grade Error Handling**: Structured logging with no stack trace exposure in production responses
 - **Official Function Naming**: Professional naming convention (CyngularServiceOrchestrator, etc.)
 - **Dynamic Parameter Passing**: Services receive enable parameters for intelligent bucket selection
+- **CloudWatch Metrics Integration**: Comprehensive metrics collection via dedicated metrics.py modules
+- **Environment Variable Validation**: Fail-fast patterns using os.environ['KEY'] without defaults
+- **Security Hardening**: Eliminated security vulnerabilities and implemented best practices
+- **Lambda Runtime Logging**: Proper logging using `logger = logging.getLogger(__name__)`
 
 ### 2. Lambda Functions (`Lambdas/`) - Legacy
 - **StackSetManager/**: Manages CloudFormation StackSet operations and deployments
@@ -173,44 +177,75 @@ Before deployment, ensure:
 - **Better Error Handling**: Improved monitoring and debugging capabilities
 - **Scalable**: Service Manager orchestrates across all enabled regions automatically
 
-## Git Workflow Automation
+## Git Workflow and Development Process
 
-The project includes automated git workflow scripts for managing releases through the standard branch flow: `dev → main → release/3.8`.
+The project follows a standard git workflow through the branch flow: `feature → dev → main → release/v3.8`.
 
-### Git Workflow Commands
+### Recommended Development Workflow
+
+#### 1. Testing and Quality Assurance
 ```bash
-# Push current dev changes and create MR to main
-./Scripts/git-workflow.sh dev-to-main
+# Test project syntax with ruff
+ruff check .
+ruff format --check .
 
-# Create MR from main to release/3.8 (after main MR is merged)
-./Scripts/git-workflow.sh main-to-release
-
-# Show current git status and available commands
-./Scripts/git-workflow.sh status
+# Run any existing test suites
+# Check README or project structure for specific test commands
 ```
 
-### Workflow Process
-1. **Development**: Work on `dev` branch
-2. **Integration**: Use `dev-to-main` to push dev and create MR to main
-3. **Release**: After main MR is merged, use `main-to-release` to create MR to release/3.8
-
-### Prerequisites for Git Automation
-- GitLab CLI installed (`brew install glab`)
-- Authenticated with GitLab (`glab auth login`)
-- Working from a clean git repository (no uncommitted changes)
-
-### Manual Git Commands (Alternative)
+#### 2. Feature Branch Development
 ```bash
-# Push dev and create MR manually
+# Create feature branch from dev
 git checkout dev
-git push origin dev
-glab mr create --source-branch dev --target-branch main --title "Merge dev to main"
+git fetch origin && git pull origin dev --rebase
+git checkout -b feature/DEVOPS-885-description
 
-# Create release MR manually  
-git checkout main
-git pull origin main
-glab mr create --source-branch main --target-branch release/3.8 --title "Release merge"
+# Make your changes and commit with proper message format
+git add .
+git commit -m "DEVOPS-885: Description of changes
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
+
+#### 3. Complete Git Workflow
+```bash
+# 1. Push feature branch and create PR to dev
+git push origin feature/DEVOPS-885-description
+# Create PR: feature → dev
+
+# 2. After dev PR is merged, create PR from dev to main
+git checkout dev
+git fetch origin && git pull origin dev --rebase
+# Create PR: dev → main
+
+# 3. After main PR is merged, merge main to release locally
+git checkout main
+git fetch origin && git pull origin main --rebase
+git checkout release/v3.8
+git fetch origin && git pull origin release/v3.8 --rebase
+git merge main --no-ff -m "DEVOPS-885: Merge main to release/v3.8"
+
+# 4. Resolve any merge conflicts and finalize release
+# If conflicts exist, resolve them manually, then:
+git add .
+git commit -m "DEVOPS-885: Resolve merge conflicts for release"
+
+# 5. Push release branch and create final PR
+git push origin release/v3.8
+# Create PR: release/v3.8 → main (for final integration)
+
+# 6. Tag the release after everything is merged
+git tag -a v3.8.x -m "Release v3.8.x - Description of release"
+git push origin v3.8.x
+```
+
+### Critical Git Workflow Requirements
+- **Always fetch and pull with rebase** before creating branches or PRs
+- **Include DEVOPS-885 commit ID** to meet GitLab pre-receive hook requirements
+- **Test with ruff** before creating any commits
+- **Use proper commit message format** with ticket ID and Claude attribution
 
 ## Agentic Orchestration with Gemini CLI
 
@@ -241,16 +276,26 @@ Project requires Mem0 MCP server for maintaining context across development sess
 - **Project**: `cyngular-aws-onboarding`
 - **Categories**: architecture, implementation, operations, guidelines
 
-Store memories about Lambda naming conventions, service configuration logic, deployment patterns, and development guidelines in the dedicated project space.
+Store memories about Lambda naming conventions, service configuration logic, deployment patterns, production readiness best practices, and development guidelines in the dedicated project space.
+
+### Key Information for Mem0 Storage
+- **Lambda Architecture**: ServiceOrchestrator → RegionalServiceManager pattern with asynchronous invocation
+- **Production Standards**: Environment variable validation, metrics integration, security hardening
+- **Git Workflow**: feature → dev → main → release/v3.8 with DEVOPS-885 commit requirements
+- **Testing Requirements**: ruff syntax checking mandatory before commits
 
 **Note**: If the Mem0 project doesn't exist, please create it manually.
 
 ## Development Notes
 
 - All CloudFormation templates follow AWS best practices with proper parameter validation
-- Lambda functions include comprehensive error handling and logging
+- Lambda functions include production-grade error handling, metrics, and security hardening
 - The system supports both single-account and organization-wide deployments
 - Gen3 architecture uses managed StackSet resources for simplified operations
 - Service Manager automatically discovers and processes all enabled regions
 - Use Gemini CLI for complex analysis and code generation tasks
 - Maintain project state in Mem0 MCP server for context continuity
+- All Lambda functions use fail-fast environment variable validation patterns
+- CloudWatch metrics are collected via dedicated metrics.py modules
+- Security: No stack traces exposed in production responses
+- Testing: ruff syntax checking required before all commits
