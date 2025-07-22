@@ -178,6 +178,12 @@ Resources:
               - "lambda:InvokeFunction"
             Resource: !GetAtt CyngularRegionalServiceManagerLambda.Arn
 
+          - Sid: "PutMetricData"
+            Effect: Allow
+            Action:
+              - "cloudwatch:PutMetricData"
+            Resource: "*"
+
           - Sid: "GetRegions"
             Effect: Allow
             Action:

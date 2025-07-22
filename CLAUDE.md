@@ -249,34 +249,31 @@ git push origin v3.8.x
 
 ## Agentic Orchestration with Gemini CLI
 
-This project uses Gemini CLI for robust task orchestration and parallel processing.
-
-### Prerequisites
-- Gemini CLI installed locally: `/opt/homebrew/bin/gemini`
+use Gemini CLI for task orchestration and parallel processing.
 
 ### Usage
 ```bash
-# Parallel code reviews
+# Parallel Code Reviews
 gemini -p "Review this code for best practices" < file.py &
 
-# Generate documentation  
+# Generate documentation
 gemini -p "Generate API documentation" < lambda_function.py > docs/api.md &
 
 # Security analysis
 gemini -p "Perform security analysis" < template.yaml &
 ```
 
-Use background processes (`&`) for parallel execution and `wait` to synchronize completion.
+Use background processes (`&`) for parallel execution or `wait` to synchronize completion.
 
 ## State Management with Mem0 MCP Server
 
 Project requires Mem0 MCP server for maintaining context across development sessions.
 
 ### Configuration
-- **Project**: `cyngular-aws-onboarding`
+- **Project**: `AWS Onboarding`
 - **Categories**: architecture, implementation, operations, guidelines
 
-Store memories about Lambda naming conventions, service configuration logic, deployment patterns, production readiness best practices, and development guidelines in the dedicated project space.
+Store memories about Lambda naming conventions, service configuration logic, deployment patterns, production readiness best practices, and development guidelines in the dedicated project space using python and bash and cloudformation.
 
 ### Key Information for Mem0 Storage
 - **Lambda Architecture**: ServiceOrchestrator → RegionalServiceManager pattern with asynchronous invocation
@@ -284,7 +281,9 @@ Store memories about Lambda naming conventions, service configuration logic, dep
 - **Git Workflow**: feature → dev → main → release/v3.8 with DEVOPS-885 commit requirements
 - **Testing Requirements**: ruff syntax checking mandatory before commits
 
-**Note**: If the Mem0 project doesn't exist, please create it manually.
+**Notes**:
+- If the Mem0 project doesn't exist, please create it manually.
+- 
 
 ## Development Notes
 

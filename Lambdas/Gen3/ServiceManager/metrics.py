@@ -112,10 +112,16 @@ class MetricsCollector:
                     for key, value in metric["dimensions"].items():
                         dimensions.append({"Name": key, "Value": value})
 
+                # Ensure metric value is numeric
+                metric_value = metric["value"]
+                if not isinstance(metric_value, (int, float)):
+                    logger.warning(f"Invalid metric value for {metric['name']}: {metric_value} (type: {type(metric_value)}). Skipping metric.")
+                    continue
+
                 metric_data.append(
                     {
                         "MetricName": metric["name"],
-                        "Value": metric["value"],
+                        "Value": metric_value,
                         "Unit": metric.get("unit", "Count"),
                         "Dimensions": dimensions,
                     }

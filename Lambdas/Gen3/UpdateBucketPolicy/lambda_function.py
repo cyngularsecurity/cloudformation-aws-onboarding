@@ -2,6 +2,7 @@ import boto3
 import os
 import logging
 import json
+import cfnresponse
 
 
 def get_account_ids_lst(management_account_id):
@@ -96,6 +97,10 @@ def lambda_handler(event, context):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.info("STARTING CYNGULAR'S FUNCTION...")
+    
+    # Check if this is a CloudFormation custom resource event
+    is_cfn_event = "RequestType" in event and "StackId" in event
+    
     try:
         logger.info("UPDATING CYNGULAR BUCKET POLICY")
         is_org = os.environ["IS_ORG"]
@@ -104,6 +109,18 @@ def lambda_handler(event, context):
 
         update_bucket(cyngular_bucket_name, mgmt_acc_id, is_org)
         logger.info("DONE!")
+        
+        # Send success response to CloudFormation if needed
+        if is_cfn_event:
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                "Message": "Bucket policy updated successfully"
+            })
 
     except Exception as e:
         logger.critical(str(e))
+        
+        # Send failure response to CloudFormation if needed
+        if is_cfn_event:
+            cfnresponse.send(event, context, cfnresponse.FAILED, {
+                "Message": f"Failed to update bucket policy: {str(e)}"
+            })
