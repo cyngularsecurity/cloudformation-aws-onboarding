@@ -82,7 +82,7 @@ def ekslogs(curr_region, logger, role_arn):
                     name=cluster_name,
                     logging=wanted_cluster_logging_config
                 )
-                logger.info(f'COMMAND SUCCEEDED.')
+                logger.info('COMMAND SUCCEEDED.')
             except Exception as e:
                 if 'No changes needed for the logging config provided' not in str(e):
                     logger.critical(f'COMMAND FAILED - {str(e)}')

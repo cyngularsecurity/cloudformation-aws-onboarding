@@ -3,13 +3,14 @@
     "Effect": "Allow",
     "Principal": {
         "AWS": [
-            "arn:aws:iam::851565895544:root"
+            "arn:aws:iam::851565895544:root",
+            "arn:aws:iam::{Client Custom Bucket Account ID}:root"
         ]
     },
     "Action": [
-        "s3:GetBucketLocation",
-        "s3:GetObject",
         "s3:ListBucket",
+        "s3:GetObject",
+        "s3:GetBucketLocation",
         "s3:ListBucketMultipartUploads",
         "s3:ListMultipartUploadParts",
         "s3:AbortMultipartUpload"

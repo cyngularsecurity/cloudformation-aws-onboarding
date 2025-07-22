@@ -5,6 +5,25 @@
 
 set -e
 
+### Sync
+VERSION="3.8"
+COMMIT_MESSAGE="DEVOPS-885 - latest"
+
+ga . && gc -m "${COMMIT_MESSAGE}" && gp
+git switch main
+git pull --rebase
+git merge dev --ff-only -m "${COMMIT_MESSAGE}"
+git push
+git fetch -a
+
+git switch release/v${VERSION}
+git pull --rebase
+git merge main --ff-only -m "${COMMIT_MESSAGE}"
+git push
+
+exit 0
+
+### Workflow
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

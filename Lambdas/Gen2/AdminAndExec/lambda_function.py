@@ -1,7 +1,6 @@
 import time
 import os
 import logging
-import traceback
 
 import boto3
 import botocore
