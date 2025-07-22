@@ -19,12 +19,12 @@ def osinternals(curr_region):
         for instance_id in instance_ids:
             try:
                 logging.info(f'CONFIGURING OS INTERNALS ON INSTANCE-ID: {instance_id}')
-                response = ssm_client.send_command(
+                ssm_client.send_command(
                     InstanceIds = [instance_id],
                     DocumentName = "AWS-RunShellScript",
                     Parameters = {'commands': ['apt-get update -y','apt-get install -y auditd','systemctl kill auditd.service', 'sleep 10', f'echo {auditd_rules} | base64 --decode > "/etc/audit/rules.d/audit.rules"', 'sleep 10','systemctl start auditd.service'] }
                 )
-                logging.info(f'COMMAND SUCCEEDED.')
+                logging.info('COMMAND SUCCEEDED.')
             except Exception as e:
                 logging.critical(e)
     except Exception as e:

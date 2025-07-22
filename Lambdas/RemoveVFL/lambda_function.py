@@ -1,11 +1,10 @@
 import boto3
-import traceback
 import os
 import logging
 
 def vpcflowlogs(curr_region):
     try:
-        logging.info('DELETING VPCFLOWLOGS...')
+        logging.info(f'DELETING VPCFLOWLOGS... {curr_region}')
 
         flowlogs_ids_list = []
         ec2_client = boto3.client('ec2', region_name=curr_region)
@@ -27,9 +26,9 @@ def vpcflowlogs(curr_region):
         response = ec2_client.delete_flow_logs(
             FlowLogIds=flowlogs_ids_list
         )
-        logging.info(f'COMMAND SUCCEEDED.')
+        logging.info(f'COMMAND SUCCEEDED. {response}')
     except Exception as e:
-        logging.critical(str(e))
+        logging.critical(f'{curr_region} - {str(e)}')
         
 def cyngular_function(event, context):
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -45,12 +44,12 @@ def cyngular_function(event, context):
             try:
                 vpcflowlogs(curr_region)
             except Exception as e:
-                logger.critical(str(e))
+                logger.critical(f'{curr_region} - {str(e)}')
         logger.info('DEACTIVATING EVENT BUS RULE')
         response = events_client.disable_rule(
             Name='cyngular-lambda-config-vpcflowlogs-rule',
             EventBusName='default'
         )
-        logger.info('DONE!')
+        logger.info(f'DONE! {response}')
     except Exception as e:
-        logger.critical(str(e))
+        logger.critical(f'CYNGULARS FUNCTION FAILED. {str(e)}')

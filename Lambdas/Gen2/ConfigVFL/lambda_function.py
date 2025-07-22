@@ -15,7 +15,7 @@ def vpcflowlogs(curr_region, bucket_name):
                 vpc_id_list.append(vpc["VpcId"])
 
         logging.info(f'CONFIGURING VPCFLOWLOGS ON VPC-IDS: {vpc_id_list}')
-        response = ec2_client.create_flow_logs(
+        ec2_client.create_flow_logs(
             ResourceIds=vpc_id_list,
             ResourceType='VPC',
             TrafficType='ALL',
@@ -33,7 +33,7 @@ def vpcflowlogs(curr_region, bucket_name):
                 },
             ]
         )
-        logging.info(f'COMMAND SUCCEEDED.')
+        logging.info('COMMAND SUCCEEDED.')
 
     except Exception as e:
         if 'FlowLogAlreadyExists' in str(e):

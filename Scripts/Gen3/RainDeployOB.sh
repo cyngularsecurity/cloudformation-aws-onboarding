@@ -18,6 +18,8 @@ if [[ -z "${ClientName:-}" ]]; then
   exit 1
 fi
 
+
+
 # LOCAL_ARTIFACTS_PATH="${LOCAL_ARTIFACTS_PATH:-"$(mktemp -d)"}"
 # chmod 700 "${LOCAL_ARTIFACTS_PATH}"
 # trap 'rm -rf "${LOCAL_ARTIFACTS_PATH}"' EXIT
@@ -31,11 +33,15 @@ fi
 # Verify identity with the new credentials
 aws sts get-caller-identity --profile $RUNTIME_PROFILE
 
-readonly STACK_PARAMS="TrustedAccountId=${TrustedAccountId:-"248189932415"},\
-SecretName=${SecretName:-"SimulatedSecret"},\
-SecretUsername=${SecretUsername:-"admin"},\
-SecretPassword=${SecretPassword:-"xyz123xyz"},\
-Environment=${Environment:-"AttackSim"}"
+STACK_PARAMS="ClientName=$ClientName,\
+CyngularAccountId=${CyngularAccountId:-"851565895544"},\
+OrganizationId=${OrganizationId:-""},\
+ExcludedRegions=${ExcludedRegions:-""},\
+CloudTrailBucket=${CloudTrailBucket:-""},\
+EnableDNS=${EnableDNS:-"true"},\
+EnableEKS=${EnableEKS:-"true"},\
+EnableVPCFlowLogs=${EnableVPCFlowLogs:-"true"},\
+ServiceManagerOverride=${ServiceManagerOverride:-"1"}"
 
 echo "Deploying with the parameters:"
 echo "  STACK_PARAMS:"
@@ -52,8 +58,27 @@ echo ""
 # rain is dynamic, idempotent
 
 # Deploy ReadonlyRole stack
-echo "Deploying AttackSimulation stack..."
-rain deploy ./CFN/Gen3/AttackSimulation.yaml "${Environment}-attack-simulation" \
+echo "Deploying ReadonlyRole stack..."
+# rain forecast --experimental CFN/Gen3/ReadonlyRole.yaml ${ClientName}-ro-role \
+#     --params ClientName=${ClientName}
+
+rain deploy ./CFN/Gen3/ReadonlyRole.yaml "${ClientName}-ro-role" \
+    --region $RUNTIME_REGION \
+    --profile $RUNTIME_PROFILE \
+    --params "$STACK_PARAMS" \
+    --ignore-unknown-params
+
+# Deploy Core stack
+echo "Deploying Core stack..."
+rain deploy ./CFN/Gen3/Core.yaml "${ClientName}-core" \
+    --region $RUNTIME_REGION \
+    --profile $RUNTIME_PROFILE \
+    --params "$STACK_PARAMS" \
+    --ignore-unknown-params
+
+# Deploy Services stack
+echo "Deploying Services stack..."
+rain deploy ./CFN/Gen3/Services.yaml "${ClientName}-services" \
     --region $RUNTIME_REGION \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
