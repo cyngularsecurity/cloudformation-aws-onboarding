@@ -483,7 +483,7 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Sub 'layers/cyngular-onboarding/layer.zip'
+        S3Key: !Sub 'layers/cyngular-onboarding.zip'
       CompatibleRuntimes: ["python3.9", "python3.10", "python3.11", "python3.12", "python3.13"]
       CompatibleArchitectures:
         - x86_64
