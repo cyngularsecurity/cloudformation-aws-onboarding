@@ -142,15 +142,16 @@ if [[ -n $CloudTrailBucket ]]; then
     PARAMS="$PARAMS,CloudTrailBucket=$CloudTrailBucket"
 fi
 
-# Deploy using rain with Master stack
-print_status $YELLOW "Deploying CloudFormation master stack..."
-if rain deploy CFN/Gen3/Master.yaml "$STACK_NAME_PREFIX-$ClientName" -y --debug \
+# Deploy using rain with Core stack
+print_status $YELLOW "Deploying CloudFormation core stack..."
+if rain deploy CFN/Gen3/Core.yaml "$STACK_NAME_PREFIX-$ClientName" -y --debug \
     --params "$PARAMS"; then
-    print_status $GREEN "✓ Master stack deployed successfully!"
+    print_status $GREEN "✓ Core stack deployed successfully!"
 else
-    print_status $RED "✗ Master stack deployment failed!"
+    print_status $RED "✗ Core stack deployment failed!"
     exit 1
 fi
+
 
 # Get stack outputs
 print_status $BLUE "Retrieving stack outputs..."

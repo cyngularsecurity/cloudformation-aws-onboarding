@@ -11,7 +11,7 @@ This is a Cyngular AWS client onboarding system that automates the deployment of
 The project supports multiple generations of deployment architecture:
 
 ### Gen2 Architecture (Legacy)
-- **CFN/Gen2/**: CloudFormation templates with Lambda-managed StackSets
+- **CFN/CyngularOnBoarding.yaml**: Single CloudFormation template with Lambda-managed StackSets
 - **Lambdas/**: Individual Lambda functions for each service
 - Region list manually provided by client
 
@@ -23,18 +23,35 @@ The project supports multiple generations of deployment architecture:
 ## Gen3 Architecture Components
 
 ### 1. CloudFormation Templates (`CFN/Gen3/`)
-- **Master.yaml**: Master stack that orchestrates all nested stacks
-- **Storage.yaml**: S3 bucket, bucket policy, and CloudTrail resources
-- **ReadonlyRole.yaml**: IAM role for Cyngular access with required permissions
-- **Lambda.yaml**: Lambda functions, roles, and managed StackSet resources
-- **MembersGlobal.yaml**: Global resources deployed to member accounts via StackSet
+- **Core.yaml**: S3 storage, CloudTrail, and core infrastructure resources
+- **Services.yaml**: Lambda functions, roles, and service management infrastructure
+- **ReadonlyRole.yaml**: IAM role for Cyngular cross-account access with required permissions
+- **Layer.yaml**: Lambda layer deployment template for shared utilities
+- **AWSCloudFormationStackSet*.yaml**: StackSet administration and execution role templates
 
 ### 2. Lambda Functions (`Lambdas/Gen3/`)
-- **ServiceManager/** (CyngularServiceOrchestrator): Production-ready orchestrator lambda with metrics and error handling
-- **RegionProcessor/** (CyngularRegionalServiceManager): Production-ready worker lambda with parameter validation
-- **UpdateBucketPolicy/** (CyngularBucketPolicyManager): Manages S3 bucket policies for log collection
-- **AdminAndExec/**: Creates StackSet administration and execution roles
-- Consolidated architecture with production-grade Lambda functionality and monitoring
+- **ServiceManager/** (CyngularServiceOrchestrator): Production-ready orchestrator that coordinates multi-region deployments
+- **RegionProcessor/** (CyngularRegionalServiceManager): Worker lambda that processes individual regions with service registry integration
+- **UpdateBucketPolicy/**: Manages S3 bucket policies for log collection
+- **RemoveDNS/** & **RemoveVFL/**: Service cleanup functions for offboarding
+- **Layer/**: Shared Lambda layer containing common utilities and dependencies
+
+### 3. Service Registry Architecture (`service_registry.py`)
+The codebase implements a plugin-style service architecture:
+- **DNS Service** (`dns`): Route53 Resolver Query Log configuration with VPC association
+- **VPC Flow Logs** (`vfl`): VPC Flow Logs enablement with S3 destination configuration  
+- **EKS Service** (`eks`): EKS cluster audit logging and access entry management
+- **OS Service** (`os`): Security monitoring agent deployment (always enabled)
+- **Dynamic Service Loading**: Services are loaded based on enable parameters and support custom S3 buckets
+
+### 4. Lambda Layer Architecture (`Lambdas/Gen3/Layer/`)
+The Gen3 Lambda layer provides shared utilities to eliminate code duplication:
+- **`python/cyngular_common/`**: Shared module package
+  - **`metrics.py`**: Centralized CloudWatch metrics collector with validation
+  - **`cfnresponse.py`**: CloudFormation custom resource response handling
+  - **`__init__.py`**: Package initialization and exports
+- **`requirements.txt`**: External dependencies (aioboto3, typing-extensions)
+- **Layer Benefits**: Reduces deployment size, ensures consistency, simplifies maintenance
 
 ## Gen3 Services Overview
 
@@ -68,13 +85,14 @@ The project supports multiple generations of deployment architecture:
 - **Enable Parameter = "bucket-name"**: Uses custom S3 bucket (DNS/VFL only)
 
 ### Latest Production-Ready Features
+- **Lambda Layer Integration**: Shared utilities via `cyngular_common` layer reducing code duplication
 - **Intelligent S3 Bucket Tagging**: Automatically tags appropriate buckets based on service configuration
 - **Custom Bucket Support**: DNS and VFL services support custom S3 bucket destinations
 - **Asynchronous Service Processing**: Service Orchestrator invokes Regional Service Manager asynchronously
 - **Production-Grade Error Handling**: Structured logging with no stack trace exposure in production responses
 - **Official Function Naming**: Professional naming convention (CyngularServiceOrchestrator, etc.)
 - **Dynamic Parameter Passing**: Services receive enable parameters for intelligent bucket selection
-- **CloudWatch Metrics Integration**: Comprehensive metrics collection via dedicated metrics.py modules
+- **CloudWatch Metrics Integration**: Comprehensive metrics collection with input validation
 - **Environment Variable Validation**: Fail-fast patterns using os.environ['KEY'] without defaults
 - **Security Hardening**: Eliminated security vulnerabilities and implemented best practices
 - **Lambda Runtime Logging**: Proper logging using `logger = logging.getLogger(__name__)`
@@ -94,9 +112,12 @@ The project supports multiple generations of deployment architecture:
 - **OffBoardingRain.sh**: Automated offboarding script using Rain CLI
 
 
-### 3. Deployment Scripts (`Scripts/Gen3/`)
+### 4. Deployment Scripts (`Scripts/Gen3/`)
 - **deploy.sh**: Automated deployment script for Gen3 architecture
+- **deploy-layer.sh**: Automated Lambda layer deployment script
+- **update-lambdas-for-layer.sh**: Migrates existing Lambdas to use shared layer
 - **offboarding.sh**: Automated offboarding script for Gen3 cleanup
+- **LAYER_INSTRUCTIONS.md**: Comprehensive layer usage documentation
 
 ## Common Commands
 
@@ -105,28 +126,42 @@ The project supports multiple generations of deployment architecture:
 # Automated deployment using Gen3 script
 ./Scripts/Gen3/deploy.sh
 
-# Manual deployment with Rain (Master stack)
-rain deploy CFN/Gen3/Master.yaml <stack-name> -y --debug \
+# Manual deployment with Rain (Core stack)  
+rain deploy CFN/Gen3/Core.yaml <stack-name> -y --debug \
   --params "ClientName=<name>,CyngularAccountId=<id>,OrganizationId=<org-id>,EnableDNS=true,EnableEKS=true,EnableVPCFlowLogs=true"
 
 # Offboarding
 ./Scripts/Gen3/offboarding.sh
 ```
 
-### Gen2 Deployment (Legacy)
+### Lambda Layer Management (Gen3)
 ```bash
-# Manual deployment with Rain
-rain deploy CFN/Gen2/Main.yaml <stack-name> -y --debug \
+# Deploy shared Lambda layer
+./Scripts/Gen3/deploy-layer.sh
+
+# Update existing Lambdas to use layer
+./Scripts/Gen3/update-lambdas-for-layer.sh
+```
+
+### Legacy Gen2 deployment (not recommended)
+```bash
+rain deploy CFN/CyngularOnBoarding.yaml <stack-name> -y --debug \
   --params "ClientName=<name>,ClientRegions=<regions>,CyngularAccountId=<id>,OrganizationId=<org-id>"
 ```
 
-### Template Validation
+### Code Quality and Testing
 ```bash
-# Validate CloudFormation templates
-rain fmt CFN/Gen3/Main.yaml
-aws cloudformation validate-template --template-body file://CFN/Gen3/Main.yaml
+# Required syntax checking (mandatory before commits)
+ruff check .
+ruff format --check .
 
-# Lint templates
+# Format code (optional - currently commented in deployment)
+ruff format .
+
+# Validate CloudFormation templates
+rain fmt CFN/Gen3/*.yaml
+aws cloudformation validate-template --template-body file://CFN/Gen3/Core.yaml
+
 cfn-lint CFN/Gen3/*.yaml
 ```
 
@@ -159,6 +194,34 @@ aws logs tail /aws/lambda/cyngular-region-processor-<client-name> --follow
 - **ClientRegions**: Comma-separated list of regions (e.g., "eu-west-1,eu-west-2")
 - All Gen3 parameters above
 
+## Configuration
+
+### Environment Configuration (.env)
+The project uses a `.env` file for client-specific configuration:
+```bash
+# Required configuration variables
+ClientName="client-name"                    # Client company name (3-15 chars, alphanumeric)
+CyngularAccountId="123456789012"           # Cyngular AWS account ID  
+OrganizationId="o-xxxxxxxxxx"              # AWS Organization ID (optional)
+CloudTrailBucket="existing-bucket-name"    # Existing CloudTrail bucket (optional)
+
+# Service enablement flags
+EnableDNS="true"                           # Enable DNS logging (true/false/bucket-name)
+EnableEKS="true"                           # Enable EKS monitoring (true/false)
+EnableVPCFlowLogs="true"                   # Enable VPC Flow Logs (true/false/bucket-name)
+
+# Deployment configuration
+RUNTIME_REGION="us-east-1"                 # Primary deployment region
+RUNTIME_PROFILE="default"                  # AWS CLI profile
+ServiceManagerOverride=1                   # Force service manager redeployment
+ExcludedRegions="eu-central-1,eu-west-1"   # Regions to exclude from scanning
+```
+
+### GitLab CI/CD
+- Uses external pipeline from `cyngular-security/cyngular-devops/automation`
+- Includes CloudFormation validation in CI pipeline
+- Configuration: `.gitlab-ci.yml` with `CFN` as ZIP_FILES_PATH
+
 ## Prerequisites
 
 Before deployment, ensure:
@@ -168,6 +231,7 @@ Before deployment, ensure:
 2. Appropriate IAM permissions for StackSet administration
 3. Rain CLI tool installed (`brew install rain`)
 4. AWS CLI configured with appropriate credentials
+5. Environment variables configured in `.env` file
 
 ## Gen3 Architecture Benefits
 
@@ -180,6 +244,12 @@ Before deployment, ensure:
 ## Git Workflow and Development Process
 
 The project follows a standard git workflow through the branch flow: `feature → dev → main → release/v3.8`.
+
+### Critical Git Workflow Requirements
+- **Always fetch and pull with rebase** before creating branches or PRs
+- **Include DEVOPS-885 commit ID** to meet GitLab pre-receive hook requirements
+- **Test with ruff** before creating any commits
+- **Use proper commit message format** with ticket ID and Claude attribution
 
 ### Recommended Development Workflow
 
@@ -209,82 +279,6 @@ git commit -m "DEVOPS-885: Description of changes
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-#### 3. Complete Git Workflow
-```bash
-# 1. Push feature branch and create PR to dev
-git push origin feature/DEVOPS-885-description
-# Create PR: feature → dev
-
-# 2. After dev PR is merged, create PR from dev to main
-git checkout dev
-git fetch origin && git pull origin dev --rebase
-# Create PR: dev → main
-
-# 3. After main PR is merged, merge main to release locally
-git checkout main
-git fetch origin && git pull origin main --rebase
-git checkout release/v3.8
-git fetch origin && git pull origin release/v3.8 --rebase
-git merge main --no-ff -m "DEVOPS-885: Merge main to release/v3.8"
-
-# 4. Resolve any merge conflicts and finalize release
-# If conflicts exist, resolve them manually, then:
-git add .
-git commit -m "DEVOPS-885: Resolve merge conflicts for release"
-
-# 5. Push release branch and create final PR
-git push origin release/v3.8
-# Create PR: release/v3.8 → main (for final integration)
-
-# 6. Tag the release after everything is merged
-git tag -a v3.8.x -m "Release v3.8.x - Description of release"
-git push origin v3.8.x
-```
-
-### Critical Git Workflow Requirements
-- **Always fetch and pull with rebase** before creating branches or PRs
-- **Include DEVOPS-885 commit ID** to meet GitLab pre-receive hook requirements
-- **Test with ruff** before creating any commits
-- **Use proper commit message format** with ticket ID and Claude attribution
-
-## Agentic Orchestration with Gemini CLI
-
-use Gemini CLI for task orchestration and parallel processing.
-
-### Usage
-```bash
-# Parallel Code Reviews
-gemini -p "Review this code for best practices" < file.py &
-
-# Generate documentation
-gemini -p "Generate API documentation" < lambda_function.py > docs/api.md &
-
-# Security analysis
-gemini -p "Perform security analysis" < template.yaml &
-```
-
-Use background processes (`&`) for parallel execution or `wait` to synchronize completion.
-
-## State Management with Mem0 MCP Server
-
-Project requires Mem0 MCP server for maintaining context across development sessions.
-
-### Configuration
-- **Project**: `AWS Onboarding`
-- **Categories**: architecture, implementation, operations, guidelines
-
-Store memories about Lambda naming conventions, service configuration logic, deployment patterns, production readiness best practices, and development guidelines in the dedicated project space using python and bash and cloudformation.
-
-### Key Information for Mem0 Storage
-- **Lambda Architecture**: ServiceOrchestrator → RegionalServiceManager pattern with asynchronous invocation
-- **Production Standards**: Environment variable validation, metrics integration, security hardening
-- **Git Workflow**: feature → dev → main → release/v3.8 with DEVOPS-885 commit requirements
-- **Testing Requirements**: ruff syntax checking mandatory before commits
-
-**Notes**:
-- If the Mem0 project doesn't exist, please create it manually.
-- 
-
 ## Development Notes
 
 - All CloudFormation templates follow AWS best practices with proper parameter validation
@@ -292,9 +286,11 @@ Store memories about Lambda naming conventions, service configuration logic, dep
 - The system supports both single-account and organization-wide deployments
 - Gen3 architecture uses managed StackSet resources for simplified operations
 - Service Manager automatically discovers and processes all enabled regions
-- Use Gemini CLI for complex analysis and code generation tasks
-- Maintain project state in Mem0 MCP server for context continuity
+- **Lambda Layer**: Use `from cyngular_common.metrics import MetricsCollector` and `from cyngular_common import cfnresponse` for shared utilities
+- **Metrics Validation**: All metric values are validated to be numeric before CloudWatch submission
 - All Lambda functions use fail-fast environment variable validation patterns
-- CloudWatch metrics are collected via dedicated metrics.py modules
-- Security: No stack traces exposed in production responses
+- CloudWatch metrics include input validation to prevent AWS API errors
+- Security: No stack traces exposed in production responses, sensitive data handled securely
 - Testing: ruff syntax checking required before all commits
+- **S3 Bucket Convention**: Deployment buckets follow pattern `cyngular-onboarding-{region}`
+- **Layer Deployment**: Always deploy layer before updating Lambda functions to use it

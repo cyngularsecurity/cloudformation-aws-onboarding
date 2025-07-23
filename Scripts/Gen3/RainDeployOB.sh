@@ -25,8 +25,7 @@ fi
 #     --duration-seconds 3600 \
 #     --output json > "${LOCAL_ARTIFACTS_PATH}/credentials.json"
 
-# Verify identity with the new credentials
-aws sts get-caller-identity --profile $RUNTIME_PROFILE
+# aws sts get-caller-identity --profile $RUNTIME_PROFILE
 
 STACK_PARAMS="ClientName=$ClientName,\
 CyngularAccountId=${CyngularAccountId:-"851565895544"},\
@@ -66,6 +65,14 @@ rain deploy ./CFN/Gen3/ReadonlyRole.yaml "${ClientName}-ro-role" \
 # Deploy Core stack
 echo "Deploying Core stack..."
 rain deploy ./CFN/Gen3/Core.yaml "${ClientName}-core" \
+    --region $RUNTIME_REGION \
+    --profile $RUNTIME_PROFILE \
+    --params "$STACK_PARAMS" \
+    --ignore-unknown-params
+
+# Deploy Layer stack
+echo "Deploying Layer stack..." # TODO 
+rain deploy ./CFN/Gen3/Layer.yaml "${ClientName}-layer" \
     --region $RUNTIME_REGION \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
