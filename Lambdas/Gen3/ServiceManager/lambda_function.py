@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any
 from botocore.config import Config
 from cyngular_common import cfnresponse
-from cyngular_common.metrics import MetricsCollector
+# from cyngular_common.metrics import MetricsCollector
 
 # Use Lambda runtime logger properly
 logger = logging.getLogger(__name__)
@@ -40,8 +40,7 @@ class ServiceManager:
 
         self.fallback_lambda_region = self.context.invoked_function_arn.split(":")[3]
 
-        # Initialize metrics collector
-        self.metrics = MetricsCollector(self.client_name, "ServiceOrchestrator")
+        # self.metrics = MetricsCollector(self.client_name, "ServiceOrchestrator")
 
     def get_enabled_regions(self) -> List[str]:
         """Get list of enabled regions for the account"""
@@ -191,12 +190,10 @@ class ServiceManager:
                         "region": region,
                     }
 
-                    # Log detailed error information
                     logger.error(
                         f"[{region} | ServiceManager] Task {service}/{region} failed with {error_details['error_type']}: {error_details['error_message']}"
                     )
 
-                    # Add to failed results with enhanced error info
                     failed_results.append(
                         {
                             "success": False,
@@ -231,8 +228,7 @@ class ServiceManager:
             f"Success Rate: {final_results['success_rate']:.2%}"
         )
 
-        # Send metrics for processing results
-        self.metrics.record_processing_results(final_results)
+        # self.metrics.record_processing_results(final_results)
 
         return final_results
 
@@ -316,7 +312,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main lambda handler"""
     logger.info(f"Received event: {json.dumps(event)}")
 
-    # Determine event type for metrics
     event_type = "Unknown"
     if "RequestType" in event and "StackId" in event:
         event_type = "CloudFormation"
@@ -328,15 +323,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         service_manager = ServiceManager(context)
 
-        # Record invocation metrics
-        service_manager.metrics.record_invocation(event_type)
+        # service_manager.metrics.record_invocation(event_type)
 
-        # Check if this is a CloudFormation custom resource event
+        # CloudFormation event
         if "RequestType" in event and "StackId" in event:
             service_manager.handle_cloudformation_event(event, context)
             return {"statusCode": 200}
 
-        # Check if this is a scheduled event
+        # scheduled event
         elif "source" in event and event["source"] == "aws.events":
             result = service_manager.handle_scheduled_event(event, context)
             return {"statusCode": 200, "body": json.dumps(result)}
@@ -346,7 +340,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             result = service_manager.process_all_services()
             return {"statusCode": 200, "body": json.dumps(result)}
     except Exception as e:
-        # Get fallback region safely
         fallback_region = "unknown"
         try:
             if "service_manager" in locals():
@@ -368,16 +361,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             f"[{fallback_region} | ServiceManager] Event type: {error_details['event_type']}"
         )
 
-        # Record error metrics if we have service_manager instance
-        try:
-            if "service_manager" in locals():
-                service_manager.metrics.record_error(
-                    error_details["error_type"], error_details["error_message"]
-                )
-        except Exception:
-            pass  # Don't fail on metrics errors
+        # try:
+        #     if "service_manager" in locals():
+        #         service_manager.metrics.record_error(
+        #             error_details["error_type"], error_details["error_message"]
+        #         )
+        # except Exception:
+        #     logger.warning(traceback.format_exc())
 
-        # Don't expose stack trace in production responses
         return {
             "statusCode": 500,
             "body": json.dumps(

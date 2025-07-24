@@ -26,7 +26,7 @@ def process_dns_service(
         for config in region_query_log_configs:
             if (
                 config.get("Name") == "cyngular_dns"
-            ):  ## TODO Check cases where another named already exist, and attempt to connetc to cyngular, same for vfl
+            ):  ## TODO Check cases where another named already exist, and attempt to connetc to cyngular
                 cyngular_resolver_id = config["Id"]
                 logger.info(f"EXISTING QLC FOUND: {cyngular_resolver_id}")
                 break

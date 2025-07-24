@@ -4,7 +4,7 @@ import traceback
 import time
 from typing import Dict, Any
 from service_registry import SERVICE_REGISTRY
-from cyngular_common.metrics import MetricsCollector
+# from cyngular_common.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ class RegionProcessor:
         self.cyngular_role_arn = cyngular_role_arn
         self.enable_param = enable_param
 
-        # Initialize metrics collector
-        self.metrics = MetricsCollector(client_name, "RegionalServiceManager")
+        # # Initialize metrics collector
+        # self.metrics = MetricsCollector(client_name, "RegionalServiceManager")
 
     def process_service(self, service: str) -> Dict[str, Any]:
         """Process a specific service for the region"""
@@ -58,20 +58,20 @@ class RegionProcessor:
             result["service"] = service
             result["region"] = self.region
 
-            if result.get("success"):
-                self.metrics.put_metric(
-                    namespace="Cyngular/Services",
-                    metric_name="ServiceProcessed",
-                    value=1,
-                    dimensions={"Service": service, "Region": self.region},
-                )
-            else:
-                self.metrics.put_metric(
-                    namespace="Cyngular/Services",
-                    metric_name="ServiceFailed",
-                    value=1,
-                    dimensions={"Service": service, "Region": self.region},
-                )
+            # if result.get("success"):
+            #     self.metrics.put_metric(
+            #         namespace="Cyngular/Services",
+            #         metric_name="ServiceProcessed",
+            #         value=1,
+            #         dimensions={"Service": service, "Region": self.region},
+            #     )
+            # else:
+            #     self.metrics.put_metric(
+            #         namespace="Cyngular/Services",
+            #         metric_name="ServiceFailed",
+            #         value=1,
+            #         dimensions={"Service": service, "Region": self.region},
+            #     )
 
             return result
 
@@ -89,13 +89,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main lambda handler"""
     logger.info(f"Received event: {json.dumps(event)}")
 
-    # Record invocation
     client_name = event["client_name"]
-    try:
-        temp_metrics = MetricsCollector(client_name, "RegionalServiceManager")
-        temp_metrics.record_invocation("Direct")
-    except Exception:
-        logger.warning("Failed to record invocation metrics")
+    # try:
+    #     temp_metrics = MetricsCollector(client_name, "RegionalServiceManager")
+    #     temp_metrics.record_invocation("Direct")
+    # except Exception:
+    #     logger.warning("Failed to record invocation metrics")
 
     # Extract and validate all required parameters
     try:
@@ -138,14 +137,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         )
         logger.error(traceback.format_exc())  # Log full traceback for debugging
 
-        # Record error metrics if we have processor instance
-        try:
-            if "processor" in locals():
-                processor.metrics.record_error(
-                    error_details["error_type"], error_details["error_message"]
-                )
-        except Exception:
-            logger.warning(traceback.format_exc())
+        # try:
+        #     if "processor" in locals():
+        #         processor.metrics.record_error(
+        #             error_details["error_type"], error_details["error_message"]
+        #         )
+        # except Exception:
+        #     logger.warning(traceback.format_exc())
 
         return {
             "statusCode": 500,
