@@ -79,13 +79,10 @@ Parameters:
     Default: ""
 
 Conditions:
-  # Conditions for DNS service
   IsDNSEnabled: !Equals [!Ref EnableDNS, "true"]
   HasCustomDNSBucket: !And 
     - !Not [!Equals [!Ref EnableDNS, "true"]]
     - !Not [!Equals [!Ref EnableDNS, "false"]]
-  
-  # Conditions for VPC Flow Logs service
   IsVPCFlowLogsEnabled: !Equals [!Ref EnableVPCFlowLogs, "true"]
   HasCustomVPCFlowLogsBucket: !And 
     - !Not [!Equals [!Ref EnableVPCFlowLogs, "true"]]
@@ -96,8 +93,6 @@ Conditions:
   HasCustomBuckets: !Or
     - !Condition HasCustomDNSBucket
     - !Condition HasCustomVPCFlowLogsBucket
-
-
 
 Resources:
   CustomBucketAccessPolicy:
@@ -111,7 +106,6 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          # Custom DNS bucket permissions
           - !If
             - HasCustomDNSBucket
             - Sid: "CustomDNSBucketAccess"
@@ -128,7 +122,6 @@ Resources:
                 - "s3:AbortMultipartUpload"
             - !Ref AWS::NoValue
               
-          # Custom VPC Flow Logs bucket permissions
           - !If
             - HasCustomVPCFlowLogsBucket
             - Sid: "CustomVPCFlowLogsBucketAccess"
@@ -222,28 +215,34 @@ Resources:
             Resource: "*"
             Action:
               - "ssm:*"
-              - "route53resolver:*"
+              - "route53resolver:ListResolverQueryLogConfigs"
+              - "route53resolver:CreateResolverQueryLogConfig"
+              - "route53resolver:AssociateResolverQueryLogConfig"
+
               - "organizations:ListAccounts"
 
-              # S3 bucket tagging permissions
               - "s3:GetBucketTagging"
               - "s3:PutBucketTagging"
               - "s3:ListBucket"
 
-              - "ec2:Describe*"
+              # - "ec2:Describe*"
+              - "ec2:DescribeVpcs"
               - "ec2:CreateFlowLogs"
-              - "ec2:DeleteFlowLogs"
-              - "ec2:CreateTags"
-              - "ec2:DeleteTags"
+              # - "ec2:DeleteFlowLogs"
+              # - "ec2:CreateTags"
+              # - "ec2:DeleteTags"
+
               - "eks:List*"
               - "eks:DescribeCluster"
-              - "logs:CreateLogDelivery"
 
-              ### Validate
-              # - "eks:UpdateClusterConfig"
-
-              # - "eks:CreateAccessEntry"
-              # - "eks:AssociateAccessPolicy"
+          # - Sid: "CloudWatchLogsAccess"
+          #   Effect: Allow
+          #   Action:
+          #     # - "logs:CreateLogGroup"
+          #     # - "logs:CreateLogStream"
+          #     # - "logs:PutLogEvents"
+          #     - "logs:CreateLogDelivery"
+          #   Resource: "arn:aws:logs:*:*:*"
 
           - Sid: "PutMetricData"
             Effect: Allow
@@ -258,7 +257,7 @@ Resources:
               - "eks:UpdateClusterConfig"
             Condition:
               StringEquals:
-                "eks:configType": ["logging", "vpc"]
+                "eks:configType": ["logging"]
 
           - Sid: "EditEKS"
             Effect: Allow
@@ -288,7 +287,8 @@ Resources:
                     Fn::ImportValue:
                       !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
             Action:
-              - "s3:*" ## TODO - constraint further to needs of logging destination
+              # - "s3:*" ## TODO - constraint further to needs of logging destination
+              - "s3:PutObject"
 
   CyngularBucketPolicyManagerRole:
     Type: AWS::IAM::Role
@@ -339,9 +339,9 @@ Resources:
                     Fn::ImportValue:
                       !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
             Action:
-              - "s3:*"
+              # - "s3:*"
+              - "s3:PutObject"
 
-  ## Update Bucket Policy Lambda
   CyngularBucketPolicyManagerLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -358,7 +358,7 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      Layers: !Ref CyngularLayer
+      Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
@@ -400,7 +400,6 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt CyngularBucketPolicyManagerScheduledRule.Arn
 
-  ## Service Manager Lambda
   CyngularServiceOrchestratorLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -410,7 +409,7 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      Layers: !Ref CyngularLayer
+      Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
@@ -450,7 +449,7 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      Layers: !Ref CyngularLayer
+      Layers: [!Ref CyngularLayer]
 
       Environment:
         Variables:

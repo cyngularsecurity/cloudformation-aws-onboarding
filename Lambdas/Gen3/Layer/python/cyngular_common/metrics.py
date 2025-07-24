@@ -131,7 +131,7 @@ class MetricsCollector:
                     }
                 )
 
-            # CloudWatch supports max 20 metrics per batch
+            # max 20 metrics per batch
             for i in range(0, len(metric_data), 20):
                 batch = metric_data[i : i + 20]
                 self.cloudwatch_client.put_metric_data(
@@ -151,7 +151,7 @@ class MetricsCollector:
             )
 
     def record_processing_results(
-        self, results: Dict[str, Any], namespace: str = "Cyngular/Lambda"
+        self, results: Dict[str, Any], namespace: str = "Cyngular/Services"
     ) -> None:
         """
         Record standard processing results metrics
@@ -200,7 +200,7 @@ class MetricsCollector:
         self.put_metrics_batch(namespace, metrics)
 
     def record_error(
-        self, error_type: str, error_message: str, namespace: str = "Cyngular/Lambda"
+        self, error_type: str, error_message: str, namespace: str = "Cyngular/Services"
     ) -> None:
         """
         Record error occurrence
@@ -220,7 +220,7 @@ class MetricsCollector:
         logger.error(f"Error recorded: {error_type} - {error_message}")
 
     def record_invocation(
-        self, event_type: str = "Unknown", namespace: str = "Cyngular/Lambda"
+        self, event_type: str = "Unknown", namespace: str = "Cyngular/Services"
     ) -> None:
         """
         Record Lambda function invocation

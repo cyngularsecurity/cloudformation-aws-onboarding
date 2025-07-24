@@ -4,11 +4,9 @@ import traceback
 import time
 from typing import Dict, Any
 from service_registry import SERVICE_REGISTRY
-from metrics import MetricsCollector
+from cyngular_common.metrics import MetricsCollector
 
-# Use Lambda runtime logger properly
 logger = logging.getLogger(__name__)
-
 
 class RegionProcessor:
     def __init__(
@@ -92,13 +90,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Received event: {json.dumps(event)}")
 
     # Record invocation
-    client_name = event.get("client_name", "unknown")
-    if client_name != "unknown":
-        try:
-            temp_metrics = MetricsCollector(client_name, "RegionalServiceManager")
-            temp_metrics.record_invocation("Direct")
-        except Exception:
-            pass  # Don't fail on metrics errors
+    client_name = event["client_name"]
+    try:
+        temp_metrics = MetricsCollector(client_name, "RegionalServiceManager")
+        temp_metrics.record_invocation("Direct")
+    except Exception:
+        logger.warning("Failed to record invocation metrics")
 
     # Extract and validate all required parameters
     try:
@@ -148,10 +145,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     error_details["error_type"], error_details["error_message"]
                 )
         except Exception:
-            # logger.info(traceback.format_exc())  # Log full traceback for debugging
-            pass  # Don't fail on metrics errors
+            logger.warning(traceback.format_exc())
 
-        # Don't expose stack trace in production responses
         return {
             "statusCode": 500,
             "body": json.dumps(

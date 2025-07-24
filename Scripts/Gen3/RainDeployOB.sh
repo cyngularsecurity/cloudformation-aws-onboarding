@@ -70,14 +70,6 @@ rain deploy ./CFN/Gen3/Core.yaml "${ClientName}-core" \
     --params "$STACK_PARAMS" \
     --ignore-unknown-params
 
-# Deploy Layer stack
-echo "Deploying Layer stack..." # TODO 
-rain deploy ./CFN/Gen3/Layer.yaml "${ClientName}-layer" \
-    --region $RUNTIME_REGION \
-    --profile $RUNTIME_PROFILE \
-    --params "$STACK_PARAMS" \
-    --ignore-unknown-params
-
 # Deploy Services stack
 echo "Deploying Services stack..."
 rain deploy ./CFN/Gen3/Services.yaml "${ClientName}-services" \

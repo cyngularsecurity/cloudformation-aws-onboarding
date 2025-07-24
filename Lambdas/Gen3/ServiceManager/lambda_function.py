@@ -5,9 +5,9 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any
-import cfnresponse
 from botocore.config import Config
-from metrics import MetricsCollector
+from cyngular_common import cfnresponse
+from cyngular_common.metrics import MetricsCollector
 
 # Use Lambda runtime logger properly
 logger = logging.getLogger(__name__)
