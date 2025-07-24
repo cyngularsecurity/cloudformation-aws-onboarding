@@ -220,7 +220,7 @@ class MetricsCollector:
         logger.error(f"Error recorded: {error_type} - {error_message}")
 
     def record_invocation(
-        self, event_type: str = "Unknown", namespace: str = "Cyngular/Services"
+        self, event_type: str = "Unknown", namespace: str = "Cyngular/Lambda"
     ) -> None:
         """
         Record Lambda function invocation
