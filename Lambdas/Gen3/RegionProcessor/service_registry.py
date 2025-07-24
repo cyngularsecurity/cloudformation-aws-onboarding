@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, List
-from utils import (
+from services import (
     process_dns_service,
     process_vfl_service,
     process_eks_service,

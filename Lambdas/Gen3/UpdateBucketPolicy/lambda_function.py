@@ -2,7 +2,7 @@ import boto3
 import os
 import logging
 import json
-import cfnresponse
+from cyngular_common import cfnresponse
 
 
 def get_account_ids_lst(management_account_id):
@@ -75,8 +75,8 @@ def update_bucket(bucket_name, management_account_id, is_org):
             "$%BUCKET_ARN%$", f"arn:aws:s3:::{bucket_name}"
         )
         new_statement_json = json.loads(new_statement)
-        reponse_policy = json.loads(response["Policy"])
-        statement_policy = reponse_policy["Statement"]
+        response_policy = json.loads(response["Policy"])
+        statement_policy = response_policy["Statement"]
         statement_policy.extend(new_statement_json)
         new_policy = {}
         new_policy["Statement"] = statement_policy

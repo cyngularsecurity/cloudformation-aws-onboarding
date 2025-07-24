@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceManager:
-    # concurrency limits
     MAX_CONCURRENT_WORKERS = 4
-    INVOCATION_DELAY_SECONDS = 0.1  ## TODO adjust accordingly
+    INVOCATION_DELAY_SECONDS = 0.1
 
     def __init__(self, lambda_context):
         # Required environment variables - fail if not present
