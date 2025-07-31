@@ -2,9 +2,8 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform:
   - 'AWS::LanguageExtensions'
 
-Description: >-
+Description: |-
   Cyngular Template - Service Management Infrastructure
-  Creates:
     - IAM role policy for custom bucket access (conditional)
     - IAM role and policy for Service Manager Lambda
     - IAM role and policy for Region Processor Lambda  
@@ -39,9 +38,13 @@ Metadata:
           - ExcludedRegions
 
 Mappings:
-  VARS:
+  Const:
     "Cyngular":
       LambdasBucketPrefix: "cyngular-onboarding"
+      # TemplateBucket: "cyngular-onboarding-templates"
+      # TemplatePath: "stacks/Gen3"
+      # ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
+      # AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
 
 Parameters:
   ClientName:
@@ -79,14 +82,15 @@ Parameters:
     Default: ""
 
 Conditions:
-  IsDNSEnabled: !Equals [!Ref EnableDNS, "true"]
-  HasCustomDNSBucket: !And 
-    - !Not [!Equals [!Ref EnableDNS, "true"]]
-    - !Not [!Equals [!Ref EnableDNS, "false"]]
   IsVPCFlowLogsEnabled: !Equals [!Ref EnableVPCFlowLogs, "true"]
   HasCustomVPCFlowLogsBucket: !And 
     - !Not [!Equals [!Ref EnableVPCFlowLogs, "true"]]
     - !Not [!Equals [!Ref EnableVPCFlowLogs, "false"]]
+
+  IsDNSEnabled: !Equals [!Ref EnableDNS, "true"]
+  HasCustomDNSBucket: !And 
+    - !Not [!Equals [!Ref EnableDNS, "true"]]
+    - !Not [!Equals [!Ref EnableDNS, "false"]]
 
   IsEKSEnabled: !Equals [!Ref EnableEKS, "true"]
   
@@ -226,8 +230,10 @@ Resources:
               - "s3:ListBucket"
 
               # - "ec2:Describe*"
+              - "ec2:DescribeInstances"
               - "ec2:DescribeVpcs"
               - "ec2:CreateFlowLogs"
+              - 'ec2:CreateTags'
               # - "ec2:DeleteFlowLogs"
               # - "ec2:CreateTags"
               # - "ec2:DeleteTags"
@@ -259,19 +265,19 @@ Resources:
               StringEquals:
                 "eks:configType": ["logging"]
 
-          - Sid: "EditEKS"
-            Effect: Allow
-            Resource:
-              - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
-            Action:
-              - "eks:CreateAccessEntry"
-              - "eks:AssociateAccessPolicy"
           - Sid: "DescribeEKS"
             Effect: Allow
             Resource:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
             Action:
               - "eks:DescribeCluster"
+          - Sid: "EditEksAccessEntry"
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+            Action:
+              - "eks:CreateAccessEntry"
+              - "eks:AssociateAccessPolicy"
 
           - Sid: "CyngularBucketAdmin"
             Effect: Allow
@@ -290,115 +296,6 @@ Resources:
               # - "s3:*" ## TODO - constraint further to needs of logging destination
               - "s3:PutObject"
 
-  CyngularBucketPolicyManagerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "cyngular-bucket-policy-manager-role-${ClientName}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service:
-                - "lambda.amazonaws.com"
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      Tags:
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
-
-  CyngularBucketPolicyManagerRolePolicy:
-    Type: AWS::IAM::RolePolicy
-    Properties:
-      PolicyName: !Sub "cyngular-bucket-policy-manager-policy-${ClientName}"
-      RoleName: !Ref CyngularBucketPolicyManagerRole
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: "CyngularLambdaUpdateBucketPolicy"
-            Effect: Allow
-            Resource: "*"
-            Action:
-              # - "logs:*"
-              - "organizations:ListAccounts"
-
-          - Sid: "CyngularBucketAdmin"
-            Effect: Allow
-            Resource:
-              - !Sub
-                - "arn:aws:s3:::${bucket_name}"
-                - bucket_name:
-                    Fn::ImportValue:
-                      !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
-              - !Sub
-                - "arn:aws:s3:::${bucket_name}/*"
-                - bucket_name:
-                    Fn::ImportValue:
-                      !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
-            Action:
-              # - "s3:*"
-              - "s3:PutObject"
-
-  CyngularBucketPolicyManagerLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub "cyngular-bucket-policy-manager-${ClientName}"
-      Description: "Created by Cyngular Security | Updates the Cyngular S3 bucket policy"
-      Role: !GetAtt CyngularBucketPolicyManagerRole.Arn
-      Environment:
-        Variables:
-          BUCKET_NAME:
-            Fn::ImportValue: !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
-          IS_ORG:
-            Fn::ImportValue: !Join [ ":", ["CyngularSecurity", "IsOrganization", !Ref ClientName ]]
-
-      Runtime: "python3.12"
-      Handler: lambda_function.lambda_handler
-      Timeout: 900
-      Layers: [!Ref CyngularLayer]
-      Code:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['UpdateBucketPolicy', 'zip']]]]
-      Tags:
-        - Key: Name
-          Value: !Sub "cyngular-update-bucket-policy-${ClientName}"
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
-
-  CyngularBucketPolicyManagerTrigger:
-    Type: Custom::UpdateBucketPolicy
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Version: "1.0"
-    Properties:
-      ServiceToken: !GetAtt CyngularBucketPolicyManagerLambda.Arn
-      ServiceTimeout: 1200
-
-  CyngularBucketPolicyManagerScheduledRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub "${CyngularBucketPolicyManagerLambda}-rule"
-      Description: "Scheduled execution for Update Bucket Policy | Runs daily at 00:00"
-      ScheduleExpression: "cron(0 0 * * ? *)"
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt CyngularBucketPolicyManagerLambda.Arn
-          Id: "UpdateBucketPolicyTarget"
-
-  CyngularBucketPolicyManagerScheduledRulePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref CyngularBucketPolicyManagerLambda
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt CyngularBucketPolicyManagerScheduledRule.Arn
 
   CyngularServiceOrchestratorLambda:
     Type: AWS::Lambda::Function
@@ -409,11 +306,14 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      Layers: [!Ref CyngularLayer]
+      Layers: [
+        Fn::ImportValue:
+          !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
+      ]
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: "lambdas/ServiceManager.zip"
 
       Environment:
@@ -449,7 +349,10 @@ Resources:
       Runtime: "python3.12"
       Handler: lambda_function.lambda_handler
       Timeout: 900
-      Layers: [!Ref CyngularLayer]
+      Layers: [
+        Fn::ImportValue:
+          !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
+      ]
 
       Environment:
         Variables:
@@ -463,7 +366,7 @@ Resources:
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: "lambdas/RegionProcessor.zip"
       Tags:
         - Key: Name
@@ -473,20 +376,6 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  CyngularLayer:
-    Type: AWS::Lambda::LayerVersion
-    Properties:
-      LayerName: "cyngular-onboarding-layer"
-      Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
-      Content:
-        S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
-        S3Key: !Sub 'layers/cyngular-onboarding.zip'
-      CompatibleRuntimes: ["python3.9", "python3.10", "python3.11", "python3.12", "python3.13"]
-      CompatibleArchitectures:
-        - x86_64
-        - arm64
 
   CyngularServiceOrchestratorTrigger:
     Type: Custom::ServiceManager

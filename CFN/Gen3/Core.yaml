@@ -1,58 +1,56 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  Cyngular Gen3 Core Stack - Creates S3 bucket, bucket policy, and CloudTrail
-
 Transform:
   - 'AWS::LanguageExtensions'
 
+Description: |-
+  Cyngular Template - Core Infrastructure Creates:
+    - S3 bucket for Cyngular security logs and data
+    - S3 bucket policy for CloudTrail and Cyngular access
+    - IAM role policy for readonly role S3 bucket access
+    - CloudTrail trail for audit logging (conditional)
+    - Cyngular Layer for Lambda functions
+    - Cyngular Bucket Policy Manager for updating the bucket policy
+
 Metadata:
   Vendor:
-    Description: Cyngular Security
+    Description: 'Cyngular Security'
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "Client Info"
+          default: 'Client Info'
         Parameters:
           - ClientName
       - Label:
-          default: "Services"
-        Parameters:
-          - EnableVPCFlowLogs
-          - EnableDNS
-          - EnableEKS
-      - Label:
-          default: "Override Parameters"
+          default: 'Override Parameters'
         Parameters:
           - CloudTrailBucket
+          - EnableBucketPolicyManager
           - OrganizationId
           - CyngularAccountId
 
 Mappings:
-  VARS:
+  Const:
     "Cyngular":
       LambdasBucketPrefix: "cyngular-onboarding"
-      # TemplateBucket: "cyngular-onboarding-templates"
-      # TemplatePath: "stacks/Gen3"
-      # ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
-      # AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
+      PythonRuntime: "python3.12"
 
 Parameters:
   ClientName:
-    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
+    Description: 'The Client Company name (must be lowercase, can contain letters & numbers)'
     Type: String
     AllowedPattern: "^[a-z0-9]+$"
-    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    ConstraintDescription: 'Company Name should consist of only lowercase characters and numbers, and it should not start with a number.'
     MinLength: 3
     MaxLength: 15
 
   OrganizationId:
-    Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
+    Description: 'Specify the Company Organization id | leave empty if not deploying to an organization'
     Type: String
     Default: ""
 
   CyngularAccountId:
-    Description: "The Cyngular Account ID to assume the read only role"
+    Description: 'The Cyngular Account ID to assume the read only role'
     Type: String
     Default: "851565895544"
 
@@ -61,20 +59,8 @@ Parameters:
     Type: String
     Default: ""
 
-  EnableDNS:
-    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-dnslogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
-    Type: String
-    AllowedValues: ["true", "false"]
-    Default: "true"
-
-  EnableEKS:
-    Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."
-    Type: String
-    AllowedValues: ["true", "false"]
-    Default: "true"
-
-  EnableVPCFlowLogs:
-    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is enabled or not desired. Add the tag {key: 'cyngular-vpcflowlogs', value: 'true'} to the resource bucket only if telemetry is already collected for Cyngular analysis."
+  EnableBucketPolicyManager:
+    Description: "Set to 'true' to enable the bucket policy manager for future logging; set to 'false' if not currently desired."
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
@@ -82,15 +68,16 @@ Parameters:
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
   CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
-  ServiceVFL: !Equals [ !Ref EnableVPCFlowLogs, "true" ]
-  ServiceDNS: !Equals [ !Ref EnableDNS, "true" ]
-  ServiceEKS: !Equals [ !Ref EnableEKS, "true" ]
+  CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, "true" ]
 
 Resources:
+  ##############################
+  # Cyngular S3 Bucket
+  ##############################
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
+    # DeletionPolicy: Retain
+    # UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketEncryption:
@@ -102,6 +89,21 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+      LifecycleConfiguration:
+        Rules:
+        ## transitions objects to Standard-IA after 60 days
+        ## Glacier after 90 days
+        ## deletes them after a year
+          - Id: ObjectLifecycleRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 60
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+
       Tags:
         - Key: Name
           Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
@@ -116,21 +118,6 @@ Resources:
             - Key: cyngular-cloudtrail
               Value: true
             - !Ref AWS::NoValue
-        - !If
-            - ServiceDNS
-            - Key: cyngular-dnslogs
-              Value: true
-            - !Ref AWS::NoValue
-        - !If
-            - ServiceVFL
-            - Key: cyngular-vpcflowlogs
-              Value: true
-            - !Ref AWS::NoValue
-        - !If
-            - ServiceEKS
-            - Key: cyngular-ekslogs
-              Value: true
-            - !Ref AWS::NoValue
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -142,15 +129,21 @@ Resources:
           - Sid: 'LambdaRead'
             Effect: Allow
             Principal:
-              AWS: [
-                !Sub "arn:aws:iam::${AWS::AccountId}:root",
-                !Sub "arn:aws:iam::${CyngularAccountId}:root"                
-              ]
+              AWS:
+                - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-lambda-role" ## drop for client-side readonly role
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+                # - !Sub "arn:aws:iam::${CyngularAccountId}:root"
             Action:
               - "s3:*"
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+            # Condition:
+            #   StringEquals:
+            #     aws:PrincipalArn:
+            #       - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-lambda-role"
+            #       - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-*-exec-role"
+
           - !If
             - CreateCloudTrail
             - Sid: 'CloudTrailAclCheck'
@@ -183,6 +176,9 @@ Resources:
                   AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
             - !Ref "AWS::NoValue"
 
+  ##############################
+  # Cyngular Bucket Access Policy
+  ##############################
   CyngularBucketAccessPolicy:
     Type: AWS::IAM::RolePolicy
     Properties:
@@ -201,6 +197,9 @@ Resources:
             Action:
               - "s3:*"
 
+  ##############################
+  # Cyngular CloudTrail
+  ##############################
   ClientCloudTrail:
     DependsOn: S3BucketPolicy
     Condition: CreateCloudTrail
@@ -229,16 +228,38 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  UpdateBucketPolicyRole:
-    Type: AWS::IAM::Role
+  ##############################
+  # Cyngular Layer
+  ##############################
+  CyngularLayer:
+    Type: AWS::Lambda::LayerVersion
     Properties:
-      RoleName: !Sub "cyngular-update-bucket-policy-role-${ClientName}"
+      LayerName: "cyngular-onboarding-layer"
+      Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
+      Content:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+        S3Key: 'layers/cyngular-onboarding.zip'
+      CompatibleRuntimes: [!FindInMap [Const, Cyngular, PythonRuntime]]
+      CompatibleArchitectures:
+        - x86_64
+        # - arm64
+
+  ##############################
+  # Cyngular Bucket Policy Manager
+  ##############################
+  CyngularBucketPolicyManagerRole:
+    Type: AWS::IAM::Role
+    Condition: CreateBucketPolicyManager
+    Properties:
+      RoleName: !Sub "cyngular-bucket-policy-manager-role-${ClientName}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: "Allow"
             Principal:
-              Service: 
+              Service:
                 - "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
@@ -249,11 +270,12 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  CyngularLambdaUpdateBucketPolicyPolicy:
+  CyngularBucketPolicyManagerRolePolicy:
     Type: AWS::IAM::RolePolicy
+    Condition: CreateBucketPolicyManager
     Properties:
-      PolicyName: !Sub "cyngular-update-bucket-policy-policy-${ClientName}"
-      RoleName: !Ref UpdateBucketPolicyRole
+      PolicyName: !Sub "cyngular-bucket-policy-manager-policy-${ClientName}"
+      RoleName: !Ref CyngularBucketPolicyManagerRole
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -267,31 +289,36 @@ Resources:
           - Sid: "CyngularBucketAdmin"
             Effect: Allow
             Resource:
-              - !GetAtt CyngularS3Bucket.Arn
-              - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
+              - !Sub
+                - "arn:aws:s3:::${bucket_name}"
+                - bucket_name: !Ref CyngularS3Bucket
+              - !Sub
+                - "arn:aws:s3:::${bucket_name}/*"
+                - bucket_name: !Ref CyngularS3Bucket
             Action:
-              - "s3:*"
+              - "s3:GetBucketPolicy"
+              - "s3:PutBucketPolicy"              
 
-  UpdateBucketPolicyLambda:
+  CyngularBucketPolicyManagerLambda:
     Type: AWS::Lambda::Function
+    Condition: CreateBucketPolicyManager
     Properties:
-      FunctionName: !Sub "cyngular-update-bucket-policy-${ClientName}"
+      FunctionName: !Sub "cyngular-bucket-policy-manager-${ClientName}"
       Description: "Created by Cyngular Security | Updates the Cyngular S3 bucket policy"
-      Role: !GetAtt UpdateBucketPolicyRole.Arn
+      Role: !GetAtt CyngularBucketPolicyManagerRole.Arn
       Environment:
         Variables:
-          BUCKET_NAME:
-            Fn::ImportValue:
-              !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+          BUCKET_NAME: !Ref CyngularS3Bucket
           IS_ORG: !If [IsOrg, true, false]
 
-      Runtime: "python3.12"
+      Runtime: !FindInMap [Const, Cyngular, PythonRuntime]
       Handler: lambda_function.lambda_handler
       Timeout: 900
+      Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [VARS, Cyngular, LambdasBucketPrefix]
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Join ['', ['lambdas/', !Join ['.', ['UpdateBucketPolicy', 'zip']]]]
       Tags:
         - Key: Name
@@ -301,25 +328,40 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
 
-  UpdateBucketPolicyScheduledRule:
-    Type: AWS::Events::Rule
+  CyngularBucketPolicyManagerTrigger:
+    Type: Custom::UpdateBucketPolicy
+    Condition: CreateBucketPolicyManager
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Version: "1.0"
     Properties:
-      Name: !Sub "${UpdateBucketPolicyLambda}-rule"
+      ServiceToken: !GetAtt CyngularBucketPolicyManagerLambda.Arn
+      ServiceTimeout: 1200
+
+  CyngularBucketPolicyManagerScheduledRule:
+    Type: AWS::Events::Rule
+    Condition: CreateBucketPolicyManager
+    Properties:
+      Name: !Sub "${CyngularBucketPolicyManagerLambda}-rule"
       Description: "Scheduled execution for Update Bucket Policy | Runs daily at 00:00"
       ScheduleExpression: "cron(0 0 * * ? *)"
       State: "ENABLED"
       Targets:
-        - Arn: !GetAtt UpdateBucketPolicyLambda.Arn
+        - Arn: !GetAtt CyngularBucketPolicyManagerLambda.Arn
           Id: "UpdateBucketPolicyTarget"
 
-  UpdateBucketPolicyScheduledRulePermission:
+  CyngularBucketPolicyManagerScheduledRulePermission:
     Type: AWS::Lambda::Permission
+    Condition: CreateBucketPolicyManager
     Properties:
-      FunctionName: !Ref UpdateBucketPolicyLambda
+      FunctionName: !Ref CyngularBucketPolicyManagerLambda
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt UpdateBucketPolicyScheduledRule.Arn
+      SourceArn: !GetAtt CyngularBucketPolicyManagerScheduledRule.Arn
 
+##############################
+# Outputs
+##############################
 Outputs:
   CyngularBucketName:
     Description: "Name of the Cyngular S3 bucket"
@@ -327,8 +369,15 @@ Outputs:
     Export:
       Name: !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
 
-  ClientCurrentOrganizationId:
-    Description: "The Company Organization id"
-    Value: !Ref OrganizationId
+  IsOrganization:
+    Description: Whether this is an organization deployment
+    Value: !If [IsOrg, "true", "false"]
     Export:
-      Name: !Join [ ":", ["CyngularSecurity", "ClientCurrentOrganizationId", !Ref ClientName ]]
+      Name: !Join [ ":", ["CyngularSecurity", "IsOrganization", !Ref ClientName ] ]
+
+  CyngularLayerArn:
+    Description: "ARN of the Cyngular Layer"
+    Value: !Ref CyngularLayer
+    Export:
+      Name: !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
+      
