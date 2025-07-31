@@ -3,17 +3,10 @@ Transform:
   - 'AWS::LanguageExtensions'
 
 Description: |-
-  Cyngular Template - Service Management Infrastructure
-    - IAM role policy for custom bucket access (conditional)
-    - IAM role and policy for Service Manager Lambda
-    - IAM role and policy for Region Processor Lambda  
-    - IAM role and policy for Update Bucket Policy Lambda
-    - Lambda function: Service Manager (orchestrates services across regions)
-    - Lambda function: Region Processor (configures services per region)
-    - Lambda function: Update Bucket Policy (manages S3 bucket policies)
-    - EventBridge scheduled rules for Service Manager and Update Bucket Policy
-    - Lambda permissions for EventBridge rule invocations
-    - Custom resource triggers for initial Lambda executions
+  Cyngular Service Management Infrastructure Template
+  Creates: IAM roles/policies (custom bucket access), Service Orchestrator Lambda (region coordination),
+  Regional Service Manager Lambda (per-region services), EventBridge rules (scheduled execution),
+  Lambda permissions (EventBridge invocation), Custom resource triggers (initial execution)
 
 Metadata:
   Vendor:
@@ -39,8 +32,13 @@ Metadata:
 
 Mappings:
   Const:
-    "Cyngular":
-      LambdasBucketPrefix: "cyngular-onboarding"
+    'Cyngular':
+      LambdasBucketPrefix: 'cyngular-onboarding'
+      PythonRuntime: 'python3.12'
+      DeletionPolicy: 'Retain'
+      LambdaTimeout: 900
+      ScheduleRate: 'rate(60 minutes)'
+      EventState: 'ENABLED'
       # TemplateBucket: "cyngular-onboarding-templates"
       # TemplatePath: "stacks/Gen3"
       # ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
@@ -56,14 +54,14 @@ Parameters:
     MaxLength: 15
 
   EnableDNS:
-    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is not desired. Or provide a custom bucket name to use an existing bucket."
+    Description: 'Set to true to enable the service if not already enabled; set to false if the service is not desired. Or provide a custom bucket name to use an existing bucket.'
     Type: String
-    Default: "true"
+    Default: 'true'
 
   EnableVPCFlowLogs:
-    Description: "Set to 'true' to enable the service if not already enabled; set to 'false' if the service is not desired. Or provide a custom bucket name to use an existing bucket."
+    Description: 'Set to true to enable the service if not already enabled; set to false if the service is not desired. Or provide a custom bucket name to use an existing bucket.'
     Type: String
-    Default: "true"
+    Default: 'true'
 
   EnableEKS:
     Description: "EKS Service - Whether to Configure EKS Audit & Authenticator Logging for kubernetes Clusters."

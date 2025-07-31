@@ -3,13 +3,10 @@ Transform:
   - 'AWS::LanguageExtensions'
 
 Description: |-
-  Cyngular Template - Core Infrastructure Creates:
-    - S3 bucket for Cyngular security logs and data
-    - S3 bucket policy for CloudTrail and Cyngular access
-    - IAM role policy for readonly role S3 bucket access
-    - CloudTrail trail for audit logging (conditional)
-    - Cyngular Layer for Lambda functions
-    - Cyngular Bucket Policy Manager for updating the bucket policy
+  Cyngular Core Infrastructure Template
+  Creates: S3 bucket (cyngular-{client}-bucket-{account}), S3 bucket policy (CloudTrail/Cyngular access), 
+  IAM role policy (readonly S3 access), CloudTrail trail (conditional audit logging),
+  Lambda layer (shared utilities), Bucket Policy Manager (S3 policy updates)
 
 Metadata:
   Vendor:
@@ -31,15 +28,20 @@ Metadata:
 
 Mappings:
   Const:
-    "Cyngular":
-      LambdasBucketPrefix: "cyngular-onboarding"
-      PythonRuntime: "python3.12"
+    'Cyngular':
+      LambdasBucketPrefix: 'cyngular-onboarding'
+      PythonRuntime: 'python3.12'
+      DeletionPolicy: 'Retain'
+      SSEAlgorithm: 'AES256'
+      LifecycleStandardIADays: 60
+      LifecycleGlacierDays: 90
+      LifecycleExpirationDays: 365
 
 Parameters:
   ClientName:
     Description: 'The Client Company name (must be lowercase, can contain letters & numbers)'
     Type: String
-    AllowedPattern: "^[a-z0-9]+$"
+    AllowedPattern: '^[a-z0-9]+$'
     ConstraintDescription: 'Company Name should consist of only lowercase characters and numbers, and it should not start with a number.'
     MinLength: 3
     MaxLength: 15
@@ -47,43 +49,43 @@ Parameters:
   OrganizationId:
     Description: 'Specify the Company Organization id | leave empty if not deploying to an organization'
     Type: String
-    Default: ""
+    Default: ''
 
   CyngularAccountId:
     Description: 'The Cyngular Account ID to assume the read only role'
     Type: String
-    Default: "851565895544"
+    Default: '851565895544'
 
   CloudTrailBucket:
-    Description: "Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: 'cyngular-cloudtrail', value: 'true'} to the bucket, otherwise leave empty."
+    Description: 'Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: cyngular-cloudtrail, value: true} to the bucket, otherwise leave empty.'
     Type: String
-    Default: ""
+    Default: ''
 
   EnableBucketPolicyManager:
-    Description: "Set to 'true' to enable the bucket policy manager for future logging; set to 'false' if not currently desired."
+    Description: 'Set to true to enable the bucket policy manager for future logging; set to false if not currently desired.'
     Type: String
-    AllowedValues: ["true", "false"]
-    Default: "true"
+    AllowedValues: ['true', 'false']
+    Default: 'true'
 
 Conditions:
-  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
-  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, "" ]
-  CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, "true" ]
+  IsOrg: !Not [!Equals [!Ref OrganizationId, '']]
+  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, '' ]
+  CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, 'true' ]
 
 Resources:
-  ##############################
-  # Cyngular S3 Bucket
-  ##############################
+  ################################################################################
+  # STORAGE - S3 Bucket for Security Logs Collection
+  ################################################################################
   CyngularS3Bucket:
     Type: AWS::S3::Bucket
-    # DeletionPolicy: Retain
-    # UpdateReplacePolicy: Retain
+    DeletionPolicy: !FindInMap [Const, Cyngular, DeletionPolicy]
+    UpdateReplacePolicy: !FindInMap [Const, Cyngular, DeletionPolicy]
     Properties:
-      BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+      BucketName: !Sub 'cyngular-${ClientName}-bucket-${AWS::AccountId}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: !FindInMap [Const, Cyngular, SSEAlgorithm]
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -98,15 +100,15 @@ Resources:
           - Id: ObjectLifecycleRule
             Status: Enabled
             Transitions:
-              - TransitionInDays: 60
+              - TransitionInDays: !FindInMap [Const, Cyngular, LifecycleStandardIADays]
                 StorageClass: STANDARD_IA
-              - TransitionInDays: 90
+              - TransitionInDays: !FindInMap [Const, Cyngular, LifecycleGlacierDays]
                 StorageClass: GLACIER
-            ExpirationInDays: 365
+            ExpirationInDays: !FindInMap [Const, Cyngular, LifecycleExpirationDays]
 
       Tags:
         - Key: Name
-          Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
+          Value: !Sub 'cyngular-${ClientName}-bucket-${AWS::AccountId}'
         - Key: cyngular-os
           Value: true
         - Key: cyngular-visibility
@@ -116,7 +118,7 @@ Resources:
         - !If
             - CreateCloudTrail
             - Key: cyngular-cloudtrail
-              Value: true
+              Value: 'true'
             - !Ref AWS::NoValue
 
   S3BucketPolicy:

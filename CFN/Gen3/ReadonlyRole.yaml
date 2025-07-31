@@ -3,9 +3,9 @@ Transform:
   - 'AWS::LanguageExtensions'
 
 Description: >-
-  Cyngular Template - Cross-Account Access Role
-    - IAM role for Cyngular cross-account access
-    - IAM role policy with readonly permissions for security monitoring
+  Cyngular Cross-Account Access Role Template
+  Creates: IAM role (cyngular-readonly-role-{client}) for cross-account access,
+  IAM role policy (readonly permissions) for security monitoring and analysis
 
 Metadata:
   Vendor:
@@ -18,6 +18,11 @@ Metadata:
         Parameters:
           - ClientName
           - CyngularAccountId
+
+Mappings:
+  Const:
+    'Cyngular':
+      PolicyVersion: '2012-10-17'
 
 Parameters:
   ClientName:
@@ -34,12 +39,15 @@ Parameters:
     Default: '851565895544'
 
 Resources:
+  ################################################################################
+  # IAM - Cross-Account Access Role for Cyngular Security Monitoring
+  ################################################################################
   ClientCyngularRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub 'cyngular-readonly-role-${ClientName}'
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: !FindInMap [Const, Cyngular, PolicyVersion]
         Statement:
           - Effect: Allow
             Principal:
@@ -65,7 +73,7 @@ Resources:
       PolicyName: !Sub 'cyngular-readonly-role-policy-${ClientName}'
       RoleName: !Ref ClientCyngularRole
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: !FindInMap [Const, Cyngular, PolicyVersion]
         Statement:
           - Sid: 'ReadOnly'
             Effect: Allow
