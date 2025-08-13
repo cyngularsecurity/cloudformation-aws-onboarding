@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Git Workflow Automation for Cyngular Client Onboarding
-# Workflow: dev -> main -> release/3.8
+# Git Workflow Automation
+# Workflow: dev -> main -> release/x.x
 
 set -e
 

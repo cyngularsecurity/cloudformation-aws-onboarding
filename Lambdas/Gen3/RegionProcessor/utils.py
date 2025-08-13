@@ -110,8 +110,11 @@ def tag_cyngular_bucket(bucket_name: str, service_tags: dict) -> Dict[str, Any]:
             existing_tags = {
                 tag["Key"]: tag["Value"] for tag in response.get("TagSet", [])
             }
-        except s3_client.exceptions.NoSuchTagSet:
-            existing_tags = {}
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchTagSet':
+                existing_tags = {}
+            else:
+                raise e
         except Exception as e:
             logger.warning(
                 f"Could not retrieve existing tags for {bucket_name}: {str(e)}"

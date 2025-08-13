@@ -1,0 +1,23 @@
+---
+schemaVersion: "2.2"
+description: "Install and enable auditd on a target instance."
+parameters:
+  PackageName:
+    type: "String"
+    description: "The name of the auditd package to install."
+    default: "auditd"
+mainSteps:
+  - action: "aws:runShellScript"
+    name: "InstallAuditd"
+    inputs:
+      runCommand:
+        - "sudo apt-get update -y"
+        - "sudo apt-get install -y {{ PackageName }}"
+  - action: "aws:runShellScript"
+    name: "EnableAndStartAuditd"
+    inputs:
+      runCommand:
+        - "sudo systemctl enable auditd"
+        - "sudo systemctl start auditd"
+        - "sudo systemctl status auditd"
+        

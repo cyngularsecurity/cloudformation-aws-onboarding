@@ -136,8 +136,11 @@ rain deploy CFN/Gen3/Core.yaml <stack-name> -y --debug \
 
 ### Lambda Layer Management (Gen3)
 ```bash
+# Build Lambda layer (creates zip file)
+./Scripts/Gen3/BuildLayer.sh
+
 # Deploy shared Lambda layer
-./Scripts/Gen3/deploy-layer.sh
+./Scripts/Gen3/DeployLayer.sh
 
 # Update existing Lambdas to use layer
 ./Scripts/Gen3/update-lambdas-for-layer.sh

@@ -36,6 +36,7 @@ Mappings:
       LifecycleStandardIADays: 60
       LifecycleGlacierDays: 90
       LifecycleExpirationDays: 365
+      LayerName: 'cyngular-onboarding-layer'
 
 Parameters:
   ClientName:
@@ -49,7 +50,7 @@ Parameters:
   OrganizationId:
     Description: 'Specify the Company Organization id | leave empty if not deploying to an organization'
     Type: String
-    Default: ''
+    Default: 'o-u6r8yihkugt4'
 
   CyngularAccountId:
     Description: 'The Cyngular Account ID to assume the read only role'
@@ -81,7 +82,7 @@ Resources:
     DeletionPolicy: !FindInMap [Const, Cyngular, DeletionPolicy]
     UpdateReplacePolicy: !FindInMap [Const, Cyngular, DeletionPolicy]
     Properties:
-      BucketName: !Sub 'cyngular-${ClientName}-bucket-${AWS::AccountId}'
+      BucketName: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -108,7 +109,7 @@ Resources:
 
       Tags:
         - Key: Name
-          Value: !Sub 'cyngular-${ClientName}-bucket-${AWS::AccountId}'
+          Value: !Sub "cyngular-${ClientName}-bucket-${AWS::AccountId}"
         - Key: cyngular-os
           Value: true
         - Key: cyngular-visibility
@@ -236,7 +237,7 @@ Resources:
   CyngularLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      LayerName: "cyngular-onboarding-layer"
+      LayerName: !FindInMap [Const, Cyngular, LayerName]
       Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
       Content:
         S3Bucket: !Sub
@@ -247,6 +248,14 @@ Resources:
       CompatibleArchitectures:
         - x86_64
         # - arm64
+
+  CyngularLayerPermission:
+    Type: AWS::Lambda::LayerVersionPermission
+    Properties:
+      Action: lambda:GetLayerVersion
+      LayerVersionArn: !Ref CyngularLayer
+      OrganizationId: !Ref OrganizationId
+      Principal: "*"
 
   ##############################
   # Cyngular Bucket Policy Manager
@@ -377,9 +386,9 @@ Outputs:
     Export:
       Name: !Join [ ":", ["CyngularSecurity", "IsOrganization", !Ref ClientName ] ]
 
-  CyngularLayerArn:
-    Description: "ARN of the Cyngular Layer"
-    Value: !Ref CyngularLayer
-    Export:
-      Name: !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
+  # CyngularLayerArn:
+  #   Description: "ARN of the Cyngular Layer"
+  #   Value: !Ref CyngularLayer
+  #   Export:
+  #     Name: !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
       

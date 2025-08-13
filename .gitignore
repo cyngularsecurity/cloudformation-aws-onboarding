@@ -52,3 +52,12 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+CLAUDE.md
+AI_AGENT_SYSTEM_PROMPT.md
+
+.kilocode/
+.claude/
+QWEN.md
+specs/
+Extra/

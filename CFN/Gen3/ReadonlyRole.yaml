@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
-Transform:
-  - 'AWS::LanguageExtensions'
+# Transform:
+#   - 'AWS::LanguageExtensions'
 
 Description: >-
   Cyngular Cross-Account Access Role Template
@@ -178,7 +178,6 @@ Resources:
               - 'secretsmanager:DescribeSecret'
               - 'secretsmanager:GetResourcePolicy'
               - 'secretsmanager:ListSecretVersionIds'
-
 
           - Sid: 'Ec2CyngularSnapshot'
             Effect: Allow
