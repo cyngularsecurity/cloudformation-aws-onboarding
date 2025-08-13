@@ -169,8 +169,6 @@ Resources:
               - 'cloudwatch:ListMetrics'
               - 'cloudwatch:GetMetricData'
 
-              - 'account:ListRegions'
-
               - 'codebuild:ListBuilds'
               - 'codebuild:BatchGetBuilds'
 
@@ -178,6 +176,14 @@ Resources:
               - 'secretsmanager:DescribeSecret'
               - 'secretsmanager:GetResourcePolicy'
               - 'secretsmanager:ListSecretVersionIds'
+
+          - Sid: 'ListRegionsOnAccounts'
+            Effect: "Allow"
+            Action:
+              - "account:ListRegions"
+            Resource:
+              - arn:aws:account::*:account/o-*/*
+              - arn:aws:account::*:account
 
           - Sid: 'Ec2CyngularSnapshot'
             Effect: Allow
