@@ -11,9 +11,8 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 ## Documentation
 
 - [Deployment Instructions](./docs/INSTRUCTIONS.md) - Prerequisites and deployment steps
-- [Gen3 Deployment Guide](./specs/Gen3-Deployment-Guide.md) - Current architecture guide
 - [Service Configuration](./docs/CYNGULAR_SERVICES.md) - Service enablement options
-- [Lambda Layer Guide](./specs/LAYER_INSTRUCTIONS.md) - Lambda layer architecture
+- [Architecture Diagrams](./Charts/) - Visual workflow and architecture diagrams
 
 ## Architecture
 
