@@ -12,36 +12,36 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 
 - [Deployment Instructions](./docs/INSTRUCTIONS.md) - Prerequisites and deployment steps
 - [Service Configuration](./docs/CYNGULAR_SERVICES.md) - Service enablement options
-- [Architecture Diagrams](./Charts/) - Visual workflow and architecture diagrams
 
 ## Architecture
 
 **CloudFormation Templates** with automated region discovery
 
-### CloudFormation Templates (`CFN/`)
+### CloudFormation Templates ([`CFN/`](./CFN/))
 
 #### If not created already
 
-- `AWSCloudFormationStackSetAdministrationRole.yaml` - StackSet admin role
-- `AWSCloudFormationStackSetExecutionRole.yaml` - StackSet execution role
+- [`AWSCloudFormationStackSetAdministrationRole.yaml`](./CFN/AWSCloudFormationStackSetAdministrationRole.yaml) - StackSet admin role
+- [`AWSCloudFormationStackSetExecutionRole.yaml`](./CFN/AWSCloudFormationStackSetExecutionRole.yaml) - StackSet execution role
 
 #### Then
 
-- `ReadonlyRole.yaml` - Cross-account IAM role for Cyngular access
-- `Core.yaml` - S3 storage, CloudTrail, and core infrastructure
-- `Services.yaml` - Lambda functions and service management
+- [`ReadonlyRole.yaml`](./CFN/ReadonlyRole.yaml) - Cross-account IAM role for Cyngular access
+- [`Core.yaml`](./CFN/Core.yaml) - S3 storage, CloudTrail, and core infrastructure
+- [`Services.yaml`](./CFN/Services.yaml) - Lambda functions and service management
+- [`Cleanup.yaml`](./CFN/Cleanup.yaml) - Cleanup Lambda functions for offboarding
 
-### Lambda Functions (`Lambdas/`)
+### Lambda Functions ([`Lambdas/`](./Lambdas/))
 
-- **Services/**
-  - `ServiceManager/` - Cyngular Service Orchestrator (coordinates multi-region deployments)
-  - `RegionProcessor/` - Cyngular Regional Service Manager (processes individual regions)
-  - `UpdateBucketPolicy/` - S3 bucket policy management
-  - `Layer/` - Shared Lambda layer with common utilities
+- **[Services/](./Lambdas/Services/)**
+  - [`ServiceManager/`](./Lambdas/Services/ServiceManager/) - Cyngular Service Orchestrator (coordinates multi-region deployments)
+  - [`RegionProcessor/`](./Lambdas/Services/RegionProcessor/) - Cyngular Regional Service Manager (processes individual regions)
+  - [`UpdateBucketPolicy/`](./Lambdas/Services/UpdateBucketPolicy/) - S3 bucket policy management
+  - [`Layer/`](./Lambdas/Services/Layer/) - Shared Lambda layer with common utilities
 
-- **Cleaners/**
-  - `RemoveDNS/` - DNS logging cleanup
-  - `RemoveVFL/` - VPC Flow Logs cleanup
+- **[Cleaners/](./Lambdas/Cleaners/)**
+  - [`RemoveDNS/`](./Lambdas/Cleaners/RemoveDNS/) - DNS logging cleanup
+  - [`RemoveVFL/`](./Lambdas/Cleaners/RemoveVFL/) - VPC Flow Logs cleanup
 
 ## Key Features
 

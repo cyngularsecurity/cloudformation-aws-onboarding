@@ -32,4 +32,4 @@
 [Bucket_Policy]: https://cyngular-onboarding-templates.s3.us-east-1.amazonaws.com/stacks/bucket-policy-s3-statement.json
 
 
-[StackSets]: "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html"
+[StackSets]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html
