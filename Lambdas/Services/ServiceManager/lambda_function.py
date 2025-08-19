@@ -344,7 +344,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if "service_manager" in locals():
                 fallback_region = service_manager.fallback_lambda_region
         except Exception:
-            pass
+            logger.error(
+                f"[{fallback_region} | ServiceManager] Lambda handler failed: {type(e).__name__} - {str(e)}"
+            )
 
         error_details = {
             "error_type": type(e).__name__,

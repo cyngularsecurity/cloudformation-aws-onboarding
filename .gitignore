@@ -53,11 +53,14 @@ logs/
 *.temp
 .cache/
 
+QWEN.md
 CLAUDE.md
 AI_AGENT_SYSTEM_PROMPT.md
 
 .kilocode/
 .claude/
-QWEN.md
-specs/
 Extra/
+specs/
+
+Lambdas/uv.lock
+Lambdas/.ruff_cache

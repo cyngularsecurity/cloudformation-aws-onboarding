@@ -1,8 +1,8 @@
 # CloudFormation Aws On Boarding
 
-### Deployment Steps
+## Deployment Steps
 
-## Prerequisites
+### Prerequisites
 
 1. **Enable AWS Services**
    - Ensure the following services (trusted access) are enabled:
@@ -16,14 +16,13 @@
    - Ensure you are in your preferred AWS region.
    - Use Cyngular's template to deploy the Cyngular Onboarding Stack. [Deploy Cyngular Onboarding Stack](Deploy_Cyngular_Onboarding_Stack)
 
-4. **Configure S3 Bucket**
+3. **Configure S3 Bucket**
    - If you're using your own S3 bucket (e.g., for CloudTrail, VPC Flow logs), add the specified tag from the CloudFormation template and apply the bucket policy using the provided [Bucket Policy](Bucket_Policy).
    - Only modify the bucket name.
 
-5. **Complete Deployment**
+4. **Complete Deployment**
    - After the deployment is complete, enter your management account ID and select your preferred regions.
    - Click "Connect".
-
 
 [CloudTrail]: https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/CloudTrail
 [CloudFormation_StackSets]: https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/CloudFormation%20StackSets

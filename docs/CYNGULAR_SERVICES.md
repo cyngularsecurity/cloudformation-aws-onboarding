@@ -1,6 +1,6 @@
 
+# On services parameters
 
-For services parameters:
 provide true, for cyngular to collect logs
 provide false, if the service should not be enabled,
 if already configured to log to an existing s3 bucket, add the respective tags to the buckets collecting logs:

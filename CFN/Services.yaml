@@ -18,7 +18,6 @@ Metadata:
           default: "Client Info"
         Parameters:
           - ClientName
-          # - CyngularSecurityBucketName
           - ClientMgmtAccountId
       - Label:
           default: "Services"
@@ -43,11 +42,6 @@ Mappings:
       EventState: 'ENABLED'
       LayerName: 'cyngular-onboarding-layer'
 
-      # TemplateBucket: "cyngular-onboarding-templates"
-      # TemplatePath: "stacks/Gen3"
-      # ExecRoleTemplateName: "CyngularCloudFormationStackSetExecutionRole"
-      # AdminRoleTemplateName: "CyngularCloudFormationStackSetAdministrationRole"
-
 Parameters:
   ClientName:
     Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
@@ -56,13 +50,6 @@ Parameters:
     ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
     MinLength: 3
     MaxLength: 15
-
-  # CyngularSecurityBucketName:
-  #   Description: "The name of the Cyngular Security bucket created in the core stack"
-  #   Type: String
-  #   Default: "bucket-name"
-  #   ConstraintDescription: "Must be a valid S3 bucket name"
-  #   # AllowedPattern: "^[a-z0-9]+$"
 
   ClientMgmtAccountId:
     Description: "The Client Management Account ID"
@@ -271,7 +258,6 @@ Resources:
               - "s3:PutBucketTagging"
               - "s3:ListBucket"
 
-              # - "ec2:Describe*"
               - "ec2:DescribeInstances"
               - "ec2:DescribeVpcs"
               - "ec2:CreateFlowLogs"
@@ -292,15 +278,6 @@ Resources:
             Condition:
               StringEquals:
                 "ec2:RequestTag/Vendor": "Cyngular Security"
-
-          # - Sid: "CloudWatchLogsAccess"
-          #   Effect: Allow
-          #   Action:
-          #     # - "logs:CreateLogGroup"
-          #     # - "logs:CreateLogStream"
-          #     # - "logs:PutLogEvents"
-          #     - "logs:CreateLogDelivery"
-          #   Resource: "arn:aws:logs:*:*:*"
 
           - Sid: "PutMetricData"
             Effect: Allow
@@ -336,22 +313,9 @@ Resources:
           - Sid: "CyngularBucketAdmin"
             Effect: Allow
             Resource:
-              # - !Sub
-              #   - "arn:aws:s3:::${bucket_name}"
-              #   - bucket_name:
-              #       Fn::ImportValue:
-              #         !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
-              # - !Sub
-              #   - "arn:aws:s3:::${bucket_name}/*"
-              #   - bucket_name:
-              #       Fn::ImportValue:
-              #         !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
-              # - !Sub "arn:aws:s3:::${CyngularSecurityBucketName}"
-              # - !Sub "arn:aws:s3:::${CyngularSecurityBucketName}/*"
               - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}"
               - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}/*"
             Action:
-              # - "s3:*" ## TODO - constraint further to needs of logging destination
               - "s3:PutObject"
             Condition:
               StringEquals:

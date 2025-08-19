@@ -1,0 +1,88 @@
+name: CloudFormation Validation
+
+on:
+  push:
+    branches: [ main, dev, "release/*" ]
+    paths:
+      - 'CFN/**/*.yaml'
+      - '.github/workflows/cfn-validate.yml'
+  pull_request:
+    branches: [ main, dev, "release/*" ]
+    paths:
+      - 'CFN/**/*.yaml'
+      - '.github/workflows/cfn-validate.yml'
+
+jobs:
+  cfn-lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install cfn-lint
+      run: |
+        python -m pip install --upgrade pip
+        pip install cfn-lint
+    
+    - name: Validate CloudFormation Templates
+      run: |
+        echo "Validating CloudFormation templates..."
+        
+        # Find all YAML files in CFN directory
+        templates=$(find CFN -type f \( -name "*.yaml" -o -name "*.yml" \) | sort)
+        
+        if [ -z "$templates" ]; then
+          echo "No CloudFormation templates found"
+          exit 0
+        fi
+        
+        # Track validation results
+        failed=0
+        total=0
+        
+        for template in $templates; do
+          echo "----------------------------------------"
+          echo "Validating: $template"
+          total=$((total + 1))
+          
+          if cfn-lint "$template"; then
+            echo "✅ $template passed validation"
+          else
+            echo "❌ $template failed validation"
+            failed=$((failed + 1))
+          fi
+        done
+        
+        echo "----------------------------------------"
+        echo "Summary: $((total - failed))/$total templates passed validation"
+        
+        if [ $failed -gt 0 ]; then
+          echo "❌ CloudFormation validation failed"
+          exit 1
+        else
+          echo "✅ All CloudFormation templates are valid"
+        fi
+    
+    # - name: AWS CloudFormation Validate (Optional)
+    #   continue-on-error: true
+    #   env:
+    #     AWS_DEFAULT_REGION: us-east-1
+    #   run: |
+    #     # This step requires AWS credentials to be configured
+    #     # It will run but not fail the workflow if credentials are not present
+        
+    #     if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+    #       echo "Running AWS CloudFormation validation..."
+          
+    #       for template in $(find CFN -type f \( -name "*.yaml" -o -name "*.yml" \)); do
+    #         echo "AWS validation for: $template"
+    #         aws cloudformation validate-template --template-body file://$template --region us-east-1 || true
+    #       done
+    #     else
+    #       echo "ℹ️ Skipping AWS validation (no credentials configured)"
+    #     fi

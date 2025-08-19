@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |-
+  Cyngular Cleanup Lambda Functions Template
+  Creates: IAM roles/policies for cleanup operations, RemoveDNS Lambda (DNS logging cleanup),
+  RemoveVFL Lambda (VPC Flow Logs cleanup), Lambda permissions for invocation
+
+Metadata:
+  Vendor:
+    Description: Cyngular Security
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+
+Mappings:
+  Const:
+    'Cyngular':
+      LambdasBucketPrefix: 'cyngular-onboarding'
+      PythonRuntime: 'python3.12'
+      DeletionPolicy: 'Retain'
+      LambdaTimeout: 900
+      LayerName: 'cyngular-onboarding-layer'
+
+Parameters:
+  ClientName:
+    Description: "The Client Company name (must be lowercase, can contain letters or numbers)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    MinLength: 3
+    MaxLength: 15
+
+
+Resources:
+  ##############################
+  # Cyngular Layer
+  ##############################
+  CyngularLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !FindInMap [Const, Cyngular, LayerName]
+      Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
+      Content:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+        S3Key: 'layers/cyngular-onboarding.zip'
+      CompatibleRuntimes: [!FindInMap [Const, Cyngular, PythonRuntime]]
+      CompatibleArchitectures:
+        - x86_64
+
+  ##############################
+  # RemoveDNS Lambda Function
+  ##############################
+  CyngularRemoveDNSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-remove-dns-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  CyngularRemoveDNSRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-remove-dns-policy-${ClientName}"
+      RoleName: !Ref CyngularRemoveDNSRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "Route53ResolverCleanup"
+            Effect: Allow
+            Action:
+              - "route53resolver:ListResolverQueryLogConfigs"
+              - "route53resolver:DisassociateResolverQueryLogConfig"
+              - "route53resolver:DeleteResolverQueryLogConfig"
+            Resource: "*"
+          - Sid: "EC2VPCAccess"
+            Effect: Allow
+            Action:
+              - "ec2:DescribeVpcs"
+            Resource: "*"
+          - Sid: "CloudWatchMetrics"
+            Effect: Allow
+            Action:
+              - "cloudwatch:PutMetricData"
+            Resource: "*"
+
+  CyngularRemoveDNSLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-remove-dns-${ClientName}"
+      Description: "Created by Cyngular Security | Removes DNS logging configuration during offboarding"
+      Role: !GetAtt CyngularRemoveDNSRole.Arn
+      Runtime: !FindInMap [Const, Cyngular, PythonRuntime]
+      Handler: lambda_function.lambda_handler
+      Timeout: !FindInMap [Const, Cyngular, LambdaTimeout]
+      Layers: [!Ref CyngularLayer]
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/RemoveDNS.zip"
+      Environment:
+        Variables:
+          CLIENT_NAME: !Ref ClientName
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  ##############################
+  # RemoveVFL Lambda Function
+  ##############################
+  CyngularRemoveVFLRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "cyngular-remove-vfl-role-${ClientName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+  CyngularRemoveVFLRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-remove-vfl-policy-${ClientName}"
+      RoleName: !Ref CyngularRemoveVFLRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "VPCFlowLogsCleanup"
+            Effect: Allow
+            Action:
+              - "ec2:DescribeFlowLogs"
+              - "ec2:DeleteFlowLogs"
+            Resource: "*"
+          - Sid: "CloudWatchMetrics"
+            Effect: Allow
+            Action:
+              - "cloudwatch:PutMetricData"
+            Resource: "*"
+
+  CyngularRemoveVFLLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "cyngular-remove-vfl-${ClientName}"
+      Description: "Created by Cyngular Security | Removes VPC Flow Logs configuration during offboarding"
+      Role: !GetAtt CyngularRemoveVFLRole.Arn
+      Runtime: !FindInMap [Const, Cyngular, PythonRuntime]
+      Handler: lambda_function.lambda_handler
+      Timeout: !FindInMap [Const, Cyngular, LambdaTimeout]
+      Layers: [!Ref CyngularLayer]
+      Code:
+        S3Bucket: !Sub
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+        S3Key: "lambdas/RemoveVFL.zip"
+      Environment:
+        Variables:
+          CLIENT_NAME: !Ref ClientName
+      Tags:
+        - Key: Vendor
+          Value: "Cyngular Security"
+        - Key: ClientName
+          Value: !Ref ClientName
+
+Outputs:
+  RemoveDNSFunctionName:
+    Description: "Name of the RemoveDNS Lambda function"
+    Value: !Ref CyngularRemoveDNSLambda
+    Export:
+      Name: !Sub "${AWS::StackName}:RemoveDNSFunctionName"
+
+  RemoveVFLFunctionName:
+    Description: "Name of the RemoveVFL Lambda function"
+    Value: !Ref CyngularRemoveVFLLambda
+    Export:
+      Name: !Sub "${AWS::StackName}:RemoveVFLFunctionName"
+
+  RemoveDNSFunctionArn:
+    Description: "ARN of the RemoveDNS Lambda function"
+    Value: !GetAtt CyngularRemoveDNSLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}:RemoveDNSFunctionArn"
+
+  RemoveVFLFunctionArn:
+    Description: "ARN of the RemoveVFL Lambda function"
+    Value: !GetAtt CyngularRemoveVFLLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}:RemoveVFLFunctionArn"

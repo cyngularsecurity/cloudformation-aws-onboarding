@@ -1,4 +1,4 @@
-## updated region list
+# updated AWS region list
 
 | Code           | Name                   | Opt-in Status    |
 | -------------- | -------------------------- | ---------------- |
