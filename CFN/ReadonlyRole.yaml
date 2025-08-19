@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-# Transform:
+# Transform: ## not allowed in stacksets. set in regular stack for interpulation in template view on console. 
 #   - 'AWS::LanguageExtensions'
 
 Description: >-
@@ -58,14 +58,6 @@ Resources:
           Value: 'Cyngular Security'
         - Key: ClientName
           Value: !Ref ClientName
-
-
-# Type: 'AWS::IAM::ManagedPolicy'
-# Properties:
-#   ManagedPolicyName: !Sub "cyngular-readonly-role-policy-${ClientName}"
-#   Description: "Policy for Attack Simulation EC2 role"
-#   Roles:
-#     - !Ref ClientCyngularRole
 
   ClientCyngularRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -169,8 +161,6 @@ Resources:
               - 'cloudwatch:ListMetrics'
               - 'cloudwatch:GetMetricData'
 
-              - 'account:ListRegions'
-
               - 'codebuild:ListBuilds'
               - 'codebuild:BatchGetBuilds'
 
@@ -178,6 +168,14 @@ Resources:
               - 'secretsmanager:DescribeSecret'
               - 'secretsmanager:GetResourcePolicy'
               - 'secretsmanager:ListSecretVersionIds'
+
+          - Sid: 'ListRegionsOnAccounts'
+            Effect: "Allow"
+            Action:
+              - "account:ListRegions"
+            Resource:
+              - arn:aws:account::*:account/o-*/*
+              - arn:aws:account::*:account
 
           - Sid: 'Ec2CyngularSnapshot'
             Effect: Allow

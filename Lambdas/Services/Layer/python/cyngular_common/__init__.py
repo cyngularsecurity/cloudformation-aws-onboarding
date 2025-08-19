@@ -1,7 +1,7 @@
 """
-Cyngular Common Library for Gen3 Lambda Functions
+Cyngular Common Library for Lambda Functions
 
-This package provides shared utilities and modules for Cyngular Gen3 Lambda functions.
+This package provides shared utilities and modules for Cyngular Lambda functions.
 """
 
 from .metrics import MetricsCollector

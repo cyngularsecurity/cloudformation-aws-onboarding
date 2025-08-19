@@ -32,7 +32,7 @@ echo "  Profile: $RUNTIME_PROFILE"
 echo ""
 
 #### Install zip with templates to local dir:
-# curl -s https://raw.githubusercontent.com/Cyngular/Devops/main/Scripts/Gen3/zip.sh | bash
+# curl -s https://raw.githubusercontent.com/Cyngular/Devops/main/Scripts/zip.sh | bash
 #### Install rain cli
 # brew install rain
 #### for dev
@@ -40,10 +40,10 @@ echo ""
 
 # Deploy ReadonlyRole stack
 echo "Deploying ReadonlyRole stack..."
-# rain forecast --experimental CFN/Gen3/ReadonlyRole.yaml ${ClientName}-ro-role \
+# rain forecast --experimental CFN/ReadonlyRole.yaml ${ClientName}-ro-role \
 #     --params ClientName=${ClientName}
 
-rain deploy ./CFN/Gen3/ReadonlyRole.yaml "${CLIENT_NAME}-ro-role" \
+rain deploy ./CFN/ReadonlyRole.yaml "${CLIENT_NAME}-ro-role" \
     --region $RUNTIME_REGION \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
@@ -52,7 +52,7 @@ rain deploy ./CFN/Gen3/ReadonlyRole.yaml "${CLIENT_NAME}-ro-role" \
 
 # Deploy Core stack
 echo "Deploying Core stack..."
-rain deploy ./CFN/Gen3/Core.yaml "${CLIENT_NAME}-core" \
+rain deploy ./CFN/Core.yaml "${CLIENT_NAME}-core" \
     --region $RUNTIME_REGION \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
@@ -61,7 +61,7 @@ rain deploy ./CFN/Gen3/Core.yaml "${CLIENT_NAME}-core" \
 
 # Deploy Services stack
 echo "Deploying Services stack..."
-rain deploy ./CFN/Gen3/Services.yaml "${CLIENT_NAME}-services" \
+rain deploy ./CFN/Services.yaml "${CLIENT_NAME}-services" \
     --region $RUNTIME_REGION \
     --profile $RUNTIME_PROFILE \
     --params "$STACK_PARAMS" \
@@ -78,7 +78,7 @@ CyngularAccountId=${CYNGULAR_ACCOUNT_ID:-"851565895544"}"
 
 aws cloudformation create-stack-set \
   --stack-set-name "${CLIENT_NAME}-role" \
-  --template-body file://./CFN/Gen3/ReadonlyRole.yaml \
+  --template-body file://./CFN/ReadonlyRole.yaml \
   --parameters \
     ParameterKey=ClientName,ParameterValue="$CLIENT_NAME" \
     ParameterKey=CyngularAccountId,ParameterValue="${CYNGULAR_ACCOUNT_ID:-"851565895544"}" \
@@ -108,7 +108,7 @@ ExcludedRegions="\"${ExcludedRegions}\""
 
 aws cloudformation create-stack-set \
   --stack-set-name "${CLIENT_NAME}-services" \
-  --template-body file://./CFN/Gen3/Services.yaml \
+  --template-body file://./CFN/Services.yaml \
   --parameters \
     ParameterKey=ClientName,ParameterValue="$CLIENT_NAME" \
     ParameterKey=EnableDNS,ParameterValue="${EnableDNS:-true}" \

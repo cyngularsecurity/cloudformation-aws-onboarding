@@ -132,7 +132,7 @@ Resources:
           - Sid: 'LambdaRead'
             Effect: Allow
             Principal:
-              AWS:
+              AWS: # TODO - validate & decide
                 - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-lambda-role" ## drop for client-side readonly role
                 - !Sub "arn:aws:iam::${AWS::AccountId}:root"
                 # - !Sub "arn:aws:iam::${CyngularAccountId}:root"
@@ -385,10 +385,3 @@ Outputs:
     Value: !If [IsOrg, "true", "false"]
     Export:
       Name: !Join [ ":", ["CyngularSecurity", "IsOrganization", !Ref ClientName ] ]
-
-  # CyngularLayerArn:
-  #   Description: "ARN of the Cyngular Layer"
-  #   Value: !Ref CyngularLayer
-  #   Export:
-  #     Name: !Join [ ":", ["CyngularSecurity", "CyngularLayerArn", !Ref ClientName ] ]
-      
