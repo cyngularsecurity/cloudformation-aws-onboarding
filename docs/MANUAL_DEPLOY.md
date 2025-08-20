@@ -1,24 +1,6 @@
 # Manual Deployment Guide (AWS Console)
 
-This guide walks you through deploying the CloudFormation stacks and StackSets via the AWS Console, skipping the automation performed by `Scripts/RainDeployOB.sh`.
-
-Use this if you are not using the script-based deployment.
-
-## Prerequisites
-
-- AWS account user with sufficient permissions to create CloudFormation stacks and StackSets (including IAM changes).
-- Trusted access for AWS Organizations to CloudFormation StackSets is enabled.
-- Know your values for the following (typically provided by your Cyngular contact or your environment):
-  - CLIENT_NAME (short identifier for your organization)
-  - RUNTIME_REGION (your primary region for stacks)
-  - CYNGULAR_ACCOUNT_ID (default: 851565895544)
-  - ORGANIZATION_ID (e.g., o-xxxxxxxxxx)
-  - ORGANIZATIONAL_UNIT_IDS (one or more OU IDs, e.g., ou-xxxx-xxxxxxxx)
-  - Optional/feature flags: EnableDNS, EnableEKS, EnableVPCFlowLogs, EnableBucketPolicyManager, ServiceManagerOverride
-  - Optional resources: CloudTrailBucket, ExcludedRegions
-  - Management account IDs: ClientMgmtAccountId (for stacks) and/or CLIENT_MGMT_ACCOUNT_ID (for StackSets)
-
-Note: Parameter names must match exactly as shown below. StackSets do not support unknown parameters; only supply those listed.
+This guide walks you through deploying the CloudFormation stacks and StackSets via the AWS Console.
 
 ## Part 1: Deploy Region-Scoped Stacks (per region)
 
@@ -38,7 +20,8 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
 - Parameters:
   - ClientName = <`client company name`>
   - CyngularAccountId = 851565895544
-- Capabilities: enable IAM (CAPABILITY_NAMED_IAM) if prompted
+
+- Acknowledge required Capabilities
 - Create stack and wait for completion
 
 ### 2. Core stack
@@ -48,17 +31,14 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
 - Stack name: `${CLIENT_NAME}-core`
 - Parameters (use what applies to your setup):
   - ClientName = <`client company name`>
-  - CyngularAccountId = 851565895544
   - OrganizationId = <`organization id`>
-  - ExcludedRegions = ExcludedRegions (optional)
+
   - CloudTrailBucket = CloudTrailBucket (optional)
-  - EnableDNS = true/false
-  - EnableEKS = true/false
-  - EnableVPCFlowLogs = true/false
   - EnableBucketPolicyManager = true/false
-  - ServiceManagerOverride = integer (default: 1)
-  - ClientMgmtAccountId = ClientMgmtAccountId (optional)
-- Capabilities: enable IAM (CAPABILITY_NAMED_IAM, CAPABILITY_AUTO_EXPAND) if prompted
+
+  - CyngularAccountId = 851565895544
+
+- Acknowledge required Capabilities
 - Create stack and wait for completion
 
 ### 3. Services stack
@@ -68,13 +48,16 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
 - Stack name: `${CLIENT_NAME}-services`
 - Parameters (align with your Core parameters):
   - ClientName = <`client company name`>
+  - ClientMgmtAccountId = ClientMgmtAccountId (required when deploying in organizations)
+
   - EnableDNS = true/false
   - EnableVPCFlowLogs = true/false
   - EnableEKS = true/false
+  
   - ServiceManagerOverride = integer (default: 1)
-  - ExcludedRegions = ExcludedRegions (optional, list)
-  - ClientMgmtAccountId = ClientMgmtAccountId (optional)
-- Capabilities: enable IAM (CAPABILITY_NAMED_IAM, CAPABILITY_AUTO_EXPAND) [when prompted]
+  - ExcludedRegions = ExcludedRegions (optional)
+
+- Acknowledge required Capabilities
 - Create stack and wait for completion
 
 ## Part 2: Deploy Organization-Scoped StackSets
@@ -85,7 +68,7 @@ You will create two StackSets, then add instances targeting your OUs in your cho
 - Permission model: SERVICE MANAGED
 - Auto-deployment: Enabled (retain stacks on account removal: typically false, set to true only if deletion is required and the stack instances are stuck)
 - Managed execution: Active
-- Capabilities: CAPABILITY_NAMED_IAM, CAPABILITY_AUTO_EXPAND
+- Acknowledge required Capabilities
 
 ### A. ReadonlyRole StackSet
 
@@ -104,6 +87,7 @@ Add Stack Instances:
 - Operation preferences:
   - RegionConcurrencyType = PARALLEL
   - Optionally tune: FailureTolerancePercentage, MaxConcurrentPercentage
+- Acknowledge required Capabilities
 - Submit and wait for operation to succeed
 
 ### B. Services StackSet
@@ -129,6 +113,7 @@ Add Stack Instances:
   - RegionConcurrencyType = PARALLEL
   - FailureTolerancePercentage (e.g., 25)
   - MaxConcurrentPercentage (e.g., 50)
+- Acknowledge required Capabilities
 - Submit and wait for operation to succeed
 
 ## Validation

@@ -2,11 +2,11 @@
 
 Automated deployment of security monitoring infrastructure for AWS accounts using CloudFormation Templates.
 
-## Quick Start
+<!-- ## Quick Start
 
 1. Configure client parameters in `.env` file
 2. Run deployment: `./Scripts/RainDeployOB.sh`
-3. Monitor deployment: `rain log <stack-name> --chart`
+3. Monitor deployment: `rain log <stack-name> --chart` -->
 
 ## Documentation
 
@@ -28,7 +28,7 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 
 - [`ReadonlyRole.yaml`](./CFN/ReadonlyRole.yaml) - Cross-account IAM role for Cyngular access
 - [`Core.yaml`](./CFN/Core.yaml) - S3 storage, CloudTrail, and core infrastructure
-- [`Services.yaml`](./CFN/Services.yaml) - Lambda functions and service management
+- [`Services.yaml`](./CFN/Services.yaml) - Lambda functions services
 - [`Cleanup.yaml`](./CFN/Cleanup.yaml) - Cleanup Lambda functions for offboarding
 
 ### Lambda Functions ([`Lambdas/`](./Lambdas/))

@@ -52,7 +52,7 @@ Parameters:
     MaxLength: 15
 
   ClientMgmtAccountId:
-    Description: "The Client Management Account ID"
+    Description: "The Client Management Account ID - where cyngular s3 bukcet was deployed"
     Type: String
     Default: ""
 
@@ -78,7 +78,7 @@ Parameters:
     Default: 1
 
   ExcludedRegions:
-    Description: "List of regions to exclude from the service manager"
+    Description: "List of regions to exclude from service manager lookup"
     Type: CommaDelimitedList
     Default: ""
 

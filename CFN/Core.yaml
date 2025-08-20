@@ -50,7 +50,7 @@ Parameters:
   OrganizationId:
     Description: 'Specify the Company Organization id | leave empty if not deploying to an organization'
     Type: String
-    Default: 'o-u6r8yihkugt4'
+    Default: ''
 
   CyngularAccountId:
     Description: 'The Cyngular Account ID to assume the read only role'

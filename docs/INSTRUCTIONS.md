@@ -1,8 +1,21 @@
 # CloudFormation Aws On Boarding
 
-## Deployment Steps
+## Prerequisites
 
-### Prerequisites
+- AWS account user with sufficient permissions to create CloudFormation stacks and StackSets (including IAM changes).
+- Know your values for the following (typically provided by your Cyngular contact or your environment):
+  - CLIENT_NAME (short identifier for your organization)
+  - RUNTIME_REGION (your primary region for stacks)
+  - CYNGULAR_ACCOUNT_ID (default: 851565895544)
+  - ORGANIZATION_ID (e.g., o-xxxxxxxxxx)
+  - ORGANIZATIONAL_UNIT_IDS (one or more OU IDs, e.g., ou-xxxx-xxxxxxxx)
+  - Optional/feature flags: EnableDNS, EnableEKS, EnableVPCFlowLogs, EnableBucketPolicyManager, ServiceManagerOverride
+  - Optional resources: CloudTrailBucket, ExcludedRegions
+  - Management account IDs: ClientMgmtAccountId (for stacks) and/or CLIENT_MGMT_ACCOUNT_ID (for StackSets)
+
+<!-- Note: Parameter names must match exactly as shown below. StackSets do not support unknown parameters; only supply those listed. -->
+
+### Deployment Steps
 
 1. **Enable AWS Services**
    - Ensure the following services (trusted access) are enabled:
