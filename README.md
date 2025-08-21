@@ -29,7 +29,6 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 - [`ReadonlyRole.yaml`](./CFN/ReadonlyRole.yaml) - Cross-account IAM role for Cyngular access
 - [`Core.yaml`](./CFN/Core.yaml) - S3 storage, CloudTrail, and core infrastructure
 - [`Services.yaml`](./CFN/Services.yaml) - Lambda functions services
-- [`Cleanup.yaml`](./CFN/Cleanup.yaml) - Cleanup Lambda functions for offboarding
 
 ### Lambda Functions ([`Lambdas/`](./Lambdas/))
 
@@ -43,22 +42,9 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
   - [`RemoveDNS/`](./Lambdas/Cleaners/RemoveDNS/) - DNS logging cleanup
   - [`RemoveVFL/`](./Lambdas/Cleaners/RemoveVFL/) - VPC Flow Logs cleanup
 
-## Key Features
-
-- Cross-account security monitoring
-- Multi-region automated deployment
-- Service-based architecture:
-  - **DNS**: Route53 Resolver Query Log configuration
-  - **VFL**: VPC Flow Logs to S3
-  - **EKS**: Cluster audit logging and access management
-  - **OS**: Security monitoring agent deployment
-- Organization-wide StackSet support
-- Production-grade error handling and CloudWatch metrics
-- Lambda layer architecture for shared utilities
-
 ## Requirements
 
 - AWS CLI configured
 - Rain CLI ([docs](https://aws-cloudformation.github.io/rain/)) (`brew install rain`)
-- AWS Organizations (if using org deployment)
+- AWS Organizations (if deploying to an organization)
 - Appropriate IAM permissions (Admin)
