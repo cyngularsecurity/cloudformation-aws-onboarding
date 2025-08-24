@@ -1,0 +1,75 @@
+name: 'Setup Deployment Configuration'
+description: 'Centralizes deployment configuration and environment variable setup'
+
+inputs:
+  environment:
+    description: 'Target environment (dev/stg/prod)'
+    required: false
+    default: 'dev'
+
+outputs:
+  s3_bucket_cfn:
+    description: 'Centralized S3 bucket for CloudFormation templates'
+    value: ${{ steps.config.outputs.s3_bucket_cfn }}
+  bucket_pattern_regional:
+    description: 'Base bucket pattern for regional deployments'
+    value: ${{ steps.config.outputs.bucket_pattern_regional }}
+  aws_region:
+    description: 'Primary AWS region'
+    value: ${{ steps.config.outputs.aws_region }}
+  python_version:
+    description: 'Python version for consistency'
+    value: ${{ steps.config.outputs.python_version }}
+  timestamp:
+    description: 'Deployment timestamp for versioning'
+    value: ${{ steps.config.outputs.timestamp }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set deployment configuration
+      id: config
+      shell: bash
+      run: |
+        ENV="${{ inputs.environment }}"
+        
+        # Set AWS region (centralized)
+        echo "aws_region=us-east-1" >> $GITHUB_OUTPUT
+        
+        # Set Python version
+        echo "python_version=3.11" >> $GITHUB_OUTPUT
+        
+        # Generate deployment timestamp
+        TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
+        echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+        
+        # Set centralized S3 bucket for CFN templates (single bucket per environment)
+        case "$ENV" in
+          "prod")
+            echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
+            ;;
+          "stg")
+            echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
+            ;;
+          "dev")
+            echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "::error::Unknown environment: $ENV"
+            exit 1
+            ;;
+        esac
+        
+    - name: Display deployment configuration
+      shell: bash
+      run: |
+        echo "🚀 Deployment Configuration:"
+        echo "  Environment: ${{ inputs.environment }}"
+        echo "  CFN S3 Bucket: ${{ steps.config.outputs.s3_bucket_cfn }}"
+        echo "  Regional Bucket Pattern: ${{ steps.config.outputs.bucket_pattern_regional }}"
+        echo "  AWS Region: ${{ steps.config.outputs.aws_region }}"
+        echo "  Python Version: ${{ steps.config.outputs.python_version }}"
+        echo "  Timestamp: ${{ steps.config.outputs.timestamp }}"

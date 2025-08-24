@@ -1,0 +1,261 @@
+name: Deploy to S3 (Refactored)
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - stg
+    paths:
+      - 'CFN/**'
+      - 'Lambdas/**'
+      - '.github/workflows/deploy-to-s3-refactored.yml'
+      - '.github/actions/**'
+      - '.github/scripts/s3_sync.py'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+      deploy_cfn:
+        description: 'Deploy CloudFormation templates'
+        required: true
+        default: true
+        type: boolean
+      deploy_lambdas:
+        description: 'Deploy Lambda functions'
+        required: true
+        default: true
+        type: boolean
+  
+# Cancel in-progress runs when a new run starts for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Permissions needed for AWS OIDC authentication
+permissions:
+  id-token: write    # Required for requesting the OIDC JWT token
+  contents: read     # Required for actions/checkout to fetch code
+  actions: read      # Required for uploading artifacts (optional)
+
+jobs:
+  # Job 1: Prepare deployment configuration using composite action
+  prepare-deployment:
+    name: Prepare Deployment Configuration
+    runs-on: ubuntu-latest
+    
+    outputs:
+      s3_bucket_cfn: ${{ steps.config.outputs.s3_bucket_cfn }}
+      bucket_pattern_regional: ${{ steps.config.outputs.bucket_pattern_regional }}
+      aws_region: ${{ steps.config.outputs.aws_region }}
+      python_version: ${{ steps.config.outputs.python_version }}
+      timestamp: ${{ steps.config.outputs.timestamp }}
+      environment: ${{ steps.set-env.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # Determine environment from trigger context (stays in workflow)
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/stg" ]]; then
+            echo "environment=stg" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+      
+      # Use composite action for configuration setup
+      - name: Setup deployment configuration
+        id: config
+        uses: ./.github/actions/setup-deploy-config
+        with:
+          environment: ${{ steps.set-env.outputs.environment }}
+      
+      # Display deployment summary with input flags
+      - name: Display deployment summary
+        run: |
+          echo "🎯 Deployment Summary:"
+          echo "  Environment: ${{ steps.set-env.outputs.environment }}"
+          echo "  Deploy CFN: ${{ github.event.inputs.deploy_cfn || 'true' }}"
+          echo "  Deploy Lambdas: ${{ github.event.inputs.deploy_lambdas || 'true' }}"
+
+  # Job 2: Deploy CloudFormation templates using composite action
+  deploy-cfn-templates:
+    name: Deploy CloudFormation Templates
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: github.event.inputs.deploy_cfn != 'false'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # AWS credentials configuration (must stay in workflow)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-CFN-${{ github.run_id }}
+          aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
+          role-duration-seconds: 3600
+      
+      # Use composite action for CFN deployment
+      - name: Deploy CloudFormation templates
+        uses: ./.github/actions/deploy-cfn
+        with:
+          s3_bucket: ${{ needs.prepare-deployment.outputs.s3_bucket_cfn }}
+          timestamp: ${{ needs.prepare-deployment.outputs.timestamp }}
+          aws_region: ${{ needs.prepare-deployment.outputs.aws_region }}
+
+  # Job 3: Deploy Lambda functions using composite action with matrix strategy
+  deploy-lambda-functions:
+    name: Deploy Lambda Functions
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: github.event.inputs.deploy_lambdas != 'false'
+    
+    # Matrix strategy for parallel processing (preserved)
+    strategy:
+      matrix:
+        lambda_type:
+          - name: services
+            path: Lambdas/Services
+          - name: cleaners
+            path: Lambdas/Cleaners
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-Lambda-${{ matrix.lambda_type.name }}-${{ github.run_id }}
+          aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
+          role-duration-seconds: 3600
+      
+      # Use composite action for Lambda deployment
+      - name: Deploy Lambda functions
+        uses: ./.github/actions/deploy-lambdas
+        with:
+          lambda_type: ${{ matrix.lambda_type.name }}
+          lambda_path: ${{ matrix.lambda_type.path }}
+          bucket_pattern: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}
+          timestamp: ${{ needs.prepare-deployment.outputs.timestamp }}
+          aws_region: ${{ needs.prepare-deployment.outputs.aws_region }}
+
+  # Job 4: Deploy Lambda layer using composite action
+  deploy-lambda-layer:
+    name: Deploy Lambda Layer
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: github.event.inputs.deploy_lambdas != 'false'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-Layer-${{ github.run_id }}
+          aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
+          role-duration-seconds: 3600
+      
+      # Use composite action for layer deployment
+      - name: Deploy Lambda layer
+        uses: ./.github/actions/deploy-layer
+        with:
+          bucket_pattern: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}
+          timestamp: ${{ needs.prepare-deployment.outputs.timestamp }}
+          python_version: ${{ needs.prepare-deployment.outputs.python_version }}
+          aws_region: ${{ needs.prepare-deployment.outputs.aws_region }}
+
+  # Job 5: Enhanced deployment summary
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: 
+      - prepare-deployment
+      - deploy-cfn-templates
+      - deploy-lambda-functions
+      - deploy-lambda-layer
+    if: always()
+    
+    steps:
+      - name: Generate enhanced deployment summary
+        run: |
+          echo "# 📊 Enhanced Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🎯 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CFN S3 Bucket**: ${{ needs.prepare-deployment.outputs.s3_bucket_cfn }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Regional Bucket Pattern**: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AWS Region**: ${{ needs.prepare-deployment.outputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: ${{ needs.prepare-deployment.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📦 Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+          # CloudFormation status
+          if [[ "${{ needs.deploy-cfn-templates.result }}" == "success" ]]; then
+            echo "| CloudFormation Templates | ✅ Success | Centralized deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-cfn-templates.result }}" == "skipped" ]]; then
+            echo "| CloudFormation Templates | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CloudFormation Templates | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Lambda functions status
+          if [[ "${{ needs.deploy-lambda-functions.result }}" == "success" ]]; then
+            echo "| Lambda Functions | ✅ Success | Multi-region deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-lambda-functions.result }}" == "skipped" ]]; then
+            echo "| Lambda Functions | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Lambda Functions | ❌ Failed | Check matrix job logs for details |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Lambda layer status
+          if [[ "${{ needs.deploy-lambda-layer.result }}" == "success" ]]; then
+            echo "| Lambda Layer | ✅ Success | Multi-region deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-lambda-layer.result }}" == "skipped" ]]; then
+            echo "| Lambda Layer | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Lambda Layer | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🏗️ Architecture Improvements" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Multi-region Lambda deployment**: Automatic discovery and deployment to all regional buckets" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Dual deployment paths**: Both timestamp and 'latest' versions for easy reference" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Centralized CFN deployment**: Single bucket per environment for templates" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Enhanced file pattern support**: YAML and JSON files for CloudFormation" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Modular composite actions**: Reusable deployment components" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Integrated layer deployment**: Uses same s3_sync.py script as other components" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [CFN S3 Console](https://s3.console.aws.amazon.com/s3/buckets/${{ needs.prepare-deployment.outputs.s3_bucket_cfn }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

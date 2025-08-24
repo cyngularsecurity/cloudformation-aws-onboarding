@@ -1,0 +1,114 @@
+name: 'Deploy Lambda Layer'
+description: 'Builds Lambda layer with dependencies and deploys to regional S3 buckets'
+
+inputs:
+  bucket_pattern:
+    description: 'Base bucket pattern for regional discovery'
+    required: true
+  timestamp:
+    description: 'Deployment timestamp for versioning'
+    required: true
+  python_version:
+    description: 'Python version for layer building'
+    required: true
+    default: '3.11'
+  aws_region:
+    description: 'Primary AWS region'
+    required: true
+    default: 'us-east-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+      
+    - name: Install uv for Python dependency management
+      shell: bash
+      run: |
+        # Install uv using the official installer
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+    - name: Build Lambda layer
+      shell: bash
+      run: |
+        echo "🔨 Building Lambda layer..."
+        
+        # Create temporary directory for layer building
+        LAYER_BUILD_DIR=$(mktemp -d)
+        echo "Building layer in: $LAYER_BUILD_DIR"
+        
+        # Create directory structure for layer
+        mkdir -p "$LAYER_BUILD_DIR/layer/python"
+        
+        # Install dependencies from layer requirements
+        if [ -f Lambdas/Services/Layer/requirements.txt ]; then
+          echo "Installing dependencies from requirements.txt..."
+          pip install -r Lambdas/Services/Layer/requirements.txt -t "$LAYER_BUILD_DIR/layer/python/"
+        else
+          echo "No requirements.txt found, skipping dependency installation"
+        fi
+        
+        # Copy custom modules
+        if [ -d Lambdas/Services/Layer/python ]; then
+          echo "Copying custom modules..."
+          cp -r Lambdas/Services/Layer/python/* "$LAYER_BUILD_DIR/layer/python/"
+        else
+          echo "No custom modules found in Lambdas/Services/Layer/python/"
+        fi
+        
+        # Create ZIP file in temporary location
+        cd "$LAYER_BUILD_DIR/layer"
+        zip -r "$LAYER_BUILD_DIR/cyngular-layer.zip" python/
+        cd -
+        
+        # Move ZIP to a location accessible by s3_sync.py
+        mkdir -p layer-package
+        mv "$LAYER_BUILD_DIR/cyngular-layer.zip" layer-package/
+        
+        # Clean up temporary directory
+        rm -rf "$LAYER_BUILD_DIR"
+        
+        echo "✅ Layer ZIP created: $(ls -lh layer-package/cyngular-layer.zip | awk '{print $5}')"
+      
+    - name: Deploy layer to regional S3 buckets
+      working-directory: .github/scripts
+      shell: bash
+      env:
+        BUCKET_PATTERN: ${{ inputs.bucket_pattern }}
+        S3_PREFIX: layers/${{ inputs.timestamp }}
+        SOURCE_PATH: ../../layer-package
+        FILE_PATTERN: "*.zip"
+        SYNC_TYPE: files
+        EXCLUDE_PATTERNS: ".git,__pycache__,*.pyc"
+        AWS_REGION: ${{ inputs.aws_region }}
+        MULTI_REGION: true
+        DUAL_DEPLOYMENT: true
+        TIMESTAMP: ${{ inputs.timestamp }}
+      run: |
+        echo "📦 Deploying Lambda layer to regional buckets..."
+        echo "  Source: layer-package/"
+        echo "  Bucket pattern: ${{ inputs.bucket_pattern }}"
+        echo "  Multi-region deployment with dual paths (timestamp + latest)"
+        
+        # Run enhanced sync script with multi-region and dual deployment
+        uv run s3_sync.py
+        
+    - name: Cleanup build artifacts
+      shell: bash
+      run: |
+        # Clean up the layer package directory
+        rm -rf layer-package/
+        echo "🧹 Build artifacts cleaned up"
+        
+    - name: Display deployment summary
+      shell: bash
+      run: |
+        echo "✅ Lambda layer deployed to:"
+        echo "  📁 Versioned: s3://{bucket}/layers/${{ inputs.timestamp }}/cyngular-layer.zip"
+        echo "  🔗 Latest: s3://{bucket}/layers/latest/cyngular-layer.zip"
+        echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
+        echo "  🐍 Python version: ${{ inputs.python_version }}"

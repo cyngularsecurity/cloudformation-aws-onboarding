@@ -1,0 +1,55 @@
+name: 'Deploy CloudFormation Templates'
+description: 'Syncs CloudFormation templates to centralized S3 bucket'
+
+inputs:
+  s3_bucket:
+    description: 'Centralized S3 bucket for CFN templates'
+    required: true
+  timestamp:
+    description: 'Deployment timestamp for versioning'
+    required: true
+  aws_region:
+    description: 'AWS region'
+    required: true
+    default: 'us-east-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install uv for Python dependency management
+      shell: bash
+      run: |
+        # Install uv using the official installer
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+    - name: Sync CloudFormation templates to S3
+      working-directory: .github/scripts
+      shell: bash
+      env:
+        S3_BUCKET: ${{ inputs.s3_bucket }}
+        S3_PREFIX: stacks/${{ inputs.timestamp }}
+        SOURCE_PATH: ../../CFN
+        FILE_PATTERN: "*.{yaml,yml,json}"
+        SYNC_TYPE: files
+        EXCLUDE_PATTERNS: ".git,__pycache__,*.pyc"
+        AWS_REGION: ${{ inputs.aws_region }}
+        DUAL_DEPLOYMENT: true
+        TIMESTAMP: ${{ inputs.timestamp }}
+      run: |
+        echo "📦 Syncing CloudFormation templates..."
+        echo "  Source: $SOURCE_PATH"
+        echo "  Destination: s3://$S3_BUCKET/$S3_PREFIX"
+        echo "  Patterns: $FILE_PATTERN (includes YAML and JSON files)"
+        echo "  Dual deployment: timestamp + latest"
+        
+        # Run the enhanced sync script with dual deployment
+        uv run s3_sync.py
+        
+    - name: Display deployment summary
+      shell: bash
+      run: |
+        echo "✅ CloudFormation templates deployed to:"
+        echo "  📁 Versioned: s3://${{ inputs.s3_bucket }}/stacks/${{ inputs.timestamp }}/"
+        echo "  🔗 Latest: s3://${{ inputs.s3_bucket }}/stacks/latest/"
+        echo "  🌍 Region: ${{ inputs.aws_region }}"

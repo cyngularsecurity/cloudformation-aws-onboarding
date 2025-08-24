@@ -15,36 +15,36 @@ on:
 jobs:
   cfn-lint:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: Install cfn-lint
       run: |
         python -m pip install --upgrade pip
         pip install cfn-lint
-    
+
     - name: Validate CloudFormation Templates
       run: |
         echo "Validating CloudFormation templates..."
-        
+
         # Find all YAML files in CFN directory
         templates=$(find CFN -type f \( -name "*.yaml" -o -name "*.yml" \) | sort)
-        
+
         if [ -z "$templates" ]; then
           echo "No CloudFormation templates found"
           exit 0
         fi
-        
+
         # Track validation results
         failed=0
         total=0
-        
+
         for template in $templates; do
           echo "----------------------------------------"
           echo "Validating: $template"
@@ -57,10 +57,10 @@ jobs:
             failed=$((failed + 1))
           fi
         done
-        
+
         echo "----------------------------------------"
         echo "Summary: $((total - failed))/$total templates passed validation"
-        
+
         if [ $failed -gt 0 ]; then
           echo "❌ CloudFormation validation failed"
           exit 1

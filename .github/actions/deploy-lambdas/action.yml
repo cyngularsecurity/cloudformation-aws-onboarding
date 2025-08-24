@@ -1,0 +1,62 @@
+name: 'Deploy Lambda Functions'
+description: 'Packages Lambda functions as ZIPs and deploys to regional S3 buckets'
+
+inputs:
+  lambda_type:
+    description: 'Type of Lambda functions (services/cleaners)'
+    required: true
+  lambda_path:
+    description: 'Path to Lambda functions directory'
+    required: true
+  bucket_pattern:
+    description: 'Base bucket pattern for regional discovery'
+    required: true
+  timestamp:
+    description: 'Deployment timestamp for versioning'
+    required: true
+  aws_region:
+    description: 'Primary AWS region'
+    required: true
+    default: 'us-east-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install uv for Python dependency management
+      shell: bash
+      run: |
+        # Install uv using the official installer
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+    - name: Package and deploy Lambda functions to regional buckets
+      working-directory: .github/scripts
+      shell: bash
+      env:
+        BUCKET_PATTERN: ${{ inputs.bucket_pattern }}
+        S3_PREFIX: lambdas/${{ inputs.lambda_type }}/${{ inputs.timestamp }}
+        SOURCE_PATH: ../../${{ inputs.lambda_path }}
+        SYNC_TYPE: zip
+        EXCLUDE_PATTERNS: "__pycache__,*.pyc,.git,.pytest_cache,tests,*.md"
+        AWS_REGION: ${{ inputs.aws_region }}
+        MULTI_REGION: true
+        DUAL_DEPLOYMENT: true
+        TIMESTAMP: ${{ inputs.timestamp }}
+      run: |
+        echo "📦 Packaging Lambda functions: ${{ inputs.lambda_type }}"
+        echo "  Source: ${{ inputs.lambda_path }}"
+        echo "  Bucket pattern: ${{ inputs.bucket_pattern }}"
+        echo "  Creating ZIPs from nested directories and deploying to all regions"
+        echo "  Dual deployment: timestamp + latest"
+        
+        # Run enhanced sync script with multi-region and dual deployment
+        uv run s3_sync.py
+        
+    - name: Display deployment summary
+      shell: bash
+      run: |
+        echo "✅ Lambda functions (${{ inputs.lambda_type }}) deployed to:"
+        echo "  📁 Versioned: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/${{ inputs.timestamp }}/"
+        echo "  🔗 Latest: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/latest/"
+        echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
+        echo "  📦 Packaging: Each subdirectory becomes a separate ZIP file"
