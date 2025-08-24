@@ -23,6 +23,9 @@ outputs:
   timestamp:
     description: 'Deployment timestamp for versioning'
     value: ${{ steps.config.outputs.timestamp }}
+  deploy_role_arn:
+    description: 'AWS IAM role ARN for deployment'
+    value: ${{ steps.config.outputs.deploy_role_arn }}
 
 runs:
   using: 'composite'
@@ -43,19 +46,44 @@ runs:
         TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
         echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
         
-        # Set centralized S3 bucket for CFN templates (single bucket per environment)
+        # Validate required environment variables exist
+        case "$ENV" in
+          "prod")
+            if [ -z "${PROD_AWS_ACCOUNT_ID}" ]; then
+              echo "::error::PROD_AWS_ACCOUNT_ID environment variable is not set"
+              exit 1
+            fi
+            ;;
+          "stg")
+            if [ -z "${STG_AWS_ACCOUNT_ID}" ]; then
+              echo "::error::STG_AWS_ACCOUNT_ID environment variable is not set"
+              exit 1
+            fi
+            ;;
+          "dev")
+            if [ -z "${DEV_AWS_ACCOUNT_ID}" ]; then
+              echo "::error::DEV_AWS_ACCOUNT_ID environment variable is not set"
+              exit 1
+            fi
+            ;;
+        esac
+        
+        # Set centralized S3 bucket for CFN templates and AWS account ID
         case "$ENV" in
           "prod")
             echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${PROD_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "stg")
             echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${STG_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "dev")
             echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${DEV_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
             ;;
           *)
             echo "::error::Unknown environment: $ENV"

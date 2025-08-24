@@ -59,6 +59,7 @@ jobs:
       python_version: ${{ steps.config.outputs.python_version }}
       timestamp: ${{ steps.config.outputs.timestamp }}
       environment: ${{ steps.set-env.outputs.environment }}
+      deploy_role_arn: ${{ steps.config.outputs.deploy_role_arn }}
     
     steps:
       - name: Checkout code
@@ -86,6 +87,10 @@ jobs:
         uses: ./.github/actions/setup-deploy-config
         with:
           environment: ${{ steps.set-env.outputs.environment }}
+        env:
+          DEV_AWS_ACCOUNT_ID: ${{ secrets.DEV_AWS_ACCOUNT_ID }}
+          STG_AWS_ACCOUNT_ID: ${{ secrets.STG_AWS_ACCOUNT_ID }}
+          PROD_AWS_ACCOUNT_ID: ${{ secrets.PROD_AWS_ACCOUNT_ID }}
       
       # Display deployment summary with input flags
       - name: Display deployment summary
@@ -110,7 +115,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
           role-session-name: GitHubActions-CFN-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
@@ -147,7 +152,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
           role-session-name: GitHubActions-Lambda-${{ matrix.lambda_type.name }}-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
@@ -176,7 +181,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
           role-session-name: GitHubActions-Layer-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
