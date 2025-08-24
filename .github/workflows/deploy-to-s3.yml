@@ -1,4 +1,4 @@
-name: Deploy to S3 (Refactored)
+name: Deploy to S3
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
     paths:
       - 'CFN/**'
       - 'Lambdas/**'
-      - '.github/workflows/deploy-to-s3-refactored.yml'
+      - '.github/workflows/deploy-to-s3.yml'
       - '.github/actions/**'
       - '.github/scripts/s3_sync.py'
 
