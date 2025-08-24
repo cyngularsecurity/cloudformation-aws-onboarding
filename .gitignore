@@ -63,4 +63,4 @@ Extra/
 specs/
 
 Lambdas/uv.lock
-Lambdas/.ruff_cache
+.ruff_cache
