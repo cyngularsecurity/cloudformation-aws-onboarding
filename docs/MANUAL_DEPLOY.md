@@ -33,7 +33,7 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
   - ClientName = <`client company name`>
   - OrganizationId = <`organization id`>
 
-  - CloudTrailBucket = CloudTrailBucket (optional)
+  - EnableCloudTrail = true/false
   - EnableBucketPolicyManager = true/false
 
   - CyngularAccountId = 851565895544
@@ -101,7 +101,7 @@ Add Stack Instances:
   - EnableEKS = true/false
   - ServiceManagerOverride = integer (default: 1)
   - ExcludedRegions = ExcludedRegions (optional)
-  - ClientMgmtAccountId = CLIENT_MGMT_ACCOUNT_ID (note the casing used for StackSets)
+  - ClientMgmtAccountId = ClientMgmtAccountId (required when deploying in organizations)
 - Create StackSet
 
 Add Stack Instances:

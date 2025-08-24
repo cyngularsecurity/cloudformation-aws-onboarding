@@ -16,7 +16,7 @@ STACK_PARAMS="ClientName=$CLIENT_NAME,\
 CyngularAccountId=${CYNGULAR_ACCOUNT_ID:-"851565895544"},\
 OrganizationId=${ORGANIZATION_ID:-""},\
 ExcludedRegions=${ExcludedRegions:-""},\
-CloudTrailBucket=${CloudTrailBucket:-""},\
+EnableCloudTrail=${EnableCloudTrail:-"true"},\
 EnableDNS=${EnableDNS:-"true"},\
 EnableEKS=${EnableEKS:-"true"},\
 EnableVPCFlowLogs=${EnableVPCFlowLogs:-"true"},\
@@ -116,7 +116,7 @@ aws cloudformation create-stack-set \
     ParameterKey=EnableEKS,ParameterValue="${EnableEKS:-true}" \
     ParameterKey=ServiceManagerOverride,ParameterValue="${ServiceManagerOverride:-1}" \
     ParameterKey=ExcludedRegions,ParameterValue="${ExcludedRegions}" \
-    ParameterKey=ClientMgmtAccountId,ParameterValue="${CLIENT_MGMT_ACCOUNT_ID:-""}" \
+    ParameterKey=ClientMgmtAccountId,ParameterValue="${ClientMgmtAccountId:-""}" \
   --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
   --permission-model SERVICE_MANAGED \
   --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false \

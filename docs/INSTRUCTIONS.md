@@ -9,9 +9,9 @@
   - CYNGULAR_ACCOUNT_ID (default: 851565895544)
   - ORGANIZATION_ID (e.g., o-xxxxxxxxxx)
   - ORGANIZATIONAL_UNIT_IDS (one or more OU IDs, e.g., ou-xxxx-xxxxxxxx)
-  - Optional/feature flags: EnableDNS, EnableEKS, EnableVPCFlowLogs, EnableBucketPolicyManager, ServiceManagerOverride
-  - Optional resources: CloudTrailBucket, ExcludedRegions
-  - Management account IDs: ClientMgmtAccountId (for stacks) and/or CLIENT_MGMT_ACCOUNT_ID (for StackSets)
+  - Optional/feature flags: EnableDNS, EnableEKS, EnableVPCFlowLogs, EnableCloudTrail, EnableBucketPolicyManager.
+  - Optional: ExcludedRegions
+  - Client Management account ID: ClientMgmtAccountId - required when deploying in organizations.
 
 <!-- Note: Parameter names must match exactly as shown below. StackSets do not support unknown parameters; only supply those listed. -->
 

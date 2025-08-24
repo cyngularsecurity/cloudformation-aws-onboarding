@@ -21,7 +21,7 @@ Metadata:
       - Label:
           default: 'Override Parameters'
         Parameters:
-          - CloudTrailBucket
+          - EnableCloudTrail
           - EnableBucketPolicyManager
           - OrganizationId
           - CyngularAccountId
@@ -57,10 +57,11 @@ Parameters:
     Type: String
     Default: '851565895544'
 
-  CloudTrailBucket:
-    Description: 'Enter a bucket Name, if you already configured CloudTrail To Send Logs to an S3 bucket. if so, also add the tag {key: cyngular-cloudtrail, value: true} to the bucket, otherwise leave empty.'
+  EnableCloudTrail:
+    Description: 'Create Cyngular Trail | set to false to disable'
     Type: String
-    Default: ''
+    AllowedValues: ['true', 'false']
+    Default: 'true'
 
   EnableBucketPolicyManager:
     Description: 'Set to true to enable the bucket policy manager for future logging; set to false if not currently desired.'
@@ -70,7 +71,7 @@ Parameters:
 
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, '']]
-  CreateCloudTrail: !Equals [ !Ref CloudTrailBucket, '' ]
+  CreateCloudTrail: !Equals [ !Ref EnableCloudTrail, 'true' ]
   CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, 'true' ]
 
 Resources:
