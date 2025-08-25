@@ -78,6 +78,7 @@ runs:
       working-directory: .github/scripts
       shell: bash
       env:
+        S3_BUCKET: ${{ inputs.bucket_pattern }}
         BUCKET_PATTERN: ${{ inputs.bucket_pattern }}
         S3_PREFIX: layers/${{ inputs.timestamp }}
         SOURCE_PATH: ../../layer-package
