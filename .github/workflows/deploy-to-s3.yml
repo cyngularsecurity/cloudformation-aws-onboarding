@@ -204,7 +204,7 @@ jobs:
       - deploy-lambda-functions
       - deploy-lambda-layer
     if: always()
-    
+
     steps:
       - name: Generate enhanced deployment summary
         run: |
@@ -250,15 +250,6 @@ jobs:
           else
             echo "| Lambda Layer | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🏗️ Architecture Improvements" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Multi-region Lambda deployment**: Automatic discovery and deployment to all regional buckets" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Dual deployment paths**: Both timestamp and 'latest' versions for easy reference" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Centralized CFN deployment**: Single bucket per environment for templates" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Enhanced file pattern support**: YAML and JSON files for CloudFormation" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Modular composite actions**: Reusable deployment components" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Integrated layer deployment**: Uses same s3_sync.py script as other components" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY

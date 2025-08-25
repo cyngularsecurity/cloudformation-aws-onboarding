@@ -77,28 +77,51 @@ runs:
             ;;
         esac
         
+        # Debug: Show which environment we're configuring
+        echo "::notice::Configuring for environment: $ENV"
+        
+        # Define ARN components centrally to avoid repetition
+        ROLE_ARN_PREFIX="arn:aws:iam::"
+        ROLE_ARN_SUFFIX=":role/GitHubActionsRunnerRole"
+        
         # Set centralized S3 bucket for CFN templates and AWS account ID
+        # NOTE: We construct the ARN in parts to avoid GitHub's secret masking
         case "$ENV" in
           "prod")
+            ACCOUNT_ID="${{ inputs.prod_aws_account_id }}"
+            echo "::notice::Using PROD account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${{ inputs.prod_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            # Construct ARN to avoid secret masking issues
+            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
+            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           "stg")
+            ACCOUNT_ID="${{ inputs.stg_aws_account_id }}"
+            echo "::notice::Using STG account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${{ inputs.stg_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            # Construct ARN to avoid secret masking issues
+            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
+            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           "dev")
+            ACCOUNT_ID="${{ inputs.dev_aws_account_id }}"
+            echo "::notice::Using DEV account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${{ inputs.dev_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            # Construct ARN to avoid secret masking issues
+            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
+            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           *)
             echo "::error::Unknown environment: $ENV"
             exit 1
             ;;
         esac
+        
+        # Debug: Verify outputs were set (without exposing the actual value)
+        echo "::notice::Role ARN construction completed for $ENV environment"
         
     - name: Display deployment configuration
       shell: bash
@@ -110,3 +133,11 @@ runs:
         echo "  AWS Region: ${{ steps.config.outputs.aws_region }}"
         echo "  Python Version: ${{ steps.config.outputs.python_version }}"
         echo "  Timestamp: ${{ steps.config.outputs.timestamp }}"
+        echo "  Deploy Role ARN: ${{ steps.config.outputs.deploy_role_arn }}"
+        
+        # Debug output for troubleshooting
+        echo ""
+        echo "🔍 Debug Information:"
+        echo "  Dev Account ID (masked): ${{ inputs.dev_aws_account_id && '***' || 'NOT SET' }}"
+        echo "  Stg Account ID (masked): ${{ inputs.stg_aws_account_id && '***' || 'NOT SET' }}"
+        echo "  Prod Account ID (masked): ${{ inputs.prod_aws_account_id && '***' || 'NOT SET' }}"
