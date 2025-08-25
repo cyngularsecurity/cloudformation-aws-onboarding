@@ -64,3 +64,4 @@ specs/
 
 Lambdas/uv.lock
 .ruff_cache
+.secrets

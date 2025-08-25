@@ -59,7 +59,6 @@ jobs:
       python_version: ${{ steps.config.outputs.python_version }}
       timestamp: ${{ steps.config.outputs.timestamp }}
       environment: ${{ steps.set-env.outputs.environment }}
-      deploy_role_arn: ${{ steps.config.outputs.deploy_role_arn }}
     
     steps:
       - name: Checkout code
@@ -87,9 +86,6 @@ jobs:
         uses: ./.github/actions/setup-deploy-config
         with:
           environment: ${{ steps.set-env.outputs.environment }}
-          dev_aws_account_id: ${{ secrets.DEV_AWS_ACCOUNT_ID }}
-          stg_aws_account_id: ${{ secrets.STG_AWS_ACCOUNT_ID }}
-          prod_aws_account_id: ${{ secrets.PROD_AWS_ACCOUNT_ID }}
       
       # Display deployment summary with input flags
       - name: Display deployment summary
@@ -110,11 +106,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Construct role ARN for this environment (avoids GitHub secret masking)
+      - name: Set deployment role ARN
+        id: role-arn
+        run: |
+          case "${{ needs.prepare-deployment.outputs.environment }}" in
+            "prod") ACCOUNT_ID="${{ secrets.PROD_AWS_ACCOUNT_ID }}" ;;
+            "stg") ACCOUNT_ID="${{ secrets.STG_AWS_ACCOUNT_ID }}" ;;
+            "dev") ACCOUNT_ID="${{ secrets.DEV_AWS_ACCOUNT_ID }}" ;;
+            *) echo "::error::Unknown environment" && exit 1 ;;
+          esac
+          echo "DEPLOY_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_ENV
+      
       # AWS credentials configuration (must stay in workflow)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
           role-session-name: GitHubActions-CFN-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
@@ -148,10 +156,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Construct role ARN for this environment (avoids GitHub secret masking)
+      - name: Set deployment role ARN
+        run: |
+          case "${{ needs.prepare-deployment.outputs.environment }}" in
+            "prod") ACCOUNT_ID="${{ secrets.PROD_AWS_ACCOUNT_ID }}" ;;
+            "stg") ACCOUNT_ID="${{ secrets.STG_AWS_ACCOUNT_ID }}" ;;
+            "dev") ACCOUNT_ID="${{ secrets.DEV_AWS_ACCOUNT_ID }}" ;;
+            *) echo "::error::Unknown environment" && exit 1 ;;
+          esac
+          echo "DEPLOY_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_ENV
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
           role-session-name: GitHubActions-Lambda-${{ matrix.lambda_type.name }}-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
@@ -177,10 +196,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Construct role ARN for this environment (avoids GitHub secret masking)
+      - name: Set deployment role ARN
+        run: |
+          case "${{ needs.prepare-deployment.outputs.environment }}" in
+            "prod") ACCOUNT_ID="${{ secrets.PROD_AWS_ACCOUNT_ID }}" ;;
+            "stg") ACCOUNT_ID="${{ secrets.STG_AWS_ACCOUNT_ID }}" ;;
+            "dev") ACCOUNT_ID="${{ secrets.DEV_AWS_ACCOUNT_ID }}" ;;
+            *) echo "::error::Unknown environment" && exit 1 ;;
+          esac
+          echo "DEPLOY_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_ENV
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
           role-session-name: GitHubActions-Layer-${{ github.run_id }}
           aws-region: ${{ needs.prepare-deployment.outputs.aws_region }}
           role-duration-seconds: 3600
@@ -213,7 +243,7 @@ jobs:
           
           echo "## 🎯 Configuration" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deploy Role ARN**: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deploy Role ARN**: Constructed per job (avoids secret masking)" >> $GITHUB_STEP_SUMMARY
           echo "- **CFN S3 Bucket**: ${{ needs.prepare-deployment.outputs.s3_bucket_cfn }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Regional Bucket Pattern**: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}" >> $GITHUB_STEP_SUMMARY
           echo "- **AWS Region**: ${{ needs.prepare-deployment.outputs.aws_region }}" >> $GITHUB_STEP_SUMMARY

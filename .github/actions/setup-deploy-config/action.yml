@@ -6,15 +6,6 @@ inputs:
     description: 'Target environment (dev/stg/prod)'
     required: false
     default: 'dev'
-  dev_aws_account_id:
-    description: 'AWS Account ID for dev environment'
-    required: false
-  stg_aws_account_id:
-    description: 'AWS Account ID for stg environment'
-    required: false
-  prod_aws_account_id:
-    description: 'AWS Account ID for prod environment'
-    required: false
 
 outputs:
   s3_bucket_cfn:
@@ -55,73 +46,25 @@ runs:
         TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
         echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
         
-        # Validate required account ID inputs exist
+        # Set centralized S3 bucket for CFN templates
         case "$ENV" in
           "prod")
-            if [ -z "${{ inputs.prod_aws_account_id }}" ]; then
-              echo "::error::PROD_AWS_ACCOUNT_ID secret is not set in repository"
-              exit 1
-            fi
-            ;;
-          "stg")
-            if [ -z "${{ inputs.stg_aws_account_id }}" ]; then
-              echo "::error::STG_AWS_ACCOUNT_ID secret is not set in repository"
-              exit 1
-            fi
-            ;;
-          "dev")
-            if [ -z "${{ inputs.dev_aws_account_id }}" ]; then
-              echo "::error::DEV_AWS_ACCOUNT_ID secret is not set in repository"
-              exit 1
-            fi
-            ;;
-        esac
-        
-        # Debug: Show which environment we're configuring
-        echo "::notice::Configuring for environment: $ENV"
-        
-        # Define ARN components centrally to avoid repetition
-        ROLE_ARN_PREFIX="arn:aws:iam::"
-        ROLE_ARN_SUFFIX=":role/GitHubActionsRunnerRole"
-        
-        # Set centralized S3 bucket for CFN templates and AWS account ID
-        # NOTE: We construct the ARN in parts to avoid GitHub's secret masking
-        case "$ENV" in
-          "prod")
-            ACCOUNT_ID="${{ inputs.prod_aws_account_id }}"
-            echo "::notice::Using PROD account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
-            # Construct ARN to avoid secret masking issues
-            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
-            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           "stg")
-            ACCOUNT_ID="${{ inputs.stg_aws_account_id }}"
-            echo "::notice::Using STG account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
-            # Construct ARN to avoid secret masking issues
-            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
-            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           "dev")
-            ACCOUNT_ID="${{ inputs.dev_aws_account_id }}"
-            echo "::notice::Using DEV account ID (length: ${#ACCOUNT_ID})"
             echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
-            # Construct ARN to avoid secret masking issues
-            FULL_ARN="${ROLE_ARN_PREFIX}${ACCOUNT_ID}${ROLE_ARN_SUFFIX}"
-            echo "deploy_role_arn=${FULL_ARN}" >> $GITHUB_OUTPUT
             ;;
           *)
             echo "::error::Unknown environment: $ENV"
             exit 1
             ;;
         esac
-        
-        # Debug: Verify outputs were set (without exposing the actual value)
-        echo "::notice::Role ARN construction completed for $ENV environment"
         
     - name: Display deployment configuration
       shell: bash
