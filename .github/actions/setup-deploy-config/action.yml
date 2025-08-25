@@ -6,6 +6,15 @@ inputs:
     description: 'Target environment (dev/stg/prod)'
     required: false
     default: 'dev'
+  dev_aws_account_id:
+    description: 'AWS Account ID for dev environment'
+    required: false
+  stg_aws_account_id:
+    description: 'AWS Account ID for stg environment'
+    required: false
+  prod_aws_account_id:
+    description: 'AWS Account ID for prod environment'
+    required: false
 
 outputs:
   s3_bucket_cfn:
@@ -46,23 +55,23 @@ runs:
         TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
         echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
         
-        # Validate required environment variables exist
+        # Validate required account ID inputs exist
         case "$ENV" in
           "prod")
-            if [ -z "${PROD_AWS_ACCOUNT_ID}" ]; then
-              echo "::error::PROD_AWS_ACCOUNT_ID environment variable is not set"
+            if [ -z "${{ inputs.prod_aws_account_id }}" ]; then
+              echo "::error::PROD_AWS_ACCOUNT_ID secret is not set in repository"
               exit 1
             fi
             ;;
           "stg")
-            if [ -z "${STG_AWS_ACCOUNT_ID}" ]; then
-              echo "::error::STG_AWS_ACCOUNT_ID environment variable is not set"
+            if [ -z "${{ inputs.stg_aws_account_id }}" ]; then
+              echo "::error::STG_AWS_ACCOUNT_ID secret is not set in repository"
               exit 1
             fi
             ;;
           "dev")
-            if [ -z "${DEV_AWS_ACCOUNT_ID}" ]; then
-              echo "::error::DEV_AWS_ACCOUNT_ID environment variable is not set"
+            if [ -z "${{ inputs.dev_aws_account_id }}" ]; then
+              echo "::error::DEV_AWS_ACCOUNT_ID secret is not set in repository"
               exit 1
             fi
             ;;
@@ -73,17 +82,17 @@ runs:
           "prod")
             echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${PROD_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${{ inputs.prod_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "stg")
             echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${STG_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${{ inputs.stg_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "dev")
             echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${DEV_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${{ inputs.dev_aws_account_id }}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           *)
             echo "::error::Unknown environment: $ENV"
