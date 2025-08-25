@@ -309,6 +309,18 @@ class S3Syncer:
             
             console.print(f"\n[bold blue]Syncing to region: {region}[/bold blue]")
             
+            # Validate regional bucket access before syncing
+            try:
+                # Create region-specific S3 client for validation
+                regional_s3_client = boto3.client('s3', region_name=region)
+                regional_s3_client.head_bucket(Bucket=bucket_name)
+                console.print(f"  ✓ Regional bucket {bucket_name} validated")
+            except Exception as e:
+                console.print(f"  ✗ Regional bucket {bucket_name} validation failed: {e}", style="red")
+                console.print(f"  Skipping region {region}", style="yellow")
+                results[region] = {"uploaded": 0, "skipped": 0, "failed": 1, "error": f"Bucket validation failed: {e}"}
+                continue
+            
             try:
                 if config.sync_type == 'files':
                     stats = self.sync_files(config, bucket_name, region)
@@ -318,6 +330,7 @@ class S3Syncer:
                     stats = self.sync_directory(config, bucket_name, region)
                 else:
                     console.print(f"[red]Unknown sync type: {config.sync_type}")
+                    results[region] = {"uploaded": 0, "skipped": 0, "failed": 1, "error": f"Unknown sync type: {config.sync_type}"}
                     continue
                 
                 results[region] = stats
@@ -461,10 +474,16 @@ def main(bucket: str, prefix: str, source: str, pattern: str,
     syncer = S3Syncer(region=region)
     
     # Validate bucket access before proceeding
-    if not syncer.validate_bucket(config.bucket):
-        console.print(f"[red]Bucket validation failed for {config.bucket}")
-        sys.exit(1)
-    console.print()
+    if not multi_region:
+        # Only validate single bucket for non-multi-region deployments
+        if not syncer.validate_bucket(config.bucket):
+            console.print(f"[red]Bucket validation failed for {config.bucket}")
+            sys.exit(1)
+        console.print()
+    else:
+        # For multi-region, validate regional buckets during discovery
+        console.print(f"[cyan]Multi-region mode: will validate regional buckets during discovery")
+        console.print()
     
     # Execute sync based on type and options
     try:
