@@ -49,15 +49,15 @@ runs:
         # Set centralized S3 bucket for CFN templates
         case "$ENV" in
           "prod")
-            echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "s3_bucket_cfn=cyngular-onboarding-templates" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
             ;;
           "stg")
-            echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "s3_bucket_cfn=stg-cyngular-onboarding-templates" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             ;;
           "dev")
-            echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
+            echo "s3_bucket_cfn=dev-cyngular-onboarding-templates" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             ;;
           *)

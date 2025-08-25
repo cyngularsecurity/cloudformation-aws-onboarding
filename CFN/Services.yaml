@@ -41,6 +41,7 @@ Mappings:
       ServiceOrchestratorScheduleRate: 'rate(60 minutes)'
       EventState: 'ENABLED'
       LayerName: 'cyngular-onboarding-layer'
+      CodeVersion: 'latest'
 
 Parameters:
   ClientName:
@@ -155,7 +156,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: 'layers/cyngular-onboarding.zip'
+        S3Key: !Sub
+          - "layers/${code_version}/cyngular-onboarding.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       CompatibleRuntimes: [!FindInMap [Const, Cyngular, PythonRuntime]]
       CompatibleArchitectures:
         - x86_64
@@ -336,7 +339,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/ServiceManager.zip"
+        S3Key: !Sub
+          - "lambdas/${code_version}/ServiceManager.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
 
       Environment:
         Variables:
@@ -382,7 +387,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/RegionProcessor.zip"
+        S3Key: !Sub
+          - "lambdas/${code_version}/RegionProcessor.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Tags:
         - Key: Name
           Value: !Sub "cyngular-region-processor-${ClientName}"

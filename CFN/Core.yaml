@@ -37,6 +37,7 @@ Mappings:
       LifecycleGlacierDays: 90
       LifecycleExpirationDays: 365
       LayerName: 'cyngular-onboarding-layer'
+      CodeVersion: 'latest'
 
 Parameters:
   ClientName:
@@ -244,7 +245,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: 'layers/cyngular-onboarding.zip'
+        S3Key: !Sub
+          - "layers/${code_version}/cyngular-onboarding.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       CompatibleRuntimes: [!FindInMap [Const, Cyngular, PythonRuntime]]
       CompatibleArchitectures:
         - x86_64
@@ -331,7 +334,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: !Join ['', ['lambdas/', !Join ['.', ['UpdateBucketPolicy', 'zip']]]]
+        S3Key: !Sub
+          - "lambdas/${code_version}/UpdateBucketPolicy.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Tags:
         - Key: Name
           Value: !Sub "cyngular-update-bucket-policy-${ClientName}"
