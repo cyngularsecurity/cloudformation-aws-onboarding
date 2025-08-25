@@ -214,6 +214,7 @@ jobs:
           
           echo "## 🎯 Configuration" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deploy Role ARN**: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CFN S3 Bucket**: ${{ needs.prepare-deployment.outputs.s3_bucket_cfn }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Regional Bucket Pattern**: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}" >> $GITHUB_STEP_SUMMARY
           echo "- **AWS Region**: ${{ needs.prepare-deployment.outputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
