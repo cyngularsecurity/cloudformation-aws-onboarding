@@ -9,7 +9,7 @@ The deployment workflow uses environment-specific AWS account IDs with a consist
 ### Role ARN Pattern
 
 ```text
-arn:aws:iam::{ACCOUNT_ID}:role/GitlabRunnerRole
+arn:aws:iam::{ACCOUNT_ID}:role/GitHubActionsRunnerRole
 ```
 
 ### Required GitHub Secrets
@@ -28,7 +28,7 @@ The repository needs these three secrets configured in GitHub:
 
 1. **Environment Detection**: Workflow determines environment from branch or manual input
 2. **Dynamic Role Construction**: Composite action builds role ARN using environment-specific account ID
-3. **Single Role Name**: Same role name (`GitlabRunnerRole`) across all environments
+3. **Single Role Name**: Same role name (`GitHubActionsRunnerRole`) across all environments
 4. **Clean Integration**: All jobs use `${{ needs.prepare-deployment.outputs.deploy_role_arn }}`
 
 ### Implementation Details
@@ -89,9 +89,9 @@ graph TD
     C -->|dev| D[DEV_AWS_ACCOUNT_ID]
     C -->|stg| E[STG_AWS_ACCOUNT_ID] 
     C -->|prod| F[PROD_AWS_ACCOUNT_ID]
-    D --> G[arn:aws:iam::DEV_ID:role/GitlabRunnerRole]
-    E --> H[arn:aws:iam::STG_ID:role/GitlabRunnerRole]
-    F --> I[arn:aws:iam::PROD_ID:role/GitlabRunnerRole]
+    D --> G[arn:aws:iam::DEV_ID:role/GitHubActionsRunnerRole]
+    E --> H[arn:aws:iam::STG_ID:role/GitHubActionsRunnerRole]
+    F --> I[arn:aws:iam::PROD_ID:role/GitHubActionsRunnerRole]
 ```
 
 ### Benefits
@@ -122,7 +122,7 @@ graph TD
 
 In each AWS account (dev/stg/prod), create:
 
-#### 1. IAM Role: `GitlabRunnerRole`
+#### 1. IAM Role: `GitHubActionsRunnerRole`
 ```json
 {
   "Version": "2012-10-17",
@@ -177,7 +177,7 @@ role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}
    - Add `DEV_AWS_ACCOUNT_ID`, `STG_AWS_ACCOUNT_ID`, `PROD_AWS_ACCOUNT_ID` to repository secrets
    
 2. **Update AWS IAM Roles**:
-   - Ensure each environment has `GitlabRunnerRole` 
+   - Ensure each environment has `GitHubActionsRunnerRole` 
    - Verify OIDC provider configuration
    
 3. **Remove Old Secret**:
@@ -200,7 +200,7 @@ Error: DEV_AWS_ACCOUNT_ID environment variable is not set
 ```text
 Error: Could not assume role with OIDC: Role does not exist
 ```
-**Solution**: Verify role name `GitlabRunnerRole` exists in target account
+**Solution**: Verify role name `GitHubActionsRunnerRole` exists in target account
 
 #### Invalid Account ID
 ```text
@@ -224,14 +224,14 @@ Context access might be invalid: PROD_AWS_ACCOUNT_ID
 
 ```bash
 # Check role exists
-aws iam get-role --role-name GitlabRunnerRole
+aws iam get-role --role-name GitHubActionsRunnerRole
 
 # List OIDC providers
 aws iam list-open-id-connect-providers
 
 # Test assume role (replace with actual account ID)
 aws sts assume-role-with-web-identity \
-  --role-arn arn:aws:iam::123456789012:role/GitlabRunnerRole \
+  --role-arn arn:aws:iam::123456789012:role/GitHubActionsRunnerRole \
   --role-session-name test-session \
   --web-identity-token $GITHUB_TOKEN
 ```

@@ -68,7 +68,7 @@ prepare-deployment:
     DEV_AWS_ACCOUNT_ID: ${{ secrets.DEV_AWS_ACCOUNT_ID }}
   # → Composite Action expands to role ARN
   outputs:
-    deploy_role_arn: arn:aws:iam::123456789012:role/GitlabRunnerRole
+    deploy_role_arn: arn:aws:iam::123456789012:role/GitHubActionsRunnerRole
 
 # All subsequent jobs use:
 role-to-assume: ${{ needs.prepare-deployment.outputs.deploy_role_arn }}

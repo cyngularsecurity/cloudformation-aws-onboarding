@@ -73,17 +73,17 @@ runs:
           "prod")
             echo "s3_bucket_cfn=cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${PROD_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${PROD_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "stg")
             echo "s3_bucket_cfn=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=stg-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${STG_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${STG_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           "dev")
             echo "s3_bucket_cfn=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
             echo "bucket_pattern_regional=dev-cyngular-onboarding" >> $GITHUB_OUTPUT
-            echo "deploy_role_arn=arn:aws:iam::${DEV_AWS_ACCOUNT_ID}:role/GitlabRunnerRole" >> $GITHUB_OUTPUT
+            echo "deploy_role_arn=arn:aws:iam::${DEV_AWS_ACCOUNT_ID}:role/GitHubActionsRunnerRole" >> $GITHUB_OUTPUT
             ;;
           *)
             echo "::error::Unknown environment: $ENV"
