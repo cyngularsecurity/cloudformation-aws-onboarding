@@ -36,8 +36,22 @@ runs:
       run: |
         ENV="${{ inputs.environment }}"
         
-        # Set AWS region (centralized)
-        echo "aws_region=us-east-1" >> $GITHUB_OUTPUT
+        # Set AWS region based on environment
+        case "$ENV" in
+          "prod")
+            echo "aws_region=us-east-1" >> $GITHUB_OUTPUT
+            ;;
+          "stg")
+            echo "aws_region=us-east-2" >> $GITHUB_OUTPUT
+            ;;
+          "dev")
+            echo "aws_region=us-west-2" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "::error::Unknown environment: $ENV"
+            exit 1
+            ;;
+        esac
         
         # Set Python version
         echo "python_version=3.11" >> $GITHUB_OUTPUT

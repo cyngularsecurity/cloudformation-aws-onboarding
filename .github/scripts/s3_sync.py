@@ -67,11 +67,17 @@ class S3Syncer:
                         region_suffix = bucket_name[len(bucket_pattern):]
                         if region_suffix.startswith('-') and len(region_suffix) > 1:
                             region = region_suffix[1:]  # Remove leading dash
-                            regional_buckets.append({
-                                'bucket': bucket_name,
-                                'region': region
-                            })
-                            console.print(f"  ✓ Found: {bucket_name} (region: {region})")
+                            
+                            # Skip buckets that don't follow the regional pattern (e.g., templates buckets)
+                            # Valid regions should match AWS region format: us-east-1, eu-west-1, etc.
+                            if region and ('-' in region or region in ['us-gov-west-1', 'us-gov-east-1']) and not region.endswith('templates'):
+                                regional_buckets.append({
+                                    'bucket': bucket_name,
+                                    'region': region
+                                })
+                                console.print(f"  ✓ Found: {bucket_name} (region: {region})")
+                            else:
+                                console.print(f"  - Skipped: {bucket_name} (not a regional bucket: {region})", style="dim")
             
             console.print(f"[green]Discovered {len(regional_buckets)} regional buckets")
             return regional_buckets
