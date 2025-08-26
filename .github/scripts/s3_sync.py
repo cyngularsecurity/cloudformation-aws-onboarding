@@ -376,7 +376,7 @@ class S3Syncer:
             # Create config for latest path
             latest_config = SyncConfig(
                 bucket=config.bucket,
-                prefix=config.prefix.replace(config.timestamp, 'latest') if config.timestamp else f"{config.prefix}/latest",
+                prefix=config.prefix.replace(f'versions/{config.timestamp}', 'latest') if config.timestamp and 'versions/' in config.prefix else config.prefix.replace(config.timestamp, 'latest') if config.timestamp else f"{config.prefix}/latest",
                 source_path=config.source_path,
                 pattern=config.pattern,
                 sync_type=config.sync_type,
