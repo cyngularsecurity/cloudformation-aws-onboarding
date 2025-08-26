@@ -245,10 +245,10 @@ s3://{bucket-region}/lambdas/services/latest/
 **S3 Structure**:
 ```
 s3://{bucket-region}/layers/{timestamp}/
-└── cyngular-layer.zip
+└── cyngular-onboarding.zip
 
 s3://{bucket-region}/layers/latest/
-└── cyngular-layer.zip
+└── cyngular-onboarding.zip
 ```
 
 ## Enhanced S3 Sync Script

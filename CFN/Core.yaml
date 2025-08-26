@@ -70,10 +70,16 @@ Parameters:
     AllowedValues: ['true', 'false']
     Default: 'true'
 
+  Environment:
+    Description: 'Environment designation - set to "dev" for development ref, otherwise leave empty'
+    Type: String
+    Default: ''
+
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, '']]
   CreateCloudTrail: !Equals [ !Ref EnableCloudTrail, 'true' ]
   CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, 'true' ]
+  IsDevEnvironment: !Equals [!Ref Environment, 'dev']
 
 Resources:
   ################################################################################
@@ -243,8 +249,9 @@ Resources:
       Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
       Content:
         S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
+          - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
+            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "layers/${code_version}/cyngular-onboarding.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
@@ -332,8 +339,9 @@ Resources:
       Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
-          - "${bucket_name}-${AWS::Region}"
-          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
+          - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
+            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "lambdas/${code_version}/UpdateBucketPolicy.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
