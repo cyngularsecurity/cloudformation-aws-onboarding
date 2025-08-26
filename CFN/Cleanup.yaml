@@ -24,6 +24,7 @@ Mappings:
       DeletionPolicy: 'Retain'
       LambdaTimeout: 900
       LayerName: 'cyngular-onboarding-layer'
+      CodeVersion: 'latest'
 
 Parameters:
   ClientName:
@@ -48,7 +49,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: 'layers/cyngular-onboarding.zip'
+        S3Key: !Sub
+          - "layers/${code_version}/cyngular-onboarding.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       CompatibleRuntimes: [!FindInMap [Const, Cyngular, PythonRuntime]]
       CompatibleArchitectures:
         - x86_64
@@ -115,7 +118,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/RemoveDNS.zip"
+        S3Key: !Sub
+          - "lambdas/cleaners/${code_version}/RemoveDNS.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Environment:
         Variables:
           CLIENT_NAME: !Ref ClientName
@@ -181,7 +186,9 @@ Resources:
         S3Bucket: !Sub
           - "${bucket_name}-${AWS::Region}"
           - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
-        S3Key: "lambdas/RemoveVFL.zip"
+        S3Key: !Sub
+          - "lambdas/cleaners/${code_version}/RemoveVFL.zip"
+          - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Environment:
         Variables:
           CLIENT_NAME: !Ref ClientName

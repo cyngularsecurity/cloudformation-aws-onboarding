@@ -348,7 +348,7 @@ Resources:
           - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
             bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
-          - "lambdas/${code_version}/ServiceManager.zip"
+          - "lambdas/services/${code_version}/ServiceManager.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
 
       Environment:
@@ -397,7 +397,7 @@ Resources:
           - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
             bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
-          - "lambdas/${code_version}/RegionProcessor.zip"
+          - "lambdas/services/${code_version}/RegionProcessor.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Tags:
         - Key: Name

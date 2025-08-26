@@ -80,7 +80,7 @@ runs:
       env:
         S3_BUCKET: ${{ inputs.bucket_pattern }}
         BUCKET_PATTERN: ${{ inputs.bucket_pattern }}
-        S3_PREFIX: layers/${{ inputs.timestamp }}
+        S3_PREFIX: layers/versions/${{ inputs.timestamp }}
         SOURCE_PATH: ../../layer-package
         FILE_PATTERN: "*.zip"
         SYNC_TYPE: files
@@ -109,7 +109,7 @@ runs:
       shell: bash
       run: |
         echo "✅ Lambda layer deployed to:"
-        echo "  📁 Versioned: s3://{bucket}/layers/${{ inputs.timestamp }}/cyngular-onboarding.zip"
+        echo "  📁 Versioned: s3://{bucket}/layers/versions/${{ inputs.timestamp }}/cyngular-onboarding.zip"
         echo "  🔗 Latest: s3://{bucket}/layers/latest/cyngular-onboarding.zip"
         echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
         echo "  🐍 Python version: ${{ inputs.python_version }}"

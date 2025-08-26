@@ -35,7 +35,7 @@ runs:
       env:
         S3_BUCKET: ${{ inputs.bucket_pattern }}
         BUCKET_PATTERN: ${{ inputs.bucket_pattern }}
-        S3_PREFIX: lambdas/${{ inputs.lambda_type }}/${{ inputs.timestamp }}
+        S3_PREFIX: lambdas/${{ inputs.lambda_type }}/versions/${{ inputs.timestamp }}
         SOURCE_PATH: ../../${{ inputs.lambda_path }}
         SYNC_TYPE: zip
         EXCLUDE_PATTERNS: "__pycache__,*.pyc,.git,.pytest_cache,tests,*.md"
@@ -57,7 +57,7 @@ runs:
       shell: bash
       run: |
         echo "✅ Lambda functions (${{ inputs.lambda_type }}) deployed to:"
-        echo "  📁 Versioned: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/${{ inputs.timestamp }}/"
+        echo "  📁 Versioned: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/versions/${{ inputs.timestamp }}/"
         echo "  🔗 Latest: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/latest/"
         echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
         echo "  📦 Packaging: Each subdirectory becomes a separate ZIP file"

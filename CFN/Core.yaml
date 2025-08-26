@@ -343,7 +343,7 @@ Resources:
           - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
             bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
-          - "lambdas/${code_version}/UpdateBucketPolicy.zip"
+          - "lambdas/services/${code_version}/UpdateBucketPolicy.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
       Tags:
         - Key: Name

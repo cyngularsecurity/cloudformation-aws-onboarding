@@ -28,9 +28,9 @@ runs:
       shell: bash
       env:
         S3_BUCKET: ${{ inputs.s3_bucket }}
-        S3_PREFIX: cfn/${{ inputs.timestamp }}
+        S3_PREFIX: cfn/versions/${{ inputs.timestamp }}
         SOURCE_PATH: ../../CFN
-        FILE_PATTERN: "*.{yaml,yml,json}"
+        FILE_PATTERN: "*.yaml,*.json"
         SYNC_TYPE: files
         EXCLUDE_PATTERNS: ".git,__pycache__,*.pyc"
         AWS_REGION: ${{ inputs.aws_region }}
@@ -50,6 +50,6 @@ runs:
       shell: bash
       run: |
         echo "✅ CloudFormation templates deployed to:"
-        echo "  📁 Versioned: s3://${{ inputs.s3_bucket }}/cfn/${{ inputs.timestamp }}/"
+        echo "  📁 Versioned: s3://${{ inputs.s3_bucket }}/cfn/versions/${{ inputs.timestamp }}/"
         echo "  🔗 Latest: s3://${{ inputs.s3_bucket }}/cfn/latest/"
         echo "  🌍 Region: ${{ inputs.aws_region }}"

@@ -153,8 +153,15 @@ class S3Syncer:
         
         console.print(f"[cyan]Syncing files from {config.source_path} to s3://{bucket}/{config.prefix} (region: {region})")
         
-        # Find files matching pattern
-        files = list(config.source_path.glob(config.pattern))
+        # Find files matching pattern - handle comma-separated patterns
+        files = []
+        if ',' in config.pattern:
+            # Split comma-separated patterns and glob each one
+            patterns = [p.strip() for p in config.pattern.split(',')]
+            for pattern in patterns:
+                files.extend(config.source_path.glob(pattern))
+        else:
+            files = list(config.source_path.glob(config.pattern))
         
         for file_path in files:
             if file_path.is_file():
