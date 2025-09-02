@@ -252,9 +252,6 @@ Resources:
               - "route53resolver:CreateResolverQueryLogConfig"
               - "route53resolver:AssociateResolverQueryLogConfig"
               - "route53resolver:TagResource"
-            Condition:
-              StringEquals:
-                "route53resolver:RequestTag/Vendor": "Cyngular Security"
 
           - Sid: "RegionProcessorGeneral"
             Effect: Allow
@@ -272,9 +269,6 @@ Resources:
               - "ec2:DescribeVpcs"
               - "ec2:CreateFlowLogs"
               - 'ec2:CreateTags'
-              # - "ec2:DeleteFlowLogs"
-              # - "ec2:CreateTags"
-              # - "ec2:DeleteTags"
 
               - "eks:List*"
               - "eks:DescribeCluster"
@@ -285,9 +279,6 @@ Resources:
             Action:
               - "ec2:CreateFlowLogs"
               - "ec2:CreateTags"
-            Condition:
-              StringEquals:
-                "ec2:RequestTag/Vendor": "Cyngular Security"
 
           - Sid: "PutMetricData"
             Effect: Allow
@@ -302,9 +293,6 @@ Resources:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
             Action:
               - "eks:UpdateClusterConfig"
-            Condition:
-              StringEquals:
-                "eks:RequestTag/Vendor": "Cyngular Security"
 
           - Sid: "DescribeEKS"
             Effect: Allow
@@ -312,13 +300,46 @@ Resources:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
             Action:
               - "eks:DescribeCluster"
-          - Sid: "EditEksAccessEntry"
+          - Sid: "CreateEksAccessEntry"
             Effect: Allow
             Resource:
-              - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+              - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+              # - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
             Action:
               - "eks:CreateAccessEntry"
               - "eks:AssociateAccessPolicy"
+
+          # - Sid: "CreateEksAccessEntry"
+          #   Effect: Allow
+          #   Resource:
+          #     - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
+          #   Action:
+          #     - "eks:CreateAccessEntry"
+          #   Condition:
+          #     StringEquals:
+          #       # Restrict to your IAM role only
+          #       eks:principalArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/cyngular-readonly-role-${ClientName}"
+          #       # Optional hardening:
+          #       # eks:accessEntryType: "STANDARD"
+          #       # eks:username: "cyngular-readonly"
+          #       # eks:kubernetesGroups: ["viewers"]
+
+          # - Sid: "AssociateEksAccessPolicy"
+          #   Effect: Allow
+          #   Resource:
+          #     # Restrict only to access-entry objects for that specific role across clusters
+          #     - !Sub "arn:aws:eks:*:${AWS::AccountId}:access-entry/*/role/${AWS::AccountId}/cyngular-readonly-role-${ClientName}/*"
+          #   Action:
+          #     - "eks:AssociateAccessPolicy"
+          #   Condition:
+          #     StringEquals:
+          #       # Restrict to the exact EKS access policy you intend to grant
+          #       eks:policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+          #       # Limit scope to the whole cluster; use namespaces if you want to limit further
+          #       eks:accessScope: "cluster"
+          #       # If you scope to namespaces:
+          #       # eks:namespaces: ["kube-system","default"]
+
 
           - Sid: "CyngularBucketAdmin"
             Effect: Allow
@@ -327,10 +348,6 @@ Resources:
               - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}/*"
             Action:
               - "s3:PutObject"
-            Condition:
-              StringEquals:
-                "s3:RequestTag/Vendor": "Cyngular Security"
-
 
   CyngularServiceOrchestratorLambda:
     Type: AWS::Lambda::Function
