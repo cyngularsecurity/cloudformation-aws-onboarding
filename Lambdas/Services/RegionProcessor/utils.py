@@ -1,4 +1,3 @@
-import boto3
 import logging
 from typing import Dict, Any
 from botocore.exceptions import ClientError

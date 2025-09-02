@@ -302,8 +302,7 @@ class S3Syncer:
             '.py': 'text/x-python',
             '.sh': 'text/x-shellscript',
             '.zip': 'application/zip',
-            '.json': 'application/json',
-        }
+    }
         return ext_map.get(file_path.suffix, 'application/octet-stream')
     
     def sync_multi_region(self, config: SyncConfig, bucket_pattern: str) -> Dict[str, Dict[str, int]]:
@@ -501,7 +500,7 @@ def main(bucket: str, prefix: str, source: str, pattern: str,
     # Execute sync based on type and options
     try:
         if multi_region and not bucket_pattern:
-            console.print(f"[red]Error: --bucket-pattern required for multi-region deployment")
+            console.print("[red]Error: --bucket-pattern required for multi-region deployment")
             sys.exit(1)
         
         if dual_deployment or multi_region:
