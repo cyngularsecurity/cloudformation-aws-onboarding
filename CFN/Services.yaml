@@ -251,7 +251,6 @@ Resources:
               - "route53resolver:ListResolverQueryLogConfigs"
               - "route53resolver:CreateResolverQueryLogConfig"
               - "route53resolver:AssociateResolverQueryLogConfig"
-              - "route53resolver:TagResource"
 
           - Sid: "RegionProcessorGeneral"
             Effect: Allow
@@ -261,24 +260,20 @@ Resources:
 
               - "organizations:ListAccounts"
 
-              - "s3:GetBucketTagging"
-              - "s3:PutBucketTagging"
               - "s3:ListBucket"
 
               - "ec2:DescribeInstances"
               - "ec2:DescribeVpcs"
               - "ec2:CreateFlowLogs"
-              - 'ec2:CreateTags'
 
               - "eks:List*"
               - "eks:DescribeCluster"
 
-          - Sid: "RestrictedEC2FlowLogs"
+          - Sid: "EC2FlowLogs"
             Effect: Allow
             Resource: "*"
             Action:
               - "ec2:CreateFlowLogs"
-              - "ec2:CreateTags"
 
           - Sid: "PutMetricData"
             Effect: Allow
@@ -287,20 +282,20 @@ Resources:
               - "logs:CreateLogDelivery"
             Resource: "*"
 
-          - Sid: "RestrictedEKSLoggingUpdate"
+          - Sid: "EKSClusterLoggingUpdate"
             Effect: Allow
             Resource:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
             Action:
               - "eks:UpdateClusterConfig"
 
-          - Sid: "DescribeEKS"
+          - Sid: "DescribeEKSClusters"
             Effect: Allow
             Resource:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
             Action:
               - "eks:DescribeCluster"
-          - Sid: "CreateEksAccessEntry"
+          - Sid: "CreateEKSClusterAccessEntry"
             Effect: Allow
             Resource:
               - !Sub "arn:aws:eks:*:${AWS::AccountId}:cluster/*"
@@ -341,7 +336,7 @@ Resources:
           #       # eks:namespaces: ["kube-system","default"]
 
 
-          - Sid: "CyngularBucketAdmin"
+          - Sid: "CyngularBucketPut"
             Effect: Allow
             Resource:
               - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}"
