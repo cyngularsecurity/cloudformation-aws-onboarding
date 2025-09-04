@@ -40,7 +40,9 @@ Required when deploying to AWS Organizations:
 |----------|-------------|---------|
 | **CLIENT_MGMT_ACCOUNT_ID** | Client Management account ID | `-` |
 | **ORGANIZATION_ID** | AWS Organization ID | `o-xxxxxxxxxx` |
-| **ORGANIZATIONAL_UNIT_IDS** | Comma-separated OU IDs (no spaces)<br/>Use root OU ID (`r-xxxx`) for org-wide deployment | `r-kdxm` |
+| **ORGANIZATIONAL_UNIT_IDS** | Comma-separated OU IDs | `r-kdxm` |
+
+### Optional Variables
 
 ### Feature Flags
 
@@ -51,8 +53,6 @@ Required when deploying to AWS Organizations:
 | **EnableEKS** | Enable EKS audit logging | `true`/`false` | `true` |
 | **EnableVPCFlowLogs** | Enable VPC Flow Logs | `true`/`false`/`bucket-name` | `true` |
 | **EnableBucketPolicyManager** | Enable cross-account bucket policy management | `true`/`false` | `true` |
-
-### Optional Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -70,6 +70,7 @@ Required when deploying to AWS Organizations:
 ## Example .env Configuration
 
 ### Single Account Deployment
+
 ```bash
 # Required
 CLIENT_NAME="acme"

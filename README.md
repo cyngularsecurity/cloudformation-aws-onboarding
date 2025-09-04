@@ -15,8 +15,8 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 
 ## Quick Start
 
-- [Service Configuration](./docs/SERVICE_CONFIGURATION.md) - Service enablement options
 - [Deployment Instructions](./docs/DEPLOY_INSTRUCTIONS.md) - Prerequisites and deployment steps
+- [Service Configuration](./docs/SERVICE_CONFIGURATION.md) - Service enablement options
 
 ## Architecture
 
