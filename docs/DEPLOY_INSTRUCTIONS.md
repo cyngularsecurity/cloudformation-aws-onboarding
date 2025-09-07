@@ -4,10 +4,6 @@
 
 - set values in .env file [as described in service configuration](./SERVICE_CONFIGURATION.md#settings-in-env)
 
-<!-- Note: Parameter names must match exactly as shown below. StackSets do not support unknown parameters; only supply those listed. -->
-
-### Prerequisites
-
 1. **Enable AWS Services**
    - Ensure the following services (trusted access) are enabled:
      - [AWS CloudTrail - console][CloudTrail]

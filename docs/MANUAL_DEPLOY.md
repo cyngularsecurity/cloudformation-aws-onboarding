@@ -21,6 +21,8 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
   - ClientName = <`client company name`>
   - CyngularAccountId = 851565895544
 
+<!-- Note: Parameter names must match exactly as shown below. StackSets do not support unknown parameters; only supply those listed. -->
+
 - Acknowledge required Capabilities
 - Create stack and wait for completion
 
@@ -53,7 +55,7 @@ All templates are in this repository under `CFN/`. If you are in the AWS Console
   - EnableDNS = true/false
   - EnableVPCFlowLogs = true/false
   - EnableEKS = true/false
-  
+
   - ServiceManagerOverride = integer (default: 1)
   - ExcludedRegions = ExcludedRegions (optional)
 
