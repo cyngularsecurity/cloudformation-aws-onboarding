@@ -140,11 +140,10 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: "LambdaRead"
+          - Sid: "CyngularAdmin"
             Effect: Allow
             Principal:
-              AWS: # TODO - validate & decide
-                # - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-lambda-role" ## drop for client-side readonly role
+              AWS:
                 - !Sub "arn:aws:iam::${AWS::AccountId}:root"
                 - !Sub "arn:aws:iam::${CyngularAccountId}:root"
             Action:
@@ -152,11 +151,6 @@ Resources:
             Resource:
               - !GetAtt CyngularS3Bucket.Arn
               - !Sub "arn:aws:s3:::${CyngularS3Bucket}/*"
-            Condition:
-              StringEquals:
-                aws:PrincipalArn:
-                  - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-lambda-role"
-                  - !Sub "arn:aws:iam::${CyngularAccountId}:role/${ClientName}-*-exec-role"
 
           - !If
             - CreateCloudTrail
