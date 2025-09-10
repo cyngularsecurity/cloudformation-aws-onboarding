@@ -1,25 +1,25 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform:
-  - 'AWS::LanguageExtensions'
+  - "AWS::LanguageExtensions"
 
 Description: |-
   Cyngular Core Infrastructure Template
-  Creates: S3 bucket (cyngular-{client}-bucket-{account}), S3 bucket policy (CloudTrail/Cyngular access), 
+  Creates: S3 bucket (cyngular-{client}-bucket-{account}), S3 bucket policy (CloudTrail/Cyngular access),
   IAM role policy (readonly S3 access), CloudTrail trail (conditional audit logging),
   Lambda layer (shared utilities), Bucket Policy Manager (S3 policy updates)
 
 Metadata:
   Vendor:
-    Description: 'Cyngular Security'
+    Description: "Cyngular Security"
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: 'Client Info'
+          default: "Client Info"
         Parameters:
           - ClientName
       - Label:
-          default: 'Override Parameters'
+          default: "Override Parameters"
         Parameters:
           - EnableCloudTrail
           - EnableBucketPolicyManager
@@ -28,58 +28,58 @@ Metadata:
 
 Mappings:
   Const:
-    'Cyngular':
-      LambdasBucketPrefix: 'cyngular-onboarding'
-      PythonRuntime: 'python3.12'
-      DeletionPolicy: 'Retain'
-      SSEAlgorithm: 'AES256'
+    "Cyngular":
+      LambdasBucketPrefix: "cyngular-onboarding"
+      PythonRuntime: "python3.12"
+      DeletionPolicy: "Retain"
+      SSEAlgorithm: "AES256"
       LifecycleStandardIADays: 60
       LifecycleGlacierDays: 90
       LifecycleExpirationDays: 365
-      LayerName: 'cyngular-onboarding-layer'
-      CodeVersion: 'latest'
+      LayerName: "cyngular-onboarding-layer"
+      CodeVersion: "latest"
 
 Parameters:
   ClientName:
-    Description: 'The Client Company name (must be lowercase, can contain letters & numbers)'
+    Description: "The Client Company name (must be lowercase, can contain letters & numbers)"
     Type: String
-    AllowedPattern: '^[a-z0-9]+$'
-    ConstraintDescription: 'Company Name should consist of only lowercase characters and numbers, and it should not start with a number.'
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
     MinLength: 3
     MaxLength: 15
 
   OrganizationId:
-    Description: 'Specify the Company Organization id | leave empty if not deploying to an organization'
+    Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
     Type: String
     # Default: ''
 
   CyngularAccountId:
-    Description: 'The Cyngular Account ID to assume the read only role'
+    Description: "The Cyngular Account ID to assume the read only role"
     Type: String
-    Default: '851565895544'
+    Default: "851565895544"
 
   EnableCloudTrail:
-    Description: 'Create Cyngular Trail | set to false to disable'
+    Description: "Create Cyngular Trail | set to false to disable"
     Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'true'
+    AllowedValues: ["true", "false"]
+    Default: "true"
 
   EnableBucketPolicyManager:
-    Description: 'Set to true to enable the bucket policy manager for future logging; set to false if not currently desired.'
+    Description: "Set to true to enable the bucket policy manager for future logging; set to false if not currently desired."
     Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'true'
+    AllowedValues: ["true", "false"]
+    Default: "true"
 
   Environment:
     Description: 'Environment designation - set to "dev" for development ref, otherwise leave empty'
     Type: String
-    Default: ''
+    Default: ""
 
 Conditions:
-  IsOrg: !Not [!Equals [!Ref OrganizationId, '']]
-  CreateCloudTrail: !Equals [ !Ref EnableCloudTrail, 'true' ]
-  CreateBucketPolicyManager: !Equals [ !Ref EnableBucketPolicyManager, 'true' ]
-  IsDevEnvironment: !Equals [!Ref Environment, 'dev']
+  IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
+  CreateCloudTrail: !Equals [!Ref EnableCloudTrail, "true"]
+  CreateBucketPolicyManager: !Equals [!Ref EnableBucketPolicyManager, "true"]
+  IsDevEnvironment: !Equals [!Ref Environment, "dev"]
 
 Resources:
   ################################################################################
@@ -103,17 +103,20 @@ Resources:
 
       LifecycleConfiguration:
         Rules:
-        ## transitions objects to Standard-IA after 60 days
-        ## Glacier after 90 days
-        ## deletes them after a year
+          ## transitions objects to Standard-IA after 60 days
+          ## Glacier after 90 days
+          ## deletes them after a year
           - Id: ObjectLifecycleRule
             Status: Enabled
             Transitions:
-              - TransitionInDays: !FindInMap [Const, Cyngular, LifecycleStandardIADays]
+              - TransitionInDays:
+                  !FindInMap [Const, Cyngular, LifecycleStandardIADays]
                 StorageClass: STANDARD_IA
-              - TransitionInDays: !FindInMap [Const, Cyngular, LifecycleGlacierDays]
+              - TransitionInDays:
+                  !FindInMap [Const, Cyngular, LifecycleGlacierDays]
                 StorageClass: GLACIER
-            ExpirationInDays: !FindInMap [Const, Cyngular, LifecycleExpirationDays]
+            ExpirationInDays:
+              !FindInMap [Const, Cyngular, LifecycleExpirationDays]
 
       Tags:
         - Key: Name
@@ -125,19 +128,19 @@ Resources:
         - Key: ClientName
           Value: !Ref ClientName
         - !If
-            - CreateCloudTrail
-            - Key: cyngular-cloudtrail
-              Value: 'true'
-            - !Ref AWS::NoValue
+          - CreateCloudTrail
+          - Key: cyngular-cloudtrail
+            Value: "true"
+          - !Ref AWS::NoValue
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref CyngularS3Bucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Sid: 'LambdaRead'
+          - Sid: "LambdaRead"
             Effect: Allow
             Principal:
               AWS: # TODO - validate & decide
@@ -157,27 +160,27 @@ Resources:
 
           - !If
             - CreateCloudTrail
-            - Sid: 'CloudTrailAclCheck'
+            - Sid: "CloudTrailAclCheck"
               Effect: Allow
               Principal:
                 Service: "cloudtrail.amazonaws.com"
-              Action: 's3:GetBucketAcl'
+              Action: "s3:GetBucketAcl"
               Resource: !GetAtt CyngularS3Bucket.Arn
               Condition:
                 StringEquals:
                   AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
             - !Ref "AWS::NoValue"
-          - !If 
+          - !If
             - CreateCloudTrail
-            - Sid: 'CloudTrailWrite'
+            - Sid: "CloudTrailWrite"
               Effect: Allow
-              Principal: 
+              Principal:
                 Service: "cloudtrail.amazonaws.com"
-              Action: 
-                - 's3:PutObject'
-              Resource: 
+              Action:
+                - "s3:PutObject"
+              Resource:
                 - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${AWS::AccountId}/*"
-                - !If 
+                - !If
                   - IsOrg
                   - !Sub "arn:aws:s3:::${CyngularS3Bucket}/AWSLogs/${OrganizationId}/*"
                   - !Ref "AWS::NoValue"
@@ -196,7 +199,7 @@ Resources:
       PolicyName: !Sub "cyngular-bucket-access-policy-${ClientName}"
       RoleName:
         Fn::ImportValue:
-          !Join [ ":", ["CyngularSecurity", "ReadonlyRoleName", !Ref ClientName ]]
+          !Join [":", ["CyngularSecurity", "ReadonlyRoleName", !Ref ClientName]]
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -244,13 +247,15 @@ Resources:
   ##############################
   CyngularLayer:
     Type: AWS::Lambda::LayerVersion
+    Condition: CreateBucketPolicyManager
+
     Properties:
       LayerName: !FindInMap [Const, Cyngular, LayerName]
       Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
       Content:
         S3Bucket: !Sub
           - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
+          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
             bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "layers/${code_version}/cyngular-onboarding.zip"
@@ -260,13 +265,14 @@ Resources:
         - x86_64
         # - arm64
 
-  CyngularLayerPermission:
-    Type: AWS::Lambda::LayerVersionPermission
-    Properties:
-      Action: lambda:GetLayerVersion
-      LayerVersionArn: !Ref CyngularLayer
-      OrganizationId: !Ref OrganizationId
-      Principal: "*"
+  # CyngularLayerPermission: ## Used only in same account
+  #   Type: AWS::Lambda::LayerVersionPermission
+  #   Condition: CreateBucketPolicyManager
+  #   Properties:
+  #     Action: lambda:GetLayerVersion
+  #     LayerVersionArn: !Ref CyngularLayer
+  #     OrganizationId: !Ref OrganizationId
+  #     Principal: "*"
 
   ##############################
   # Cyngular Bucket Policy Manager
@@ -319,7 +325,7 @@ Resources:
                 - bucket_name: !Ref CyngularS3Bucket
             Action:
               - "s3:GetBucketPolicy"
-              - "s3:PutBucketPolicy"              
+              - "s3:PutBucketPolicy"
 
   CyngularBucketPolicyManagerLambda:
     Type: AWS::Lambda::Function
@@ -340,7 +346,7 @@ Resources:
       Code:
         S3Bucket: !Sub
           - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, 'dev-', '']
+          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
             bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "lambdas/services/${code_version}/UpdateBucketPolicy.zip"
@@ -392,10 +398,14 @@ Outputs:
     Description: "Name of the Cyngular S3 bucket"
     Value: !Ref CyngularS3Bucket
     Export:
-      Name: !Join [ ":", ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName ]]
+      Name:
+        !Join [
+          ":",
+          ["CyngularSecurity", "CyngularSecurityBucketName", !Ref ClientName],
+        ]
 
   IsOrganization:
     Description: Whether this is an organization deployment
     Value: !If [IsOrg, "true", "false"]
     Export:
-      Name: !Join [ ":", ["CyngularSecurity", "IsOrganization", !Ref ClientName ] ]
+      Name: !Join [":", ["CyngularSecurity", "IsOrganization", !Ref ClientName]]
