@@ -2,6 +2,8 @@
 
 # GitHub Actions AWS OIDC Setup Script
 # This script automates the creation of AWS OIDC provider and IAM role for GitHub Actions
+#
+# currently using terraform module in site deplyment for this
 
 set -e
 
@@ -87,7 +89,7 @@ else
         --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
         --thumbprint-list 1c58a3a8518e8759bf075b76b750d4f2df264fcd \
         --query 'OpenIDConnectProviderArn' --output text)
-    
+
     echo "✅ Created OIDC Provider: $OIDC_ARN"
 fi
 
@@ -257,7 +259,7 @@ echo "   Settings > Secrets and variables > Actions > New repository secret"
 echo ""
 echo -e "${YELLOW}Summary:${NC}"
 echo "✅ OIDC Provider: $OIDC_ARN"
-echo "✅ IAM Role: $ROLE_ARN" 
+echo "✅ IAM Role: $ROLE_ARN"
 echo "✅ IAM Policy: $POLICY_ARN"
 echo "✅ Repository: $GITHUB_ORG/$REPO_NAME"
 echo ""

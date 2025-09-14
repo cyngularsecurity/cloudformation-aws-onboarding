@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
-Transform:
-  - "AWS::LanguageExtensions"
+# Transform:
+#   - "AWS::LanguageExtensions"
 
 Description: |-
   Cyngular Core Infrastructure Template
@@ -24,7 +24,7 @@ Metadata:
           - EnableCloudTrail
           - EnableBucketPolicyManager
           - OrganizationId
-          - CyngularAccountId
+          # - CyngularAccountId
 
 Mappings:
   Const:
@@ -38,6 +38,7 @@ Mappings:
       LifecycleExpirationDays: 365
       LayerName: "cyngular-onboarding-layer"
       CodeVersion: "latest"
+      CyngularDefaultAccountId: "851565895544"
 
 Parameters:
   ClientName:
@@ -70,16 +71,14 @@ Parameters:
     AllowedValues: ["true", "false"]
     Default: "true"
 
-  Environment:
-    Description: 'Environment designation - set to "dev" for development ref, otherwise leave empty'
-    Type: String
-    Default: ""
-
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
   CreateCloudTrail: !Equals [!Ref EnableCloudTrail, "true"]
   CreateBucketPolicyManager: !Equals [!Ref EnableBucketPolicyManager, "true"]
-  IsDevEnvironment: !Equals [!Ref Environment, "dev"]
+  IsDevEnvironment: !Not
+    - !Equals
+      - !Ref CyngularAccountId
+      - !FindInMap [Const, Cyngular, CyngularDefaultAccountId]
 
 Resources:
   ################################################################################
@@ -145,7 +144,19 @@ Resources:
             Principal:
               AWS:
                 - !Sub "arn:aws:iam::${AWS::AccountId}:root"
-                - !Sub "arn:aws:iam::${CyngularAccountId}:root"
+                - !Sub
+                  - "arn:aws:iam::${cyngular_account_id}:root"
+                  - cyngular_account_id:
+                      Fn::ImportValue:
+                        !Join [
+                          ":",
+                          [
+                            "CyngularSecurity",
+                            "CyngularAccountId",
+                            !Ref ClientName,
+                          ],
+                        ]
+
             Action:
               - "s3:*"
             Resource:
