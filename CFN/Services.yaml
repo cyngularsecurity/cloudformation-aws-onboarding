@@ -245,14 +245,12 @@ Resources:
         Statement:
           - Sid: "Route53Resolver"
             Effect: Allow
-            Resource:
-              [
-                !Sub "arn:aws:route53resolver:*:${AWS::AccountId}:resolver-query-log-config/rqlc-*",
-              ]
+            Resource: !Sub "arn:aws:route53resolver:*:${AWS::AccountId}:resolver-query-log-config/rqlc-*"
             Action:
               - "route53resolver:ListResolverQueryLogConfigs"
               - "route53resolver:CreateResolverQueryLogConfig"
               - "route53resolver:AssociateResolverQueryLogConfig"
+              - "route53resolver:TagResource"
 
           - Sid: "RegionProcessorGeneral"
             Effect: Allow
@@ -273,9 +271,12 @@ Resources:
 
           - Sid: "EC2FlowLogs"
             Effect: Allow
-            Resource: "*"
+            # Resource: "*"
+            Resource: !Sub "arn:aws:ec2:*:${AWS::AccountId}:vpc-flow-log/*"
+
             Action:
               - "ec2:CreateFlowLogs"
+              - "ec2:CreateTags"
 
           - Sid: "PutMetricData"
             Effect: Allow
