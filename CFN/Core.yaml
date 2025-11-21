@@ -40,6 +40,9 @@ Mappings:
       CodeVersion: "latest"
       CyngularDefaultAccountId: "851565895544"
 
+      # VPCFlowLogsTag: "true"
+      # DNSLogsTag: "true"
+
 Parameters:
   ClientName:
     Description: "The Client Company name (must be lowercase, can contain letters & numbers)"
@@ -123,6 +126,8 @@ Resources:
         - Key: cyngular-os
           Value: true
         - Key: cyngular-visibility
+          Value: true
+        - Key: cyngular-ekslogs
           Value: true
         - Key: ClientName
           Value: !Ref ClientName

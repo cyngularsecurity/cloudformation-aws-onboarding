@@ -65,3 +65,4 @@ specs/
 Lambdas/uv.lock
 .ruff_cache
 .secrets
+/net-commander

@@ -2,9 +2,9 @@
 
 This guide walks you through deploying the CloudFormation stacks and StackSets via the AWS Console.
 
-## Part 1: Deploy Region-Scoped Stacks (per region)
+## Part 1: Deploy Management Acount CloudFormation Stacks
 
-You will create three stacks in the following order in your chosen region (RUNTIME_REGION):
+You will create three stacks, in the following order in your chosen region (RUNTIME_REGION):
 
 1) ReadonlyRole
 2) Core
@@ -85,9 +85,11 @@ Add Stack Instances:
 
 - Deployment targets: Organizational Units
 - OrganizationalUnitIds: one or more values from ORGANIZATIONAL_UNIT_IDS
-- Regions: RUNTIME_REGION (add others if required)
-- Operation preferences:
-  - RegionConcurrencyType = PARALLEL
+- Regions: RUNTIME_REGION (to deploy the stacks in - cyngular will still manage all but excleded)
+- Deployment options:
+  - Maximum concurrent accounts: Precentage - 90
+  - Failure tolerance: Precentage - 70
+  - Region concurrency = Sequential (only single region)
   - Optionally tune: FailureTolerancePercentage, MaxConcurrentPercentage
 - Acknowledge required Capabilities
 - Submit and wait for operation to succeed
@@ -101,12 +103,12 @@ Add Stack Instances:
   - EnableDNS = true/false
   - EnableVPCFlowLogs = true/false
   - EnableEKS = true/false
-  - ServiceManagerOverride = integer (default: 1)
-  - ExcludedRegions = ExcludedRegions (optional)
+  - ServiceManagerOverride = increase numeric to force trigger of the lambda from cloudformation stack. integer (default: 1)
+  - ExcludedRegions = list of regions to exclude from cyngular scan (optional)
   - ClientMgmtAccountId = ClientMgmtAccountId (required when deploying in organizations)
-- Create StackSet
+<!-- - Create StackSet
 
-Add Stack Instances:
+Add Stack Instances: -->
 
 - Deployment targets: Organizational Units
 - OrganizationalUnitIds: one or more values from ORGANIZATIONAL_UNIT_IDS
