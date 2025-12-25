@@ -105,7 +105,7 @@ def lambda_handler(event, context):
     
     try:
         logger.info("UPDATING CYNGULAR BUCKET POLICY")
-        is_org = os.environ["IS_ORG"]
+        is_org = os.environ["IS_ORG"].lower() == "true"
         cyngular_bucket_name = os.environ["BUCKET_NAME"]
         mgmt_acc_id = boto3.client("sts").get_caller_identity()["Account"]
 

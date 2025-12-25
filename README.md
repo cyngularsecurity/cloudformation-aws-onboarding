@@ -17,28 +17,7 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 
 - [Deployment Instructions](./docs/DEPLOY_INSTRUCTIONS.md) - Prerequisites and deployment steps
 - [Service Configuration](./docs/SERVICE_CONFIGURATION.md) - Service enablement options
-
-## Updating Lambda Functions
-
-To update Lambda functions to newer versions via AWS Console:
-
-1. Navigate to **AWS Lambda service** in the AWS Console
-2. Select the Lambda function you want to update
-3. In the **Code** panel, click **Upload from** → **Amazon S3 location**
-4. Provide the S3 object URL using the template below:
-
-```bash
-AWS_REGION="us-east-1"  # Use the deployed main region of the client
-SERVICE_ZIP="UpdateBucketPolicy.zip"  # Choose from available zips
-
-https://cyngular-onboarding-${AWS_REGION}.s3.${AWS_REGION}.amazonaws.com/lambdas/services/latest/${SERVICE_ZIP}
-```
-
-**Available Lambda packages:**
-
-- `UpdateBucketPolicy.zip`
-- `RegionProcessor.zip`
-- `ServiceManager.zip`
+- [Maintenance Guide](./docs/MAINTENANCE.md) - manage existing deployments
 
 ## Architecture
 

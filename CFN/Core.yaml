@@ -54,7 +54,7 @@ Parameters:
     MaxLength: 15
 
   OrganizationId:
-    Description: "Specify the Company Organization id | leave empty if not deploying to an organization"
+    Description: "Specify the Company Organization id | leave empty if not deploying to an organization, or if deploying to a single account in the organization"
     Type: String
     # Default: ''
 
@@ -346,7 +346,7 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref CyngularS3Bucket
-          IS_ORG: !If [IsOrg, true, false]
+          IS_ORG: !If [IsOrg, "true", "false"] ## lambda env vars are strings anyway
 
       Runtime: !FindInMap [Const, Cyngular, PythonRuntime]
       Handler: lambda_function.lambda_handler
