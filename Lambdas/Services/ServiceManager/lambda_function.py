@@ -87,23 +87,13 @@ class ServiceManager:
         return services
 
     def invoke_region_processor_task(self, service: str, region: str) -> Dict[str, Any]:
-        """Single task to invoke region processor - designed for thread pool"""
-        # Get the enable parameter for this specific service
-        enable_param = None
-        if service == "dns":
-            enable_param = self.enable_dns
-        elif service == "eks":
-            enable_param = self.enable_eks
-        elif service == "vfl":
-            enable_param = self.enable_vpc_flow_logs
-
+        """Task to invoke region processor - designed for thread pool"""
         payload = {
             "service": service,
             "region": region,
             "client_name": self.client_name,
             "cyngular_bucket": self.cyngular_bucket,
             "cyngular_role_arn": self.cyngular_role_arn,
-            "enable_param": enable_param,
         }
 
         try:

@@ -10,7 +10,8 @@ logger.setLevel(logging.INFO)
 
 
 def process_dns_service(
-    region: str, cyngular_bucket: str, enable_param: str
+    region: str,
+    cyngular_bucket: str
 ) -> Dict[str, Any]:
     """Configure DNS logging for the region"""
     try:
@@ -82,7 +83,8 @@ def process_dns_service(
 
 
 def process_vfl_service(
-    region: str, cyngular_bucket: str, enable_param: str
+    region: str,
+    cyngular_bucket: str
 ) -> Dict[str, Any]:
     """Configure VPC Flow Logs for the region"""
     try:
@@ -138,9 +140,7 @@ def process_vfl_service(
 
 def process_eks_service(
     region: str,
-    cyngular_role_arn: str,
-    enable_param: str,
-    cyngular_bucket: str = "",
+    cyngular_role_arn: str
 ) -> Dict[str, Any]:
     """Configure EKS access for the region"""
     try:

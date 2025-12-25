@@ -17,14 +17,19 @@ class ServiceConfig:
 
 SERVICE_REGISTRY = {
     "dns": ServiceConfig(
-        process_dns_service, ["region", "cyngular_bucket", "enable_param"]
+        handler=process_dns_service,
+        required_params=["region", "cyngular_bucket"],
     ),
     "vfl": ServiceConfig(
-        process_vfl_service, ["region", "cyngular_bucket", "enable_param"]
+        handler=process_vfl_service,
+        required_params=["region", "cyngular_bucket"],
     ),
     "eks": ServiceConfig(
-        process_eks_service,
-        ["region", "cyngular_role_arn", "enable_param", "cyngular_bucket"],
+        handler=process_eks_service,
+        required_params=["region", "cyngular_role_arn"],
     ),
-    "os": ServiceConfig(process_os_service, ["region"]),
+    "os": ServiceConfig(
+        handler=process_os_service,
+        required_params=["region"]
+    ),
 }

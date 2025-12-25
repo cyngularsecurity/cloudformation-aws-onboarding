@@ -18,7 +18,7 @@ Metadata:
           default: "Client Info"
         Parameters:
           - ClientName
-          - ClientMgmtAccountId
+          - ClientAccountId
       - Label:
           default: "Services"
         Parameters:
@@ -52,8 +52,8 @@ Parameters:
     MinLength: 3
     MaxLength: 15
 
-  ClientMgmtAccountId:
-    Description: "The Client Management Account ID - where cyngular s3 bukcet was deployed"
+  ClientAccountId:
+    Description: "The Client Account ID [Management Account - if deploying to organization] - where cyngular s3 bukcet was deployed"
     Type: String
     Default: ""
 
@@ -292,6 +292,14 @@ Resources:
             Action:
               - "eks:UpdateClusterConfig"
 
+          # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/using-service-linked-roles.html
+          - Sid: "IAMCreateR53ServiceLinkedRole"
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:iam::*:role/aws-service-role/route53resolver.amazonaws.com/AWSServiceRoleForRoute53Resolver"
+            Action:
+              - "iam:CreateServiceLinkedRole"
+
           - Sid: "DescribeEKSClusters"
             Effect: Allow
             Resource:
@@ -341,8 +349,8 @@ Resources:
           - Sid: "CyngularBucketPut"
             Effect: Allow
             Resource:
-              - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}"
-              - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientMgmtAccountId}/*"
+              - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientAccountId}"
+              - !Sub "arn:aws:s3:::cyngular-${ClientName}-bucket-${ClientAccountId}/*"
             Action:
               - "s3:PutObject"
 
@@ -375,7 +383,7 @@ Resources:
           ENABLE_VPC_FLOW_LOGS: !If [IsVPCFlowLogsEnabled, "true", "false"]
 
           EXCLUDED_REGIONS: !Join [",", !Ref ExcludedRegions]
-          CYNGULAR_BUCKET: !Sub "cyngular-${ClientName}-bucket-${ClientMgmtAccountId}"
+          CYNGULAR_BUCKET: !Sub "cyngular-${ClientName}-bucket-${ClientAccountId}"
           CYNGULAR_ROLE_ARN:
             Fn::ImportValue:
               !Join [
@@ -404,7 +412,7 @@ Resources:
       Environment:
         Variables:
           CLIENT_NAME: !Ref ClientName
-          CYNGULAR_BUCKET: !Sub "cyngular-${ClientName}-bucket-${ClientMgmtAccountId}"
+          CYNGULAR_BUCKET: !Sub "cyngular-${ClientName}-bucket-${ClientAccountId}"
           CYNGULAR_ROLE_ARN:
             Fn::ImportValue:
               !Join [

@@ -15,13 +15,11 @@ class RegionProcessor:
         client_name: str,
         cyngular_bucket: str,
         cyngular_role_arn: str,
-        enable_param: str = None,
     ):
         self.region = region
         self.client_name = client_name
         self.cyngular_bucket = cyngular_bucket
         self.cyngular_role_arn = cyngular_role_arn
-        self.enable_param = enable_param
 
         # # Initialize metrics collector
         # self.metrics = MetricsCollector(client_name, "RegionalServiceManager")
@@ -46,8 +44,6 @@ class RegionProcessor:
                     params.append(self.cyngular_bucket)
                 elif param == "cyngular_role_arn":
                     params.append(self.cyngular_role_arn)
-                elif param == "enable_param":
-                    params.append(self.enable_param)
                 else:
                     logger.error(
                         f"Unknown parameter {param} required for service {service}"
@@ -103,7 +99,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         client_name = event["client_name"]
         cyngular_bucket = event["cyngular_bucket"]
         cyngular_role_arn = event["cyngular_role_arn"]
-        enable_param = event["enable_param"]
     except KeyError as e:
         missing_param = str(e).strip("'")
         return {
@@ -118,7 +113,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     try:
         processor = RegionProcessor(
-            region, client_name, cyngular_bucket, cyngular_role_arn, enable_param
+            region, client_name, cyngular_bucket, cyngular_role_arn
         )
         result = processor.process_service(service)
         logger.info(f"Processing complete: {result}")

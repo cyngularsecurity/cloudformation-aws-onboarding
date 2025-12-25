@@ -1,0 +1,37 @@
+[
+    {
+        "Sid": "OrgLogDeliveryWrite",
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "delivery.logs.amazonaws.com"
+        },
+        "Action": "s3:PutObject",
+        "Resource": "arn:aws:s3:::cyngular-CLIENT_NAME-bucket-CLIENT_ACCOUNT_ID/*",
+        "Condition": {
+            "StringEquals": {
+                "aws:SourceAccount": "CLIENT_ACCOUNT_ID",
+                "s3:x-amz-acl": "bucket-owner-full-control"
+            },
+            "ArnLike": {
+                "aws:SourceArn": "arn:aws:logs:ap-southeast-1:CLIENT_ACCOUNT_ID:*"
+            }
+        }
+    },
+    {
+        "Sid": "OrgLogDeliveryAclCheck",
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "delivery.logs.amazonaws.com"
+        },
+        "Action": [
+            "s3:GetBucketAcl",
+            "s3:ListBucket"
+        ],
+        "Resource": "arn:aws:s3:::cyngular-CLIENT_NAME-bucket-CLIENT_ACCOUNT_ID",
+        "Condition": {
+            "ArnLike": {
+                "aws:SourceArn": "arn:aws:logs:ap-southeast-1:CLIENT_ACCOUNT_ID:*"
+            }
+        }
+    }
+]

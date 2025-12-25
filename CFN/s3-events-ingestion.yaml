@@ -1,0 +1,434 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EventBridge rules and SQS queues for S3 log ingestion across multiple log types
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name (e.g., dev, staging, prod)
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  ClientName:
+    Type: String
+    Description: Client identifier
+    # Default: lincoln
+
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket containing the logs
+
+Mappings:
+  LogTypeConfig:
+    cloudtrail:
+      PathPattern: "AWSLogs/*/CloudTrail/*"
+      QueueSuffix: "cloudtrail"
+    vpcflowlogs:
+      PathPattern: "AWSLogs/*/vpcflowlogs/*"
+      QueueSuffix: "vpcflowlogs"
+    dnslogs:
+      PathPattern: "AWSLogs/*/vpcdnsquerylogs/*"
+      QueueSuffix: "dns"
+    ekslogs:
+      PathPattern: "AWSLogs/*/eks-logs/*"
+      QueueSuffix: "eks"
+
+Resources:
+  # ==========================================
+  # SQS Queues
+  # ==========================================
+  
+  CloudTrailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 
+        - "${ClientName}-${Environment}-etl-${QueueSuffix}"
+        - QueueSuffix: !FindInMap [LogTypeConfig, cloudtrail, QueueSuffix]
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600  # 14 days
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Client
+          Value: !Ref ClientName
+        - Key: LogType
+          Value: cloudtrail
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  CloudTrailQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref CloudTrailQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt CloudTrailQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt CloudTrailEventRule.Arn
+
+  VpcFlowLogsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 
+        - "${ClientName}-${Environment}-etl-${QueueSuffix}"
+        - QueueSuffix: !FindInMap [LogTypeConfig, vpcflowlogs, QueueSuffix]
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Client
+          Value: !Ref ClientName
+        - Key: LogType
+          Value: vpcflowlogs
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  VpcFlowLogsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref VpcFlowLogsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt VpcFlowLogsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt VpcFlowLogsEventRule.Arn
+
+  DnsLogsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 
+        - "${ClientName}-${Environment}-etl-${QueueSuffix}"
+        - QueueSuffix: !FindInMap [LogTypeConfig, dnslogs, QueueSuffix]
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Client
+          Value: !Ref ClientName
+        - Key: LogType
+          Value: dnslogs
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  DnsLogsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DnsLogsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt DnsLogsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt DnsLogsEventRule.Arn
+
+  EksLogsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 
+        - "${ClientName}-${Environment}-etl-${QueueSuffix}"
+        - QueueSuffix: !FindInMap [LogTypeConfig, ekslogs, QueueSuffix]
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Client
+          Value: !Ref ClientName
+        - Key: LogType
+          Value: ekslogs
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  EksLogsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EksLogsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt EksLogsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt EksLogsEventRule.Arn
+
+  # ==========================================
+  # IAM Roles for EventBridge
+  # ==========================================
+
+  EventBridgeToSqsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ClientName}-${Environment}-eventbridge-sqs-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Client
+          Value: !Ref ClientName
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  EventBridgeToSqsPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "${ClientName}-${Environment}-eventbridge-sqs-policy"
+      RoleName: !Ref EventBridgeToSqsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - !GetAtt CloudTrailQueue.Arn
+              - !GetAtt VpcFlowLogsQueue.Arn
+              - !GetAtt DnsLogsQueue.Arn
+              - !GetAtt EksLogsQueue.Arn
+
+  # ==========================================
+  # EventBridge Rules
+  # ==========================================
+
+  CloudTrailEventRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - EventBridgeToSqsPolicy
+    Properties:
+      Name: !Sub "${ClientName}-${Environment}-s3-to-sqs-cloudtrail"
+      Description: !Sub "Route CloudTrail S3 events to SQS queue for ${ClientName}"
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+          object:
+            key:
+              - wildcard: !FindInMap [LogTypeConfig, cloudtrail, PathPattern]
+      Targets:
+        - Id: !Sub "${ClientName}-cloudtrail-sqs-target"
+          Arn: !GetAtt CloudTrailQueue.Arn
+          RoleArn: !GetAtt EventBridgeToSqsRole.Arn
+          SqsParameters:
+            MessageGroupId: cloudtrail-logs
+
+  VpcFlowLogsEventRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - EventBridgeToSqsPolicy
+    Properties:
+      Name: !Sub "${ClientName}-${Environment}-s3-to-sqs-vpcflowlogs"
+      Description: !Sub "Route VPC Flow Logs S3 events to SQS queue for ${ClientName}"
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+          object:
+            key:
+              - wildcard: !FindInMap [LogTypeConfig, vpcflowlogs, PathPattern]
+      Targets:
+        - Id: !Sub "${ClientName}-vpcflowlogs-sqs-target"
+          Arn: !GetAtt VpcFlowLogsQueue.Arn
+          RoleArn: !GetAtt EventBridgeToSqsRole.Arn
+          SqsParameters:
+            MessageGroupId: vpcflowlogs
+
+  DnsLogsEventRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - EventBridgeToSqsPolicy
+    Properties:
+      Name: !Sub "${ClientName}-${Environment}-s3-to-sqs-dns"
+      Description: !Sub "Route DNS Query Logs S3 events to SQS queue for ${ClientName}"
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+          object:
+            key:
+              - wildcard: !FindInMap [LogTypeConfig, dnslogs, PathPattern]
+      Targets:
+        - Id: !Sub "${ClientName}-dns-sqs-target"
+          Arn: !GetAtt DnsLogsQueue.Arn
+          RoleArn: !GetAtt EventBridgeToSqsRole.Arn
+          SqsParameters:
+            MessageGroupId: dns-logs
+
+  EksLogsEventRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - EventBridgeToSqsPolicy
+    Properties:
+      Name: !Sub "${ClientName}-${Environment}-s3-to-sqs-eks"
+      Description: !Sub "Route EKS Logs S3 events to SQS queue for ${ClientName}"
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+          object:
+            key:
+              - wildcard: !FindInMap [LogTypeConfig, ekslogs, PathPattern]
+      Targets:
+        - Id: !Sub "${ClientName}-eks-sqs-target"
+          Arn: !GetAtt EksLogsQueue.Arn
+          RoleArn: !GetAtt EventBridgeToSqsRole.Arn
+          SqsParameters:
+            MessageGroupId: eks-logs
+
+
+
+
+  # ==========================================
+  # IAM Policy for Read Only role
+  # ==========================================
+
+  ReadOnlyETLSQSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "cyngular-role-${ClientName}-etl-sqs-role-policy"
+      Roles:
+        - !Sub "cyngular-readonly-role-${ClientName}"
+
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "BucketsAccess"
+            Effect: "Allow"
+            Action:
+              - "sqs:ReceiveMessage"
+              - "sqs:DeleteMessage"
+              - "sqs:GetQueueAttributes"
+              - "sqs:ChangeMessageVisibility"
+
+            Resource:
+              - !GetAtt CloudTrailQueue.Arn
+              - !GetAtt VpcFlowLogsQueue.Arn
+              - !GetAtt DnsLogsQueue.Arn
+              - !GetAtt EksLogsQueue.Arn
+
+Outputs:
+  CloudTrailQueueUrl:
+    Description: URL of the CloudTrail SQS queue
+    Value: !Ref CloudTrailQueue
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-cloudtrail-queue-url"
+
+  CloudTrailQueueArn:
+    Description: ARN of the CloudTrail SQS queue
+    Value: !GetAtt CloudTrailQueue.Arn
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-cloudtrail-queue-arn"
+
+  VpcFlowLogsQueueUrl:
+    Description: URL of the VPC Flow Logs SQS queue
+    Value: !Ref VpcFlowLogsQueue
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-vpcflowlogs-queue-url"
+
+  VpcFlowLogsQueueArn:
+    Description: ARN of the VPC Flow Logs SQS queue
+    Value: !GetAtt VpcFlowLogsQueue.Arn
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-vpcflowlogs-queue-arn"
+
+  DnsLogsQueueUrl:
+    Description: URL of the DNS Logs SQS queue
+    Value: !Ref DnsLogsQueue
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-dns-queue-url"
+
+  DnsLogsQueueArn:
+    Description: ARN of the DNS Logs SQS queue
+    Value: !GetAtt DnsLogsQueue.Arn
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-dns-queue-arn"
+
+  EksLogsQueueUrl:
+    Description: URL of the EKS Logs SQS queue
+    Value: !Ref EksLogsQueue
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-eks-queue-url"
+
+  EksLogsQueueArn:
+    Description: ARN of the EKS Logs SQS queue
+    Value: !GetAtt EksLogsQueue.Arn
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-eks-queue-arn"
+
+  EventBridgeRoleArn:
+    Description: ARN of the EventBridge IAM role
+    Value: !GetAtt EventBridgeToSqsRole.Arn
+    Export:
+      Name: !Sub "${ClientName}-${Environment}-eventbridge-role-arn"
