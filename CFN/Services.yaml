@@ -296,7 +296,7 @@ Resources:
           - Sid: "IAMCreateR53ServiceLinkedRole"
             Effect: Allow
             Resource:
-              - !Sub "arn:aws:iam::*:role/aws-service-role/route53resolver.amazonaws.com/AWSServiceRoleForRoute53Resolver"
+              - "arn:aws:iam::*:role/aws-service-role/route53resolver.amazonaws.com/AWSServiceRoleForRoute53Resolver"
             Action:
               - "iam:CreateServiceLinkedRole"
 
