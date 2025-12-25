@@ -130,7 +130,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.error(
             f"RegionProcessor handler failed: {error_details['error_type']} - {error_details['error_message']}"
         )
-        logger.debug(traceback.format_exc())  # Log full traceback for debugging only in debug mode
+        logger.info(traceback.format_exc())  # Log full traceback
 
         # try:
         #     if "processor" in locals():

@@ -35,11 +35,11 @@ def update_bucket(bucket_name, management_account_id, is_org):
             if is_org
             else [management_account_id]
         )
-        logging.debug(f"account_ids_list: {account_ids_list}")
+        logging.info(f"account_ids_list: {account_ids_list}")
         account_arns_list = []
         for account_id in account_ids_list:
             account_arns_list.append(f'"arn:aws:logs:*:{account_id}:*"')
-        logging.debug(f"account_arns_list: {account_arns_list}")
+        logging.info(f"account_arns_list: {account_arns_list}")
         new_statement = """[
             {
                 "Sid": "OrgLogDeliveryWrite",
@@ -87,7 +87,7 @@ def update_bucket(bucket_name, management_account_id, is_org):
         response = s3_client.put_bucket_policy(
             Bucket=bucket_name, Policy=json.dumps(new_policy)
         )
-        logging.debug(response)
+        logging.info(response)
     except Exception as e:
         logging.critical(str(e))
 
