@@ -299,11 +299,7 @@ def process_os_service(region: str) -> Dict[str, Any]:
                 )
 
             except ClientError as e:
-                if e.response["Error"][
-                    "Code"
-                ] == "InvalidInstanceId" and "not in a valid state for account" in str(
-                    e
-                ):
+                if e.response["Error"]["Code"] == "InvalidInstanceId" and "not in a valid state for account" in str(e):
                     logger.warning(
                         f"[{region} | OS INTERNALS | {instance_id}] COMMAND FAILED: {str(e)}"
                     )

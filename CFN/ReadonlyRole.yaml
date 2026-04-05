@@ -169,6 +169,14 @@ Resources:
               - "secretsmanager:GetResourcePolicy"
               - "secretsmanager:ListSecretVersionIds"
 
+              - "ssm:ListDocuments"
+              - "elasticfilesystem:DescribeFileSystems"
+              - "redshift:DescribeClusters"
+              - "states:ListStateMachines"
+              - "kinesis:ListStreams"
+              - "codepipeline:ListPipelines"
+              - "wafv2:ListWebACLs"
+
           - Sid: "ListRegionsOnAccounts"
             Effect: "Allow"
             Action:

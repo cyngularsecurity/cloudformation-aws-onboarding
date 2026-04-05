@@ -4,6 +4,8 @@ import logging
 import json
 from cyngular_common import cfnresponse
 
+ORG_LOG_DELIVERY_SIDS = ("OrgLogDeliveryWrite", "OrgLogDeliveryAclCheck")
+
 
 def get_account_ids_lst(management_account_id):
     member_accounts = []
@@ -78,7 +80,11 @@ def update_bucket(bucket_name, management_account_id, is_org):
         )
         new_statement_json = json.loads(new_statement)
         response_policy = json.loads(response["Policy"])
-        statement_policy = response_policy["Statement"]
+        # Remove any existing org log delivery statements to avoid accumulation on daily runs
+        statement_policy = [
+            s for s in response_policy["Statement"]
+            if s.get("Sid") not in ORG_LOG_DELIVERY_SIDS
+        ]
         statement_policy.extend(new_statement_json)
         new_policy = {}
         new_policy["Statement"] = statement_policy
