@@ -83,18 +83,5 @@ runs:
     - name: Display deployment configuration
       shell: bash
       run: |
-        echo "🚀 Deployment Configuration:"
-        echo "  Environment: ${{ inputs.environment }}"
-        echo "  CFN S3 Bucket: ${{ steps.config.outputs.s3_bucket_cfn }}"
-        echo "  Regional Bucket Pattern: ${{ steps.config.outputs.bucket_pattern_regional }}"
-        echo "  AWS Region: ${{ steps.config.outputs.aws_region }}"
-        echo "  Python Version: ${{ steps.config.outputs.python_version }}"
+        echo "Deployment configured for environment: ${{ inputs.environment }}"
         echo "  Timestamp: ${{ steps.config.outputs.timestamp }}"
-        echo "  Deploy Role ARN: ${{ steps.config.outputs.deploy_role_arn }}"
-        
-        # Debug output for troubleshooting
-        echo ""
-        echo "🔍 Debug Information:"
-        echo "  Dev Account ID (masked): ${{ inputs.dev_aws_account_id && '***' || 'NOT SET' }}"
-        echo "  Stg Account ID (masked): ${{ inputs.stg_aws_account_id && '***' || 'NOT SET' }}"
-        echo "  Prod Account ID (masked): ${{ inputs.prod_aws_account_id && '***' || 'NOT SET' }}"

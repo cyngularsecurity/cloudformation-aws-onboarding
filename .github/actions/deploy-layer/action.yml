@@ -89,13 +89,9 @@ runs:
         MULTI_REGION: true
         DUAL_DEPLOYMENT: true
         TIMESTAMP: ${{ inputs.timestamp }}
+        QUIET_MODE: true
       run: |
-        echo "📦 Deploying Lambda layer to regional buckets..."
-        echo "  Source: layer-package/"
-        echo "  Bucket pattern: ${{ inputs.bucket_pattern }}"
-        echo "  Multi-region deployment with dual paths (timestamp + latest)"
-        
-        # Run enhanced sync script with multi-region and dual deployment
+        echo "Deploying Lambda layer..."
         uv run s3_sync.py
         
     - name: Cleanup build artifacts
@@ -108,8 +104,4 @@ runs:
     - name: Display deployment summary
       shell: bash
       run: |
-        echo "✅ Lambda layer deployed to:"
-        echo "  📁 Versioned: s3://{bucket}/layers/versions/${{ inputs.timestamp }}/cyngular-onboarding.zip"
-        echo "  🔗 Latest: s3://{bucket}/layers/latest/cyngular-onboarding.zip"
-        echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
-        echo "  🐍 Python version: ${{ inputs.python_version }}"
+        echo "Lambda layer deployed (version: ${{ inputs.timestamp }})"

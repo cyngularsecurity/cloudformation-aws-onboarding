@@ -36,20 +36,12 @@ runs:
         AWS_REGION: ${{ inputs.aws_region }}
         DUAL_DEPLOYMENT: true
         TIMESTAMP: ${{ inputs.timestamp }}
+        QUIET_MODE: true
       run: |
-        echo "📦 Syncing CloudFormation templates..."
-        echo "  Source: $SOURCE_PATH"
-        echo "  Destination: s3://$S3_BUCKET/$S3_PREFIX"
-        echo "  Patterns: $FILE_PATTERN (includes YAML and JSON files)"
-        echo "  Dual deployment: timestamp + latest"
-        
-        # Run the enhanced sync script with dual deployment
+        echo "Syncing CloudFormation templates..."
         uv run s3_sync.py
-        
+
     - name: Display deployment summary
       shell: bash
       run: |
-        echo "✅ CloudFormation templates deployed to:"
-        echo "  📁 Versioned: s3://${{ inputs.s3_bucket }}/cfn/versions/${{ inputs.timestamp }}/"
-        echo "  🔗 Latest: s3://${{ inputs.s3_bucket }}/cfn/latest/"
-        echo "  🌍 Region: ${{ inputs.aws_region }}"
+        echo "CloudFormation templates deployed (version: ${{ inputs.timestamp }})"

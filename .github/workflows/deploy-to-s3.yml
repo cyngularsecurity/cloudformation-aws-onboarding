@@ -87,13 +87,9 @@ jobs:
         with:
           environment: ${{ steps.set-env.outputs.environment }}
       
-      # Display deployment summary with input flags
       - name: Display deployment summary
         run: |
-          echo "🎯 Deployment Summary:"
-          echo "  Environment: ${{ steps.set-env.outputs.environment }}"
-          echo "  Deploy CFN: ${{ github.event.inputs.deploy_cfn || 'true' }}"
-          echo "  Deploy Lambdas: ${{ github.event.inputs.deploy_lambdas || 'true' }}"
+          echo "Deploying ${{ steps.set-env.outputs.environment }} environment"
 
   # Job 2: Deploy CloudFormation templates using composite action
   deploy-cfn-templates:
@@ -236,52 +232,15 @@ jobs:
     if: always()
 
     steps:
-      - name: Generate enhanced deployment summary
+      - name: Generate deployment summary
         run: |
-          echo "# 📊 Enhanced Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "# Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "## 🎯 Configuration" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deploy Role ARN**: Constructed per job (avoids secret masking)" >> $GITHUB_STEP_SUMMARY
-          echo "- **CFN S3 Bucket**: ${{ needs.prepare-deployment.outputs.s3_bucket_cfn }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Regional Bucket Pattern**: ${{ needs.prepare-deployment.outputs.bucket_pattern_regional }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **AWS Region**: ${{ needs.prepare-deployment.outputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: ${{ needs.prepare-deployment.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "## 📦 Deployment Status" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
-          
-          # CloudFormation status
-          if [[ "${{ needs.deploy-cfn-templates.result }}" == "success" ]]; then
-            echo "| CloudFormation Templates | ✅ Success | Centralized deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.deploy-cfn-templates.result }}" == "skipped" ]]; then
-            echo "| CloudFormation Templates | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| CloudFormation Templates | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Lambda functions status
-          if [[ "${{ needs.deploy-lambda-functions.result }}" == "success" ]]; then
-            echo "| Lambda Functions | ✅ Success | Multi-region deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.deploy-lambda-functions.result }}" == "skipped" ]]; then
-            echo "| Lambda Functions | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Lambda Functions | ❌ Failed | Check matrix job logs for details |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Lambda layer status
-          if [[ "${{ needs.deploy-lambda-layer.result }}" == "success" ]]; then
-            echo "| Lambda Layer | ✅ Success | Multi-region deployment with dual paths |" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.deploy-lambda-layer.result }}" == "skipped" ]]; then
-            echo "| Lambda Layer | ⏭️ Skipped | Disabled via input parameter |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Lambda Layer | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [CFN S3 Console](https://s3.console.aws.amazon.com/s3/buckets/${{ needs.prepare-deployment.outputs.s3_bucket_cfn }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CloudFormation Templates | ${{ needs.deploy-cfn-templates.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lambda Functions | ${{ needs.deploy-lambda-functions.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lambda Layer | ${{ needs.deploy-lambda-layer.result }} |" >> $GITHUB_STEP_SUMMARY

@@ -27,7 +27,8 @@ from rich.console import Console
 from rich.table import Table
 from botocore.exceptions import ClientError
 
-console = Console()
+QUIET = os.environ.get("QUIET_MODE", "").lower() in ("1", "true", "yes")
+console = Console(quiet=QUIET)
 
 
 @dataclass

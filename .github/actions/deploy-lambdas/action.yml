@@ -43,21 +43,12 @@ runs:
         MULTI_REGION: true
         DUAL_DEPLOYMENT: true
         TIMESTAMP: ${{ inputs.timestamp }}
+        QUIET_MODE: true
       run: |
-        echo "📦 Packaging Lambda functions: ${{ inputs.lambda_type }}"
-        echo "  Source: ${{ inputs.lambda_path }}"
-        echo "  Bucket pattern: ${{ inputs.bucket_pattern }}"
-        echo "  Creating ZIPs from nested directories and deploying to all regions"
-        echo "  Dual deployment: timestamp + latest"
-        
-        # Run enhanced sync script with multi-region and dual deployment
+        echo "Packaging Lambda functions: ${{ inputs.lambda_type }}"
         uv run s3_sync.py
-        
+
     - name: Display deployment summary
       shell: bash
       run: |
-        echo "✅ Lambda functions (${{ inputs.lambda_type }}) deployed to:"
-        echo "  📁 Versioned: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/versions/${{ inputs.timestamp }}/"
-        echo "  🔗 Latest: s3://{bucket}/lambdas/${{ inputs.lambda_type }}/latest/"
-        echo "  🌍 Multi-region: Based on discovered buckets with pattern '${{ inputs.bucket_pattern }}'"
-        echo "  📦 Packaging: Each subdirectory becomes a separate ZIP file"
+        echo "Lambda functions (${{ inputs.lambda_type }}) deployed (version: ${{ inputs.timestamp }})"
