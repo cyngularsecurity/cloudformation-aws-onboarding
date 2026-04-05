@@ -301,15 +301,16 @@ def process_os_service(region: str) -> Dict[str, Any]:
             except ClientError as e:
                 if e.response["Error"]["Code"] == "InvalidInstanceId" and "not in a valid state for account" in str(e):
                     logger.warning(
-                        f"[{region} | OS INTERNALS | {instance_id}] COMMAND FAILED: {str(e)}"
+                        f"[{region} | OS INTERNALS | {instance_id}] SKIPPED: instance not reachable via SSM "
+                        f"(likely missing SSM agent, stopped/terminated, or not SSM-managed). {str(e)}"
                     )
                     processed_instances.append(
-                        {"instance_id": instance_id, "error": str(e)}
+                        {"instance_id": instance_id, "error": str(e), "reason": "ssm_unreachable"}
                     )
 
                 elif e.response["Error"]["Code"] == "UnsupportedPlatformType":
                     logger.warning(
-                        f"[{region} | OS INTERNALS | {instance_id}] COMMAND FAILED: {str(e)}"
+                        f"[{region} | OS INTERNALS | {instance_id}] SKIPPED: unsupported platform (likely Windows). {str(e)}"
                     )
                     processed_instances.append(
                         {"instance_id": instance_id, "error": str(e)}
