@@ -17,7 +17,7 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 
 - [Deployment Instructions](./docs/DEPLOY_INSTRUCTIONS.md) - Prerequisites and deployment steps
 - [Service Configuration](./docs/SERVICE_CONFIGURATION.md) - Service enablement options
-- [Maintenance Guide](./docs/MAINTENANCE.md) - manage existing deployments
+- [Maintenance Guide](./docs/MAINTENANCE.md) - Manage existing deployments
 
 ## Architecture
 
@@ -30,11 +30,17 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 - [`AWSCloudFormationStackSetAdministrationRole.yaml`](./CFN/AWSCloudFormationStackSetAdministrationRole.yaml) - StackSet admin role
 - [`AWSCloudFormationStackSetExecutionRole.yaml`](./CFN/AWSCloudFormationStackSetExecutionRole.yaml) - StackSet execution role
 
-#### Then **Cyngular Onboarding** (in order)
+#### Cyngular Onboarding (in order)
 
 - [`ReadonlyRole.yaml`](./CFN/ReadonlyRole.yaml) - Cross-account IAM role for Cyngular access
 - [`Core.yaml`](./CFN/Core.yaml) - S3 storage, CloudTrail, and core infrastructure (always, on management account only)
 - [`Services.yaml`](./CFN/Services.yaml) - Lambda functions services
+
+#### Additional Templates
+
+- [`bucket_and_trail.yaml`](./CFN/bucket_and_trail.yaml) - Standalone S3 bucket and CloudTrail setup (alternative to Core.yaml for specific use cases)
+- [`s3-events-ingestion.yaml`](./CFN/s3-events-ingestion.yaml) - EventBridge rules and SQS queues for S3 log ingestion across multiple log types (CloudTrail, VPC Flow Logs, DNS, EKS)
+- [`Cleanup.yaml`](./CFN/Cleanup.yaml) - Offboarding cleanup - For Lambda functions (DNS and VPC Flow Logs removal)
 
 ### Lambdas Services ([`Lambdas/`](./Lambdas/))
 
@@ -47,3 +53,7 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 - **[Cleaners/](./Lambdas/Cleaners/)**
   - [`RemoveVFL/`](./Lambdas/Cleaners/RemoveVFL/) - VPC Flow Logs cleanup (Required for offboarding)
   - [`RemoveDNS/`](./Lambdas/Cleaners/RemoveDNS/) - DNS logging cleanup (Optional for offboarding)
+
+### Offboarding
+
+See [Offboarding Guide](./Charts/Cleanup.md) for the full decommissioning process.

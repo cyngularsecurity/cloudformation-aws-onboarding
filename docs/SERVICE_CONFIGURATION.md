@@ -1,16 +1,14 @@
 # Service Configuration Guide
 
-## Service Parameters
-
-### Service Enablement Options
+## Service Enablement Options
 
 For each service, you can provide one of the following values:
 
 - **`"true"`** - Enable service with Cyngular-managed S3 bucket
-- **`"false"`** - Disable the service completely  
+- **`"false"`** - Disable the service completely
 - **`"bucket-name"`** - Use existing custom S3 bucket (DNS and VPC Flow Logs only)
 
-### Using Existing S3 Buckets
+## Using Existing S3 Buckets
 
 If you already have S3 buckets configured for logging, add the following tags to enable Cyngular collection:
 
@@ -19,88 +17,61 @@ If you already have S3 buckets configured for logging, add the following tags to
 - **VPC Flow logs**: `{key: cyngular-vpcflowlogs, value: true}`
 - **EKS audit logs**: `{key: cyngular-ekslogs, value: true}` (Cyngular bucket only)
 
+When using existing buckets, also update the bucket policy to allow Cyngular access. See the policy template at [`CFN/S3-Bucket-Policy-Statement.json`](../CFN/S3-Bucket-Policy-Statement.json).
+
 ## Settings in .env
 
-### Sample - [Settings in .env](../.env.example)
+> **Note:** The `.env` file is only used with the Rain CLI deployment method. If deploying via the AWS Console, provide these values as CloudFormation parameters directly.
+
+### Sample - [.env.example](../.env.example)
 
 ### Required Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| **CLIENT_NAME** | Short identifier for your organization (lowercase, 3-15 chars, alphanumeric) | `-` |
-| **RUNTIME_REGION** | Your primary region where resources are created | `us-east-1` |
+| **CLIENT_NAME** | Short identifier for your organization (lowercase, 3-15 chars, alphanumeric) | - |
+| **RUNTIME_REGION** | Primary region where resources are created | `us-east-1` |
 | **RUNTIME_PROFILE** | AWS CLI profile to use for deployment | `default` |
 | **CYNGULAR_ACCOUNT_ID** | Cyngular AWS account ID | `851565895544` |
 
-### Organization Deployment Variables
+### Organization Variables (required for org deployments)
 
-Required when deploying to AWS Organizations:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| **CLIENT_MGMT_ACCOUNT_ID** | Client Management account ID | `-` |
-| **ORGANIZATION_ID** | AWS Organization ID | `o-xxxxxxxxxx` |
-| **ORGANIZATIONAL_UNIT_IDS** | Comma-separated OU IDs | `r-kdxm` |
-
-### Optional Variables
+| Variable | Description |
+|----------|-------------|
+| **CLIENT_MGMT_ACCOUNT_ID** | Management account ID |
+| **ORGANIZATION_ID** | AWS Organization ID (e.g. `o-xxxxxxxxxx`) |
+| **ORGANIZATIONAL_UNIT_IDS** | Comma-separated OU IDs (use root OU for org-wide) |
 
 ### Feature Flags
 
 | Variable | Description | Options | Default |
 |----------|-------------|---------|---------|
 | **EnableCloudTrail** | Create CloudTrail trail | `true`/`false` | `true` |
-| **EnableDNS** | Enable DNS logging service | `true`/`false`/`bucket-name` | `true` |
+| **EnableDNS** | Enable DNS logging | `true`/`false`/`bucket-name` | `true` |
 | **EnableEKS** | Enable EKS audit logging | `true`/`false` | `true` |
 | **EnableVPCFlowLogs** | Enable VPC Flow Logs | `true`/`false`/`bucket-name` | `true` |
-| **EnableBucketPolicyManager** | Enable cross-account bucket policy management | `true`/`false` | `true` |
+| **EnableBucketPolicyManager** | Enable bucket policy management | `true`/`false` | `true` |
+
+### Optional
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| **CloudTrailBucket** | Existing CloudTrail bucket name (if already configured) | `""` |
-| **ExcludedRegions** | Comma-separated list of regions to exclude from service manager lookup | `""` |
-| **ServiceManagerOverride** | Increment to retrigger ServiceManager Lambda from CloudFormation stack | `1` |
+| **CloudTrailBucket** | Existing CloudTrail bucket name | `""` |
+| **ExcludedRegions** | Comma-separated regions to exclude | `""` |
+| **ServiceManagerOverride** | Increment to retrigger Service Manager Lambda | `1` |
 
-### StackSet Operation Tuning
-
-| Variable | Description | Range | Default |
-|----------|-------------|-------|---------|
-| **FAILURE_TOLERANCE_PERCENTAGE** | Percentage of accounts that can fail before stopping deployment | 0-100 | `25` |
-| **MAX_CONCURRENT_PERCENTAGE** | Maximum percentage of accounts to deploy to concurrently | 1-100 | `90` |
-
-## Example .env Configuration
-
-### Single Account Deployment
+## Example .env
 
 ```bash
-# Required
 CLIENT_NAME="acme"
 RUNTIME_REGION="us-east-1"
 RUNTIME_PROFILE="default"
 CYNGULAR_ACCOUNT_ID="851565895544"
 
-# Services
-EnableCloudTrail="true"
-EnableDNS="true"
-EnableEKS="true"
-EnableVPCFlowLogs="true"
-EnableBucketPolicyManager="false"
-
-# Optional
-ServiceManagerOverride=1
-```
-
-### Organization-Wide Deployment
-```bash
-# Required
-CLIENT_NAME="enterprise"
-RUNTIME_REGION="us-east-1"
-RUNTIME_PROFILE="org-mgmt"
-CYNGULAR_ACCOUNT_ID="851565895544"
-
-# Organization settings (required for org deployment)
-CLIENT_MGMT_ACCOUNT_ID="111122223333"
-ORGANIZATION_ID="o-abc123def"
-ORGANIZATIONAL_UNIT_IDS="r-kdxm"  # Root OU for org-wide
+# Organization settings (omit for single-account deployment)
+# CLIENT_MGMT_ACCOUNT_ID="111122223333"
+# ORGANIZATION_ID="o-abc123def"
+# ORGANIZATIONAL_UNIT_IDS="r-kdxm"
 
 # Services
 EnableCloudTrail="true"
@@ -108,26 +79,4 @@ EnableDNS="true"
 EnableEKS="true"
 EnableVPCFlowLogs="true"
 EnableBucketPolicyManager="true"
-
-# Optional tuning
-ServiceManagerOverride=1
-MAX_CONCURRENT_PERCENTAGE="75"
-FAILURE_TOLERANCE_PERCENTAGE="30"
-ExcludedRegions="eu-central-1,sa-east-1"
-```
-
-### Using Existing Buckets
-```bash
-# Required
-CLIENT_NAME="hybrid"
-RUNTIME_REGION="us-west-2"
-RUNTIME_PROFILE="default"
-CYNGULAR_ACCOUNT_ID="851565895544"
-
-# Use existing buckets for some services
-CloudTrailBucket="my-existing-cloudtrail-bucket"
-EnableDNS="my-dns-logs-bucket"        # Custom bucket for DNS logs
-EnableVPCFlowLogs="my-vpc-logs-bucket" # Custom bucket for VPC Flow Logs
-EnableEKS="true"                       # Uses Cyngular bucket
-EnableBucketPolicyManager="false"
 ```

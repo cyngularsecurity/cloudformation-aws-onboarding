@@ -1,6 +1,11 @@
-# General Notes & Caveats
+# Notes & Caveats
 
-**Organization Deployments:** Organization ID is required only when deploying to an organization from the management account. Deployment to an org from a member account will fail on CloudTrail permissions.
+- **Organization Deployments:** Organization ID is required only when deploying from the management account. Deployment from a member account will fail on CloudTrail permissions.
 
-<!-- * ClientRegions contains all the regions the client is operation in,
-the client main region, included in the list but determind by the region the main stack is deployed to. -->
+- **Region Discovery:** The Service Manager automatically discovers all enabled regions. Use the `ExcludedRegions` parameter to skip specific regions.
+
+- **OS Service (auditd):** Installs auditd on running EC2 instances via SSM. Instances without SSM agent or Windows instances will be skipped — this is expected.
+
+- **Bucket Policy Manager:** Runs daily to maintain S3 bucket policy for log delivery. Safe to run repeatedly — it replaces (not appends) the relevant policy statements each time.
+
+- **Custom Buckets:** For DNS and VPC Flow Logs, you can pass a bucket name instead of `true`/`false`. See [Service Configuration](./SERVICE_CONFIGURATION.md).
