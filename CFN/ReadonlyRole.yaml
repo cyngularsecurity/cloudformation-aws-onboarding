@@ -3,9 +3,7 @@ AWSTemplateFormatVersion: 2010-09-09
 #   - 'AWS::LanguageExtensions'
 
 Description: >-
-  Cyngular Cross-Account Access Role Template
-  Creates: IAM role (cyngular-readonly-role-{client}) for cross-account access,
-  IAM role policy (readonly permissions) for security monitoring and analysis
+  Cyngular Cross-Account Access Role Template Creates: IAM role (cyngular-readonly-role-{client}) for cross-account access, IAM role policy (readonly permissions) for security monitoring and analysis
 
 Metadata:
   Vendor:
@@ -13,11 +11,11 @@ Metadata:
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
-      - Label:
-          default: "Client Info"
-        Parameters:
-          - ClientName
-          - CyngularAccountId
+    - Label:
+        default: "Client Info"
+      Parameters:
+      - ClientName
+      - CyngularAccountId
 
 Mappings:
   Const:
@@ -47,17 +45,17 @@ Resources:
     Properties:
       RoleName: !Sub "cyngular-readonly-role-${ClientName}"
       AssumeRolePolicyDocument:
-        Version: !FindInMap [Const, Cyngular, PolicyVersion]
+        Version: !FindInMap [ Const, Cyngular, PolicyVersion ]
         Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
-            Action: "sts:AssumeRole"
+        - Effect: Allow
+          Principal:
+            AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
+          Action: "sts:AssumeRole"
       Tags:
-        - Key: Vendor
-          Value: "Cyngular Security"
-        - Key: ClientName
-          Value: !Ref ClientName
+      - Key: Vendor
+        Value: "Cyngular Security"
+      - Key: ClientName
+        Value: !Ref ClientName
 
   ClientCyngularRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -65,168 +63,166 @@ Resources:
       PolicyName: !Sub "cyngular-readonly-role-policy-${ClientName}"
       RoleName: !Ref ClientCyngularRole
       PolicyDocument:
-        Version: !FindInMap [Const, Cyngular, PolicyVersion]
+        Version: !FindInMap [ Const, Cyngular, PolicyVersion ]
         Statement:
-          - Sid: "ReadOnly"
-            Effect: Allow
-            Resource: "*"
-            Action:
-              - "iam:List*"
-              - "iam:Get*"
-              - "iam:Generate*"
+        - Sid: "ReadOnly"
+          Effect: Allow
+          Resource: "*"
+          Action:
+          - "iam:List*"
+          - "iam:Get*"
+          - "iam:Generate*"
 
-              - "organizations:Describe*"
-              - "organizations:List*"
-              - "tag:GetResources"
+          - "organizations:Describe*"
+          - "organizations:List*"
+          - "tag:GetResources"
 
-              - "access-analyzer:ValidatePolicy"
-              - "access-analyzer:ListPolicyGenerations"
+          - "access-analyzer:ValidatePolicy"
+          - "access-analyzer:ListPolicyGenerations"
 
-              - "ce:List*"
-              - "ce:Get*"
-              - "ce:Describe*"
+          - "ce:List*"
+          - "ce:Get*"
+          - "ce:Describe*"
 
-              - "s3:List*"
-              - "s3:Describe*"
-              - "s3:GetBucketAcl"
-              - "s3:GetBucketLocation"
-              - "s3:GetBucketPolicy"
-              - "s3:GetBucketPolicyStatus"
-              - "s3:GetEncryptionConfiguration"
-              - "s3:GetBucketOwnershipControls"
-              - "s3:GetBucketTagging"
-              - "s3:GetIntelligentTieringConfiguration"
-              - "s3:GetAccountPublicAccessBlock"
-              - "s3:GetBucketPublicAccessBlock"
+          - "s3:List*"
+          - "s3:Describe*"
+          - "s3:GetBucketAcl"
+          - "s3:GetBucketLocation"
+          - "s3:GetBucketPolicy"
+          - "s3:GetBucketPolicyStatus"
+          - "s3:GetEncryptionConfiguration"
+          - "s3:GetBucketOwnershipControls"
+          - "s3:GetBucketTagging"
+          - "s3:GetIntelligentTieringConfiguration"
+          - "s3:GetAccountPublicAccessBlock"
+          - "s3:GetBucketPublicAccessBlock"
 
-              - "logs:List*"
-              - "logs:Describe*"
-              - "logs:Get*"
-              - "logs:FilterLogEvents"
-              - "logs:StartQuery"
+          - "logs:List*"
+          - "logs:Describe*"
+          - "logs:Get*"
+          - "logs:FilterLogEvents"
+          - "logs:StartQuery"
 
-              - "cloudwatch:GetMetricStatistics"
+          - "cloudwatch:GetMetricStatistics"
 
-              - "ec2:List*"
-              - "ec2:CreateTags"
-              - "ec2:Describe*"
-              - "ec2:GetImageBlockPublicAccessState"
+          - "ec2:List*"
+          - "ec2:CreateTags"
+          - "ec2:Describe*"
+          - "ec2:GetImageBlockPublicAccessState"
 
-              - "ecr:Describe*"
-              - "ecr:List*"
-              - "eks:Describe*"
-              - "eks:List*"
-              - "ecs:List*"
-              - "ecs:Describe*"
+          - "ecr:Describe*"
+          - "ecr:List*"
+          - "eks:Describe*"
+          - "eks:List*"
+          - "ecs:List*"
+          - "ecs:Describe*"
 
-              - "lambda:List*"
-              - "lambda:Get*"
-              - "rds:List*"
-              - "rds:Describe*"
+          - "lambda:List*"
+          - "lambda:Get*"
+          - "rds:List*"
+          - "rds:Describe*"
 
-              - "cloudformation:Describe*"
-              - "cloudformation:List*"
-              - "cloudformation:Get*"
+          - "cloudformation:Describe*"
+          - "cloudformation:List*"
+          - "cloudformation:Get*"
 
-              - "route53:Get*"
-              - "route53:List*"
-              - "route53:TestDNSAnswer"
+          - "route53:Get*"
+          - "route53:List*"
+          - "route53:TestDNSAnswer"
 
-              - "cloudtrail:GetTrail"
-              - "cloudtrail:DescribeTrails"
-              - "cloudtrail:GetTrailStatus"
-              - "cloudtrail:LookupEvents"
-              - "cloudtrail:ListTags"
-              - "cloudtrail:ListTrails"
-              - "cloudtrail:GetEventSelectors"
-              - "cloudtrail:GetInsightSelectors"
+          - "cloudtrail:GetTrail"
+          - "cloudtrail:DescribeTrails"
+          - "cloudtrail:GetTrailStatus"
+          - "cloudtrail:LookupEvents"
+          - "cloudtrail:ListTags"
+          - "cloudtrail:ListTrails"
+          - "cloudtrail:GetEventSelectors"
+          - "cloudtrail:GetInsightSelectors"
 
-              - "kms:Describe*"
-              - "kms:Get*"
-              - "kms:List*"
-              - "kms:Encrypt"
-              - "kms:ReEncrypt*"
-              - "kms:Decrypt"
-              - "kms:CreateGrant"
+          - "kms:Describe*"
+          - "kms:Get*"
+          - "kms:List*"
+          - "kms:Encrypt"
+          - "kms:ReEncrypt*"
+          - "kms:Decrypt"
+          - "kms:CreateGrant"
 
-              - "events:ListRules"
-              - "events:ListTargetsByRule"
-              - "events:ListEventBuses"
-              - "events:DescribeEventBus"
-              - "events:DescribeRule"
-              - "events:TestEventPattern"
-              - "events:PutRule"
-              - "events:PutTargets"
+          - "events:ListRules"
+          - "events:ListTargetsByRule"
+          - "events:ListEventBuses"
+          - "events:DescribeEventBus"
+          - "events:DescribeRule"
+          - "events:TestEventPattern"
+          - "events:PutRule"
+          - "events:PutTargets"
 
-              - "cloudwatch:ListMetrics"
-              - "cloudwatch:GetMetricData"
+          - "cloudwatch:ListMetrics"
+          - "cloudwatch:GetMetricData"
 
-              - "codebuild:ListBuilds"
-              - "codebuild:BatchGetBuilds"
+          - "codebuild:ListBuilds"
+          - "codebuild:BatchGetBuilds"
 
-              - "secretsmanager:ListSecrets"
-              - "secretsmanager:DescribeSecret"
-              - "secretsmanager:GetResourcePolicy"
-              - "secretsmanager:ListSecretVersionIds"
+          - "secretsmanager:ListSecrets"
+          - "secretsmanager:DescribeSecret"
+          - "secretsmanager:GetResourcePolicy"
+          - "secretsmanager:ListSecretVersionIds"
 
-              - "ssm:ListDocuments"
-              - "elasticfilesystem:DescribeFileSystems"
-              - "redshift:DescribeClusters"
-              - "states:ListStateMachines"
-              - "kinesis:ListStreams"
-              - "codepipeline:ListPipelines"
-              - "wafv2:ListWebACLs"
+          - "ssm:ListDocuments"
+          - "elasticfilesystem:DescribeFileSystems"
+          - "redshift:DescribeClusters"
+          - "states:ListStateMachines"
+          - "kinesis:ListStreams"
+          - "codepipeline:ListPipelines"
+          - "wafv2:ListWebACLs"
+          - "securityhub:BatchImportFindings"
 
-          - Sid: "ListRegionsOnAccounts"
-            Effect: "Allow"
-            Action:
-              - "account:ListRegions"
-            Resource:
-              - arn:aws:account::*:account/o-*/*
-              - arn:aws:account::*:account
+        - Sid: "ListRegionsOnAccounts"
+          Effect: "Allow"
+          Action:
+          - "account:ListRegions"
+          Resource:
+          - arn:aws:account::*:account/o-*/*
+          - arn:aws:account::*:account
 
-          - Sid: "Ec2CyngularSnapshot"
-            Effect: Allow
-            Action:
-              - "ec2:DeleteSnapshot"
-              - "ec2:ModifySnapshotAttribute"
-            Resource: "*"
-            Condition:
-              StringLike:
-                aws:ResourceTag/Name: cyngular*
-          - Sid: "Ec2CreateSnapshot"
-            Effect: Allow
-            Resource: "*"
-            Action:
-              - "ec2:CopySnapshot"
-              - "ec2:CreateSnapshot"
-              - "ec2:CreateSnapshots"
-          - Sid: "CyngularKmsKey"
-            Effect: Allow
-            Resource:
-              - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/*${ClientName}*"
-              - !Sub "arn:aws:kms:*:${CyngularAccountId}:key/*${ClientName}*"
-            Action:
-              - "kms:*"
+        - Sid: "Ec2CyngularSnapshot"
+          Effect: Allow
+          Action:
+          - "ec2:DeleteSnapshot"
+          - "ec2:ModifySnapshotAttribute"
+          Resource: "*"
+          Condition:
+            StringLike:
+              aws:ResourceTag/Name: cyngular*
+        - Sid: "Ec2CreateSnapshot"
+          Effect: Allow
+          Resource: "*"
+          Action:
+          - "ec2:CopySnapshot"
+          - "ec2:CreateSnapshot"
+          - "ec2:CreateSnapshots"
+        - Sid: "CyngularKmsKey"
+          Effect: Allow
+          Resource:
+          - !Sub "arn:aws:kms:*:${CyngularAccountId}:alias/*${ClientName}*"
+          - !Sub "arn:aws:kms:*:${CyngularAccountId}:key/*${ClientName}*"
+          Action:
+          - "kms:*"
 
 Outputs:
   ReadonlyRoleArn:
     Description: "ARN of the Cyngular readonly role"
     Value: !GetAtt ClientCyngularRole.Arn
     Export:
-      Name:
-        !Join [":", ["CyngularSecurity", "ReadonlyRoleArn", !Ref ClientName]]
+      Name: !Join [ ":", [ "CyngularSecurity", "ReadonlyRoleArn", !Ref ClientName ] ]
 
   ReadonlyRoleName:
     Description: "Name of the Cyngular readonly role"
     Value: !Ref ClientCyngularRole
     Export:
-      Name:
-        !Join [":", ["CyngularSecurity", "ReadonlyRoleName", !Ref ClientName]]
+      Name: !Join [ ":", [ "CyngularSecurity", "ReadonlyRoleName", !Ref ClientName ] ]
 
   CyngularAccountId:
     Description: "ID of the Cyngular account"
     Value: !Ref CyngularAccountId
     Export:
-      Name:
-        !Join [":", ["CyngularSecurity", "CyngularAccountId", !Ref ClientName]]
+      Name: !Join [ ":", [ "CyngularSecurity", "CyngularAccountId", !Ref ClientName ] ]
