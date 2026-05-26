@@ -179,6 +179,8 @@ Resources:
           - "resource-explorer-2:ListIndexes"
           - "resource-explorer-2:Search"
 
+          - "ssm:DescribeDocumentPermission"
+
         - Sid: "ListRegionsOnAccounts"
           Effect: "Allow"
           Action:
