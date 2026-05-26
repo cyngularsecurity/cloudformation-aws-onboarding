@@ -205,9 +205,6 @@ Resources:
     Properties:
       TrailName: !FindInMap [Const, Cyngular, TrailName]
       S3BucketName: !Ref CyngularS3Bucket
-      InsightSelectors:
-        - InsightType: ApiCallRateInsight
-        - InsightType: ApiErrorRateInsight
       EventSelectors:
         - IncludeManagementEvents: true
           ExcludeManagementEventSources:
