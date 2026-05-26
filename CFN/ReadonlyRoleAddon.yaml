@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >-
+  Cyngular Readonly Role Add-on
+
+Metadata:
+  Vendor:
+    Description: Cyngular Security
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Client Info"
+        Parameters:
+          - ClientName
+
+Mappings:
+  Const:
+    "Cyngular":
+      PolicyVersion: "2012-10-17"
+
+Parameters:
+  ClientName:
+    Description: "The Client Company name (must match the name used during onboarding)"
+    Type: String
+    AllowedPattern: "^[a-z0-9]+$"
+    ConstraintDescription: "Company Name should consist of only lowercase characters and numbers, and it should not start with a number."
+    MinLength: 3
+    MaxLength: 15
+
+Resources:
+  ResourceExplorerAddonPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "cyngular-readonly-resource-explorer-${ClientName}"
+      RoleName: !Sub "cyngular-readonly-role-${ClientName}"
+      PolicyDocument:
+        Version: !FindInMap [Const, Cyngular, PolicyVersion]
+        Statement:
+          - Sid: "ResourceExplorerReadOnly"
+            Effect: Allow
+            Action:
+              - "resource-explorer-2:ListIndexes"
+              - "resource-explorer-2:Search"
+            Resource: "*"

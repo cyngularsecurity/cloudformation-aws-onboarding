@@ -176,6 +176,9 @@ Resources:
           - "wafv2:ListWebACLs"
           - "securityhub:BatchImportFindings"
 
+          - "resource-explorer-2:ListIndexes"
+          - "resource-explorer-2:Search"
+
         - Sid: "ListRegionsOnAccounts"
           Effect: "Allow"
           Action:
