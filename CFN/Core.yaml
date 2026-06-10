@@ -79,10 +79,6 @@ Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
   CreateCloudTrail: !Equals [!Ref EnableCloudTrail, "true"]
   CreateBucketPolicyManager: !Equals [!Ref EnableBucketPolicyManager, "true"]
-  IsDevEnvironment: !Not
-    - !Equals
-      - !Ref CyngularAccountId
-      - !FindInMap [Const, Cyngular, CyngularDefaultAccountId]
 
 Resources:
   ################################################################################
@@ -263,9 +259,8 @@ Resources:
       Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
       Content:
         S3Bucket: !Sub
-          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
-            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "layers/${code_version}/cyngular-onboarding.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
@@ -346,7 +341,8 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref CyngularS3Bucket
-          IS_ORG: !If [IsOrg, "true", "false"] ## lambda env vars are strings anyway
+          # lambda env vars are strings anyway
+          IS_ORG: !If [IsOrg, "true", "false"]
 
       Runtime: !FindInMap [Const, Cyngular, PythonRuntime]
       Handler: lambda_function.lambda_handler
@@ -354,9 +350,8 @@ Resources:
       Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
-          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
-            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "lambdas/services/${code_version}/UpdateBucketPolicy.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]

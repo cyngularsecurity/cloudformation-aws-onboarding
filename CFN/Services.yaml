@@ -85,14 +85,7 @@ Parameters:
     Type: CommaDelimitedList
     Default: ""
 
-  Environment:
-    Description: 'Environment designation - set to "dev" for development ref, otherwise leave empty'
-    Type: String
-    Default: ""
-
 Conditions:
-  IsDevEnvironment: !Equals [!Ref Environment, "dev"]
-
   IsVPCFlowLogsEnabled: !Equals [!Ref EnableVPCFlowLogs, "true"]
   IsDNSEnabled: !Equals [!Ref EnableDNS, "true"]
   IsEKSEnabled: !Equals [!Ref EnableEKS, "true"]
@@ -161,9 +154,8 @@ Resources:
       Description: "Shared utilities and dependencies for Cyngular OnBoarding Lambda functions"
       Content:
         S3Bucket: !Sub
-          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
-            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "layers/${code_version}/cyngular-onboarding.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
@@ -366,9 +358,8 @@ Resources:
       Layers: [!Ref CyngularLayer]
       Code:
         S3Bucket: !Sub
-          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
-            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "lambdas/services/${code_version}/ServiceManager.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
@@ -421,9 +412,8 @@ Resources:
               ]
       Code:
         S3Bucket: !Sub
-          - "${bucket_prefix}${bucket_name}-${AWS::Region}"
-          - bucket_prefix: !If [IsDevEnvironment, "dev-", ""]
-            bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
+          - "${bucket_name}-${AWS::Region}"
+          - bucket_name: !FindInMap [Const, Cyngular, LambdasBucketPrefix]
         S3Key: !Sub
           - "lambdas/services/${code_version}/RegionProcessor.zip"
           - code_version: !FindInMap [Const, Cyngular, CodeVersion]
