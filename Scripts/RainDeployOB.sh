@@ -74,7 +74,6 @@ deploy_stack "${CLIENT_NAME}-ro-role" "./CFN/ReadonlyRole.yaml" \
 echo "==> Core stack (${CLIENT_NAME}-core)"
 deploy_stack "${CLIENT_NAME}-core" "./CFN/Core.yaml" \
   ParameterKey=ClientName,ParameterValue="$CLIENT_NAME" \
-  ParameterKey=CyngularAccountId,ParameterValue="$CYN_ACCT" \
   ParameterKey=OrganizationId,ParameterValue="${ORGANIZATION_ID:-}" \
   ParameterKey=EnableCloudTrail,ParameterValue="${EnableCloudTrail:-true}" \
   ParameterKey=EnableBucketPolicyManager,ParameterValue="${EnableBucketPolicyManager:-true}"

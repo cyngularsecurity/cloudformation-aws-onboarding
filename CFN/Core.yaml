@@ -58,11 +58,6 @@ Parameters:
     Type: String
     # Default: ''
 
-  CyngularAccountId:
-    Description: "The Cyngular Account ID to assume the read only role"
-    Type: String
-    Default: "851565895544"
-
   EnableCloudTrail:
     Description: "Create Cyngular Trail | set to false to disable"
     Type: String
