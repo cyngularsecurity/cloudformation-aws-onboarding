@@ -11,7 +11,8 @@ logger.setLevel(logging.INFO)
 
 def process_dns_service(
     region: str,
-    cyngular_bucket: str
+    cyngular_bucket: str,
+    client_name: str
 ) -> Dict[str, Any]:
     """Configure DNS logging for the region"""
     try:
@@ -20,25 +21,27 @@ def process_dns_service(
         r53_client = boto3.client("route53resolver", region_name=region)
         ec2_client = boto3.client("ec2", region_name=region)
 
-        region_query_log_configs = r53_client.list_resolver_query_log_configs()[
-            "ResolverQueryLogConfigs"
-        ]
+        # Match on destination, not name: several clients can share one account,
+        # and a QLC named "cyngular_dns" may belong to another client's bucket.
+        destination_arn = f"arn:aws:s3:::{cyngular_bucket}"
         cyngular_resolver_id = ""
 
-        for config in region_query_log_configs:
-            if (
-                config.get("Name") == "cyngular_dns"
-            ):  ## TODO Check cases where another named already exist, and attempt to connetc to cyngular
-                cyngular_resolver_id = config["Id"]
-                logger.info(f"EXISTING QLC FOUND: {cyngular_resolver_id}")
+        paginator = r53_client.get_paginator("list_resolver_query_log_configs")
+        for page in paginator.paginate():
+            for config in page["ResolverQueryLogConfigs"]:
+                if config.get("DestinationArn") == destination_arn:
+                    cyngular_resolver_id = config["Id"]
+                    logger.info(f"EXISTING QLC FOUND: {cyngular_resolver_id}")
+                    break
+            if cyngular_resolver_id:
                 break
 
         if not cyngular_resolver_id:
             logger.info("NO EXISTING QLC FOUND - CREATING NEW")
             try:
                 response = r53_client.create_resolver_query_log_config(
-                    Name="cyngular_dns",
-                    DestinationArn=f"arn:aws:s3:::{cyngular_bucket}",
+                    Name=f"cyngular_dns_{client_name}",
+                    DestinationArn=destination_arn,
                     CreatorRequestId=str(uuid.uuid4()),
                     Tags=[
                         {"Key": "Purpose", "Value": "DNS Logging"},
@@ -118,6 +121,25 @@ def process_vfl_service(
                 },
             ],
         )
+
+        # create_flow_logs reports per-resource failures in Unsuccessful instead of
+        # raising (e.g. "Access Denied for LogDestination"), so check it explicitly.
+        failed = []
+        for item in response.get("Unsuccessful", []):
+            error = item.get("Error", {})
+            if "already exists" in error.get("Message", "") or error.get("Code") == "FlowLogAlreadyExists":
+                logger.info(f"[{region} | VPC FLOW LOGS] Already exists: {item.get('ResourceId')}")
+                continue
+            failed.append({"resource_id": item.get("ResourceId"), "error": error.get("Message")})
+
+        if failed:
+            logger.error(f"[{region} | VPC FLOW LOGS] FAILED FOR: {failed}")
+            return {
+                "success": False,
+                "vpc_ids": vpc_id_list,
+                "flow_log_ids": response.get("FlowLogIds", []),
+                "failed": failed,
+            }
 
         logger.info(f"[{region} | VPC FLOW LOGS] COMMAND SUCCEEDED.")
 
