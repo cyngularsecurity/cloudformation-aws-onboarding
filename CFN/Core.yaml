@@ -22,6 +22,7 @@ Metadata:
           default: "Override Parameters"
         Parameters:
           - EnableCloudTrail
+          - TrailName
           - EnableBucketPolicyManager
           - OrganizationId
           # - CyngularAccountId
@@ -64,6 +65,12 @@ Parameters:
     AllowedValues: ["true", "false"]
     Default: "true"
 
+  TrailName:
+    Description: "Name of the Cyngular trail | override (e.g. cyngular-cloudtrail-<client>) when another client's trail already uses the default name in this account/region"
+    Type: String
+    AllowedPattern: "^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$"
+    Default: "cyngular-cloudtrail"
+
   EnableBucketPolicyManager:
     Description: "Set to true to enable the bucket policy manager for future logging; set to false if not currently desired."
     Type: String
@@ -94,6 +101,11 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+      # Object-created events -> EventBridge, consumed by s3-events-ingestion.yaml (per-layer SQS).
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
 
       LifecycleConfiguration:
         Rules:
@@ -168,7 +180,7 @@ Resources:
               Resource: !GetAtt CyngularS3Bucket.Arn
               Condition:
                 StringEquals:
-                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
             - !Ref "AWS::NoValue"
           - !If
             - CreateCloudTrail
@@ -187,7 +199,7 @@ Resources:
               Condition:
                 StringEquals:
                   s3:x-amz-acl: "bucket-owner-full-control"
-                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/cyngular-cloudtrail"
+                  AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
             - !Ref "AWS::NoValue"
 
   ##############################
@@ -219,7 +231,7 @@ Resources:
     Condition: CreateCloudTrail
     Type: AWS::CloudTrail::Trail
     Properties:
-      TrailName: cyngular-cloudtrail
+      TrailName: !Ref TrailName
       S3BucketName: !Ref CyngularS3Bucket
       InsightSelectors:
         - InsightType: ApiCallRateInsight
@@ -238,7 +250,7 @@ Resources:
       IncludeGlobalServiceEvents: true
       Tags:
         - Key: Name
-          Value: cyngular-cloudtrail
+          Value: !Ref TrailName
         - Key: ClientName
           Value: !Ref ClientName
 
