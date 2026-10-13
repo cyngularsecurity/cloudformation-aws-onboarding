@@ -32,8 +32,10 @@ def update_bucket(bucket_name, management_account_id, is_org):
         s3_client = boto3.client("s3")
         response = s3_client.get_bucket_policy(Bucket=bucket_name)
 
+        # The management account always delivers logs too (its own VPC flow logs /
+        # DNS query logs); get_account_ids_lst returns member accounts only.
         account_ids_list = (
-            get_account_ids_lst(management_account_id)
+            [management_account_id] + get_account_ids_lst(management_account_id)
             if is_org
             else [management_account_id]
         )
