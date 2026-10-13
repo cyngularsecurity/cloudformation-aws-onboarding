@@ -42,6 +42,11 @@ Automated deployment of security monitoring infrastructure for AWS accounts usin
 - [`s3-events-ingestion.yaml`](./CFN/s3-events-ingestion.yaml) - EventBridge rules and SQS queues for S3 log ingestion across multiple log types (CloudTrail, VPC Flow Logs, DNS, EKS)
 - [`Cleanup.yaml`](./CFN/Cleanup.yaml) - Offboarding cleanup - For Lambda functions (DNS and VPC Flow Logs removal)
 
+#### Resource Explorer (in order)
+
+- [`resource_explorer_role.yaml`](./CFN/resource_explorer_role.yaml) - Cross-account IAM role assumed by the Resource Explorer worker Lambda (deploy in the management account and all member accounts)
+- [`resource_explorer_lambda.yaml`](./CFN/resource_explorer_lambda.yaml) - Dispatcher and worker Lambdas with a daily EventBridge Scheduler (08:00 Asia/Jerusalem) that create Resource Explorer indexes, an aggregator and a default view in every account (management account only)
+
 ### Lambdas Services ([`Lambdas/`](./Lambdas/))
 
 - **[Services/](./Lambdas/Services/)**

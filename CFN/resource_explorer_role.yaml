@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Cyngular Resource Explorer target role.
+  Deploy in the Management Account and all member accounts.
+
+Parameters:
+
+  ManagementAccountId:
+    Type: String
+    AllowedPattern: '^\d{12}$'
+    Description: AWS Organizations Management Account ID
+
+  WorkerExecutionRoleName:
+    Type: String
+    Default: CyngularResourceExplorerWorkerRole
+
+  TargetRoleName:
+    Type: String
+    Default: CyngularResourceExplorerRole
+
+
+Resources:
+
+  CyngularResourceExplorerRole:
+    Type: AWS::IAM::Role
+    Properties:
+
+      RoleName: !Ref TargetRoleName
+
+      Description: >
+        Role assumed by the Cyngular Resource Explorer Worker
+        Lambda running in the Management Account.
+
+      MaxSessionDuration: 3600
+
+
+      # ======================================================
+      # Trust Lambda B execution role
+      # ======================================================
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+
+        Statement:
+
+          - Sid: AllowCyngularResourceExplorerWorker
+            Effect: Allow
+
+            Principal:
+              AWS: !Sub
+                - 'arn:${AWS::Partition}:iam::${ManagementAccountId}:role/${WorkerRoleName}'
+                - WorkerRoleName: !Ref WorkerExecutionRoleName
+
+            Action:
+              - sts:AssumeRole
+
+
+      Policies:
+
+        - PolicyName: CyngularResourceExplorerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+
+            Statement:
+
+              # ==================================================
+              # Discover enabled AWS Regions
+              # ==================================================
+
+              - Sid: DescribeRegions
+                Effect: Allow
+
+                Action:
+                  - ec2:DescribeRegions
+
+                Resource: '*'
+
+
+              # ==================================================
+              # Resource Explorer indexes and views
+              # ==================================================
+
+              - Sid: ResourceExplorerAccess
+                Effect: Allow
+
+                Action:
+
+                  - resource-explorer-2:ListIndexes
+                  - resource-explorer-2:GetIndex
+
+                  - resource-explorer-2:CreateIndex
+                  - resource-explorer-2:UpdateIndexType
+
+                  - resource-explorer-2:ListViews
+                  - resource-explorer-2:GetView
+                  - resource-explorer-2:GetDefaultView
+
+                  - resource-explorer-2:CreateView
+                  - resource-explorer-2:UpdateView
+                  - resource-explorer-2:AssociateDefaultView
+
+                Resource: '*'
+
+
+              # ==================================================
+              # Required only when Resource Explorer creates its
+              # service-linked role for the first time in account.
+              # ==================================================
+
+              - Sid: CreateResourceExplorerServiceLinkedRole
+                Effect: Allow
+
+                Action:
+                  - iam:CreateServiceLinkedRole
+
+                Resource: '*'
+
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName:
+                      - resource-explorer-2.amazonaws.com
+
+
+Outputs:
+
+  RoleName:
+    Value: !Ref CyngularResourceExplorerRole
+
+  RoleArn:
+    Value: !GetAtt CyngularResourceExplorerRole.Arn

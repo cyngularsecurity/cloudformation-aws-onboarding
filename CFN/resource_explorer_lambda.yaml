@@ -1,0 +1,1260 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Cyngular Resource Explorer management stack.
+  Creates the dispatcher Lambda, worker Lambda, IAM roles,
+  and a daily EventBridge Scheduler at 08:00 Asia/Jerusalem.
+
+Parameters:
+
+  TargetRoleName:
+    Type: String
+    Default: CyngularResourceExplorerRole
+
+  PreferredAggregatorRegion:
+    Type: String
+    Default: us-east-1
+
+  ResourceExplorerViewName:
+    Type: String
+    Default: cyngular-all-resources
+
+
+Resources:
+
+  # ==========================================================
+  # Lambda A - Dispatcher Execution Role
+  # ==========================================================
+
+  DispatcherExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CyngularResourceExplorerDispatcherRole
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      Policies:
+
+        - PolicyName: OrganizationsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:ListAccounts
+                Resource: '*'
+
+        - PolicyName: LambdaLogging
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+
+  # ==========================================================
+  # Lambda B - Worker Execution Role
+  # ==========================================================
+
+  WorkerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CyngularResourceExplorerWorkerRole
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      Policies:
+
+        - PolicyName: AssumeResourceExplorerRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: !Sub
+                  - 'arn:${AWS::Partition}:iam::*:role/${RoleName}'
+                  - RoleName: !Ref TargetRoleName
+
+        - PolicyName: LambdaLogging
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+
+  # ==========================================================
+  # Lambda B - Resource Explorer Worker
+  # ==========================================================
+
+  ResourceExplorerWorkerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CyngularResourceExplorerWorker
+
+      Runtime: python3.13
+      Handler: index.lambda_handler
+
+      Role: !GetAtt WorkerExecutionRole.Arn
+
+      Timeout: 300
+      MemorySize: 256
+
+      # Limits the number of accounts processed simultaneously.
+      ReservedConcurrentExecutions: 25
+
+      Environment:
+        Variables:
+          TARGET_ROLE_NAME: !Ref TargetRoleName
+          PREFERRED_AGGREGATOR_REGION: !Ref PreferredAggregatorRegion
+          RESOURCE_EXPLORER_VIEW_NAME: !Ref ResourceExplorerViewName
+          AWS_PARTITION_NAME: !Ref AWS::Partition
+
+      Code:
+        ZipFile: |
+          import os
+          import json
+          import uuid
+          import logging
+
+          import boto3
+          from botocore.config import Config
+          from botocore.exceptions import ClientError, BotoCoreError
+
+
+          TARGET_ROLE_NAME = os.getenv(
+              "TARGET_ROLE_NAME",
+              "CyngularResourceExplorerRole"
+          )
+
+          PREFERRED_AGGREGATOR_REGION = os.getenv(
+              "PREFERRED_AGGREGATOR_REGION",
+              "us-east-1"
+          )
+
+          VIEW_NAME = os.getenv(
+              "RESOURCE_EXPLORER_VIEW_NAME",
+              "cyngular-all-resources"
+          )
+
+          AWS_PARTITION = os.getenv(
+              "AWS_PARTITION_NAME",
+              "aws"
+          )
+
+          BOTO_CONFIG = Config(
+              retries={
+                  "max_attempts": 6,
+                  "mode": "adaptive"
+              },
+              connect_timeout=5,
+              read_timeout=20
+          )
+
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+
+          def aws_error(exc):
+
+              if isinstance(exc, ClientError):
+                  error = exc.response.get("Error", {})
+
+                  return {
+                      "code": error.get("Code"),
+                      "message": error.get("Message")
+                  }
+
+              return {
+                  "code": type(exc).__name__,
+                  "message": str(exc)
+              }
+
+
+          def deterministic_token(value):
+
+              return str(
+                  uuid.uuid5(
+                      uuid.NAMESPACE_URL,
+                      value
+                  )
+              )
+
+
+          # ==================================================
+          # Assume target account role
+          # ==================================================
+
+          def get_target_session(account_id):
+
+              role_arn = (
+                  f"arn:{AWS_PARTITION}:iam::"
+                  f"{account_id}:role/{TARGET_ROLE_NAME}"
+              )
+
+              sts = boto3.client(
+                  "sts",
+                  config=BOTO_CONFIG
+              )
+
+              response = sts.assume_role(
+                  RoleArn=role_arn,
+                  RoleSessionName="CyngularResourceExplorer"
+              )
+
+              credentials = response["Credentials"]
+
+              return boto3.Session(
+                  aws_access_key_id=credentials["AccessKeyId"],
+                  aws_secret_access_key=credentials["SecretAccessKey"],
+                  aws_session_token=credentials["SessionToken"]
+              )
+
+
+          # ==================================================
+          # Regions
+          # ==================================================
+
+          def get_enabled_regions(session):
+
+              ec2 = session.client(
+                  "ec2",
+                  region_name="us-east-1",
+                  config=BOTO_CONFIG
+              )
+
+              response = ec2.describe_regions(
+                  AllRegions=False
+              )
+
+              return sorted(
+                  region["RegionName"]
+                  for region in response["Regions"]
+              )
+
+
+          # ==================================================
+          # Resource Explorer helpers
+          # ==================================================
+
+          def rex_client(session, region):
+
+              return session.client(
+                  "resource-explorer-2",
+                  region_name=region,
+                  config=BOTO_CONFIG
+              )
+
+
+          def list_indexes(session, region):
+
+              client = rex_client(
+                  session,
+                  region
+              )
+
+              indexes = []
+
+              paginator = client.get_paginator(
+                  "list_indexes"
+              )
+
+              for page in paginator.paginate():
+                  indexes.extend(
+                      page.get("Indexes", [])
+                  )
+
+              return indexes
+
+
+          def indexes_by_region(indexes):
+
+              return {
+                  index["Region"]: index
+                  for index in indexes
+                  if index.get("Region")
+              }
+
+
+          def find_aggregator(indexes):
+
+              for index in indexes:
+                  if index.get("Type") == "AGGREGATOR":
+                      return index
+
+              return None
+
+
+          def get_index(session, region):
+
+              client = rex_client(
+                  session,
+                  region
+              )
+
+              try:
+                  return client.get_index()
+
+              except client.exceptions.ResourceNotFoundException:
+                  return None
+
+
+          # ==================================================
+          # Regional indexes
+          # ==================================================
+
+          def ensure_regional_indexes(
+              session,
+              account_id,
+              enabled_regions,
+              indexes
+          ):
+
+              existing = indexes_by_region(indexes)
+
+              created = []
+              failures = []
+
+              for region in enabled_regions:
+
+                  if region in existing:
+                      continue
+
+                  client = rex_client(
+                      session,
+                      region
+                  )
+
+                  try:
+
+                      client.create_index(
+                          ClientToken=deterministic_token(
+                              f"cyngular:index:{account_id}:{region}"
+                          )
+                      )
+
+                      created.append(region)
+
+                  except client.exceptions.ConflictException:
+                      continue
+
+                  except (ClientError, BotoCoreError) as exc:
+
+                      failures.append({
+                          "region": region,
+                          **aws_error(exc)
+                      })
+
+              return created, failures
+
+
+          # ==================================================
+          # Aggregator
+          # ==================================================
+
+          def ensure_aggregator(
+              session,
+              enabled_regions,
+              preferred_region,
+              indexes
+          ):
+
+              aggregator = find_aggregator(indexes)
+
+              # Existing Aggregator - never move it.
+              if aggregator:
+
+                  return {
+                      "status": "READY",
+                      "region": aggregator["Region"],
+                      "action": "existing"
+                  }
+
+
+              target_region = (
+                  preferred_region
+                  if preferred_region in enabled_regions
+                  else enabled_regions[0]
+              )
+
+
+              index = get_index(
+                  session,
+                  target_region
+              )
+
+
+              if not index:
+
+                  return {
+                      "status": "PENDING",
+                      "region": target_region,
+                      "reason": "INDEX_NOT_VISIBLE_YET",
+                      "retry_after_seconds": 60
+                  }
+
+
+              if index.get("Type") == "AGGREGATOR":
+
+                  return {
+                      "status": "READY",
+                      "region": target_region,
+                      "action": "existing"
+                  }
+
+
+              if index.get("State") != "ACTIVE":
+
+                  return {
+                      "status": "PENDING",
+                      "region": target_region,
+                      "reason": "INDEX_NOT_ACTIVE",
+                      "retry_after_seconds": 60
+                  }
+
+
+              client = rex_client(
+                  session,
+                  target_region
+              )
+
+
+              try:
+
+                  client.update_index_type(
+                      Arn=index["Arn"],
+                      Type="AGGREGATOR"
+                  )
+
+                  return {
+                      "status": "PENDING",
+                      "region": target_region,
+                      "action": "promotion_started",
+                      "reason": "AGGREGATOR_PROMOTION_IN_PROGRESS",
+                      "retry_after_seconds": 60
+                  }
+
+
+              except client.exceptions.ConflictException:
+
+                  refreshed = list_indexes(
+                      session,
+                      target_region
+                  )
+
+                  aggregator = find_aggregator(
+                      refreshed
+                  )
+
+                  if aggregator:
+
+                      return {
+                          "status": "READY",
+                          "region": aggregator["Region"],
+                          "action": "existing"
+                      }
+
+                  return {
+                      "status": "PENDING",
+                      "region": target_region,
+                      "reason": "AGGREGATOR_PROMOTION_CONFLICT",
+                      "retry_after_seconds": 300
+                  }
+
+
+              except client.exceptions.ServiceQuotaExceededException as exc:
+
+                  message = (
+                      exc.response
+                      .get("Error", {})
+                      .get("Message", "")
+                  )
+
+                  if "cool down period" in message.lower():
+
+                      return {
+                          "status": "PENDING",
+                          "region": target_region,
+                          "reason": "AGGREGATOR_COOLDOWN_PERIOD",
+                          "retry_after_seconds": 86400
+                      }
+
+                  raise
+
+
+          # ==================================================
+          # Views
+          # ==================================================
+
+          def view_is_valid(view):
+
+              included = {
+                  item.get("Name", "").lower()
+                  for item in view.get(
+                      "IncludedProperties",
+                      []
+                  )
+              }
+
+              filter_string = (
+                  view
+                  .get("Filters", {})
+                  .get("FilterString", "")
+                  .strip()
+              )
+
+              return (
+                  "tags" in included
+                  and not filter_string
+              )
+
+
+          def get_default_view(client):
+
+              try:
+                  response = client.get_default_view()
+
+              except client.exceptions.ResourceNotFoundException:
+                  return None
+
+
+              view_arn = response.get("ViewArn")
+
+              if not view_arn:
+                  return None
+
+
+              try:
+
+                  return client.get_view(
+                      ViewArn=view_arn
+                  ).get("View")
+
+              except client.exceptions.ResourceNotFoundException:
+                  return None
+
+
+          def find_view(client, view_name):
+
+              paginator = client.get_paginator(
+                  "list_views"
+              )
+
+              for page in paginator.paginate():
+
+                  for view_arn in page.get(
+                      "Views",
+                      []
+                  ):
+
+                      try:
+
+                          view = client.get_view(
+                              ViewArn=view_arn
+                          ).get("View")
+
+                      except client.exceptions.ResourceNotFoundException:
+                          continue
+
+
+                      if (
+                          view
+                          and view.get("ViewName") == view_name
+                      ):
+                          return view
+
+              return None
+
+
+          def ensure_default_view(
+              session,
+              account_id,
+              aggregator_region
+          ):
+
+              client = rex_client(
+                  session,
+                  aggregator_region
+              )
+
+
+              current_default = get_default_view(
+                  client
+              )
+
+
+              # Existing default already meets our requirements.
+              if (
+                  current_default
+                  and view_is_valid(current_default)
+              ):
+
+                  return {
+                      "view_arn": current_default["ViewArn"],
+                      "view_name": current_default.get("ViewName"),
+                      "action": "existing"
+                  }
+
+
+              # Do not modify a customer's existing View.
+              # Find/create our own View instead.
+              cyngular_view = find_view(
+                  client,
+                  VIEW_NAME
+              )
+
+              view_action = "existing"
+
+
+              if not cyngular_view:
+
+                  try:
+
+                      response = client.create_view(
+                          ViewName=VIEW_NAME,
+                          IncludedProperties=[
+                              {
+                                  "Name": "tags"
+                              }
+                          ],
+                          ClientToken=deterministic_token(
+                              f"cyngular:view:"
+                              f"{account_id}:"
+                              f"{aggregator_region}:"
+                              f"{VIEW_NAME}"
+                          )
+                      )
+
+                      cyngular_view = response["View"]
+                      view_action = "created"
+
+
+                  except client.exceptions.ConflictException:
+
+                      cyngular_view = find_view(
+                          client,
+                          VIEW_NAME
+                      )
+
+                      if not cyngular_view:
+                          raise
+
+
+              elif not view_is_valid(cyngular_view):
+
+                  response = client.update_view(
+                      ViewArn=cyngular_view["ViewArn"],
+                      IncludedProperties=[
+                          {
+                              "Name": "tags"
+                          }
+                      ],
+                      Filters={
+                          "FilterString": ""
+                      }
+                  )
+
+                  cyngular_view = response["View"]
+                  view_action = "updated"
+
+
+              client.associate_default_view(
+                  ViewArn=cyngular_view["ViewArn"]
+              )
+
+
+              if view_action == "existing":
+                  action = "associated"
+              else:
+                  action = f"{view_action}_and_associated"
+
+
+              return {
+                  "view_arn": cyngular_view["ViewArn"],
+                  "view_name": cyngular_view.get("ViewName"),
+                  "action": action
+              }
+
+
+          # ==================================================
+          # Reconcile one account
+          # ==================================================
+
+          def reconcile(
+              account_id,
+              session,
+              preferred_region
+          ):
+
+              enabled_regions = get_enabled_regions(
+                  session
+              )
+
+              if not enabled_regions:
+                  raise RuntimeError(
+                      "No enabled AWS Regions found"
+                  )
+
+
+              control_region = (
+                  preferred_region
+                  if preferred_region in enabled_regions
+                  else enabled_regions[0]
+              )
+
+
+              indexes = list_indexes(
+                  session,
+                  control_region
+              )
+
+
+              created_indexes, region_failures = (
+                  ensure_regional_indexes(
+                      session=session,
+                      account_id=account_id,
+                      enabled_regions=enabled_regions,
+                      indexes=indexes
+                  )
+              )
+
+
+              # Refresh after CreateIndex calls.
+              indexes = list_indexes(
+                  session,
+                  control_region
+              )
+
+
+              aggregator = ensure_aggregator(
+                  session=session,
+                  enabled_regions=enabled_regions,
+                  preferred_region=preferred_region,
+                  indexes=indexes
+              )
+
+
+              aggregator_region = aggregator["region"]
+
+
+              if aggregator["status"] == "PENDING":
+
+                  return {
+                      "status": "PENDING",
+                      "account_id": account_id,
+                      "aggregator_region": aggregator_region,
+                      "aggregator_action": aggregator.get("action"),
+                      "reason": aggregator.get("reason"),
+                      "retry_after_seconds": aggregator.get(
+                          "retry_after_seconds",
+                          60
+                      ),
+                      "created_indexes": created_indexes,
+                      "region_failures": region_failures
+                  }
+
+
+              aggregator_index = get_index(
+                  session,
+                  aggregator_region
+              )
+
+
+              if (
+                  not aggregator_index
+                  or aggregator_index.get("State") != "ACTIVE"
+              ):
+
+                  return {
+                      "status": "PENDING",
+                      "account_id": account_id,
+                      "aggregator_region": aggregator_region,
+                      "reason": "AGGREGATOR_NOT_ACTIVE",
+                      "retry_after_seconds": 60,
+                      "created_indexes": created_indexes,
+                      "region_failures": region_failures
+                  }
+
+
+              view_result = ensure_default_view(
+                  session=session,
+                  account_id=account_id,
+                  aggregator_region=aggregator_region
+              )
+
+
+              final_indexes = list_indexes(
+                  session,
+                  aggregator_region
+              )
+
+              final_regions = indexes_by_region(
+                  final_indexes
+              )
+
+              missing_regions = [
+                  region
+                  for region in enabled_regions
+                  if region not in final_regions
+              ]
+
+
+              if region_failures or missing_regions:
+
+                  return {
+                      "status": "PARTIAL",
+                      "account_id": account_id,
+                      "aggregator_region": aggregator_region,
+                      "aggregator_action": aggregator.get("action"),
+                      "default_view": view_result,
+                      "created_indexes": created_indexes,
+                      "missing_regions": missing_regions,
+                      "region_failures": region_failures
+                  }
+
+
+              return {
+                  "status": "READY",
+                  "account_id": account_id,
+                  "aggregator_region": aggregator_region,
+                  "aggregator_action": aggregator.get("action"),
+                  "default_view": view_result,
+                  "created_indexes": created_indexes,
+                  "region_failures": []
+              }
+
+
+          # ==================================================
+          # Lambda B handler
+          # ==================================================
+
+          def lambda_handler(event, context):
+
+              account_id = event.get("account_id")
+
+              if not account_id:
+
+                  return {
+                      "status": "FAILED",
+                      "reason": "MISSING_ACCOUNT_ID"
+                  }
+
+
+              try:
+
+                  # Always AssumeRole.
+                  # Management Account is treated like any other account.
+                  session = get_target_session(
+                      account_id
+                  )
+
+                  result = reconcile(
+                      account_id=account_id,
+                      session=session,
+                      preferred_region=PREFERRED_AGGREGATOR_REGION
+                  )
+
+                  # One compact log line per account.
+                  logger.info(
+                      json.dumps({
+                          "account_id": account_id,
+                          "status": result.get("status"),
+                          "aggregator_region": result.get(
+                              "aggregator_region"
+                          ),
+                          "reason": result.get("reason")
+                      })
+                  )
+
+                  return result
+
+
+              except (ClientError, BotoCoreError) as exc:
+
+                  error = aws_error(exc)
+
+                  result = {
+                      "status": "FAILED",
+                      "account_id": account_id,
+                      "reason": error["code"],
+                      "error": error["message"]
+                  }
+
+                  logger.exception(
+                      json.dumps(result)
+                  )
+
+                  return result
+
+
+              except Exception as exc:
+
+                  result = {
+                      "status": "FAILED",
+                      "account_id": account_id,
+                      "reason": type(exc).__name__,
+                      "error": str(exc)
+                  }
+
+                  logger.exception(
+                      json.dumps(result)
+                  )
+
+                  return result
+
+
+  # ==========================================================
+  # Lambda A can invoke Lambda B
+  # ==========================================================
+
+  DispatcherInvokeWorkerPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: InvokeResourceExplorerWorker
+
+      Roles:
+        - !Ref DispatcherExecutionRole
+
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !GetAtt ResourceExplorerWorkerFunction.Arn
+
+
+  # ==========================================================
+  # Lambda A - Dispatcher
+  # ==========================================================
+
+  ResourceExplorerDispatcherFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - DispatcherInvokeWorkerPolicy
+
+    Properties:
+      FunctionName: CyngularResourceExplorerDispatcher
+
+      Runtime: python3.13
+      Handler: index.lambda_handler
+
+      Role: !GetAtt DispatcherExecutionRole.Arn
+
+      Timeout: 300
+      MemorySize: 128
+
+      Environment:
+        Variables:
+          WORKER_FUNCTION_NAME: !Ref ResourceExplorerWorkerFunction
+
+      Code:
+        ZipFile: |
+          import os
+          import json
+          import logging
+
+          import boto3
+          from botocore.config import Config
+          from botocore.exceptions import ClientError
+
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+
+          WORKER_FUNCTION_NAME = os.environ[
+              "WORKER_FUNCTION_NAME"
+          ]
+
+          CONFIG = Config(
+              retries={
+                  "max_attempts": 6,
+                  "mode": "adaptive"
+              },
+              connect_timeout=5,
+              read_timeout=20
+          )
+
+
+          def get_current_account_id():
+
+              sts = boto3.client(
+                  "sts",
+                  config=CONFIG
+              )
+
+              return sts.get_caller_identity()["Account"]
+
+
+          def get_target_accounts():
+              """
+              Organization:
+                  Return all ACTIVE accounts.
+
+              No Organization:
+                  Return current account only.
+
+              AccessDenied is intentionally NOT treated
+              as standalone.
+              """
+
+              organizations = boto3.client(
+                  "organizations",
+                  config=CONFIG
+              )
+
+              try:
+
+                  account_ids = []
+
+                  paginator = organizations.get_paginator(
+                      "list_accounts"
+                  )
+
+                  for page in paginator.paginate():
+
+                      for account in page.get(
+                          "Accounts",
+                          []
+                      ):
+
+                          if account.get("State") != "ACTIVE":
+                              continue
+
+                          account_ids.append(
+                              account["Id"]
+                          )
+
+
+                  return account_ids, "organization"
+
+
+              except organizations.exceptions.AWSOrganizationsNotInUseException:
+
+                  return [
+                      get_current_account_id()
+                  ], "standalone"
+
+
+          def lambda_handler(event, context):
+
+              lambda_client = boto3.client(
+                  "lambda",
+                  config=CONFIG
+              )
+
+              try:
+
+                  account_ids, mode = get_target_accounts()
+
+                  invoked = []
+                  failed = []
+
+
+                  for account_id in account_ids:
+
+                      try:
+
+                          # Async invocation.
+                          lambda_client.invoke(
+                              FunctionName=WORKER_FUNCTION_NAME,
+                              InvocationType="Event",
+                              Payload=json.dumps({
+                                  "account_id": account_id
+                              }).encode("utf-8")
+                          )
+
+                          invoked.append(account_id)
+
+
+                      except ClientError as exc:
+
+                          error = (
+                              exc.response
+                              .get("Error", {})
+                          )
+
+                          failed.append({
+                              "account_id": account_id,
+                              "code": error.get("Code"),
+                              "message": error.get("Message")
+                          })
+
+
+                  result = {
+                      "status": (
+                          "COMPLETED"
+                          if not failed
+                          else "PARTIAL"
+                      ),
+                      "mode": mode,
+                      "accounts_found": len(account_ids),
+                      "accounts_invoked": len(invoked),
+                      "accounts_failed": len(failed),
+                      "failed": failed
+                  }
+
+
+                  logger.info(
+                      json.dumps({
+                          "event": "resource_explorer_dispatch",
+                          "status": result["status"],
+                          "mode": mode,
+                          "accounts_found": len(account_ids),
+                          "accounts_invoked": len(invoked),
+                          "accounts_failed": len(failed)
+                      })
+                  )
+
+
+                  return result
+
+
+              except ClientError as exc:
+
+                  error = (
+                      exc.response
+                      .get("Error", {})
+                  )
+
+                  result = {
+                      "status": "FAILED",
+                      "code": error.get("Code"),
+                      "message": error.get("Message")
+                  }
+
+                  logger.exception(
+                      json.dumps({
+                          "event": "resource_explorer_dispatch_failed",
+                          **result
+                      })
+                  )
+
+                  return result
+
+
+              except Exception as exc:
+
+                  result = {
+                      "status": "FAILED",
+                      "code": type(exc).__name__,
+                      "message": str(exc)
+                  }
+
+                  logger.exception(
+                      json.dumps({
+                          "event": "resource_explorer_dispatch_failed",
+                          **result
+                      })
+                  )
+
+                  return result
+
+
+  # ==========================================================
+  # EventBridge Scheduler Role
+  # ==========================================================
+
+  SchedulerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CyngularResourceExplorerSchedulerRole
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      Policies:
+
+        - PolicyName: InvokeDispatcher
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt ResourceExplorerDispatcherFunction.Arn
+
+
+  # ==========================================================
+  # Daily Scheduler - 08:00 Israel time
+  # ==========================================================
+
+  ResourceExplorerDailySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+
+      Name: CyngularResourceExplorerDaily
+
+      Description: >
+        Run Resource Explorer reconciliation every day at
+        08:00 Israel time.
+
+      ScheduleExpression: 'cron(0 8 * * ? *)'
+
+      ScheduleExpressionTimezone: 'Asia/Jerusalem'
+
+      State: ENABLED
+
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+
+      Target:
+        Arn: !GetAtt ResourceExplorerDispatcherFunction.Arn
+        RoleArn: !GetAtt SchedulerExecutionRole.Arn
+
+
+Outputs:
+
+  DispatcherFunctionName:
+    Value: !Ref ResourceExplorerDispatcherFunction
+
+  WorkerFunctionName:
+    Value: !Ref ResourceExplorerWorkerFunction
+
+  DispatcherExecutionRoleArn:
+    Value: !GetAtt DispatcherExecutionRole.Arn
+
+  WorkerExecutionRoleArn:
+    Value: !GetAtt WorkerExecutionRole.Arn
+
+  ScheduleName:
+    Value: !Ref ResourceExplorerDailySchedule
