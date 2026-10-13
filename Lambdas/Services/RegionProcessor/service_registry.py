@@ -18,7 +18,7 @@ class ServiceConfig:
 SERVICE_REGISTRY = {
     "dns": ServiceConfig(
         handler=process_dns_service,
-        required_params=["region", "cyngular_bucket"],
+        required_params=["region", "cyngular_bucket", "client_name"],
     ),
     "vfl": ServiceConfig(
         handler=process_vfl_service,

@@ -13,13 +13,11 @@ def dnslogs(curr_region):
         ]
         cyngular_resolver_id = ""
 
-        for region_query_log_config in region_query_log_configs:
-            try:
-                if region_query_log_config["Name"] == "cyngular_dns":
-                    cyngular_resolver_id = region_query_log_config["Id"]
-                    break
-            except Exception as e:
-                logging.critical(str(e))
+        # Prefer this client's own QLC; fall back to the legacy shared name only
+        # when the client has none (clients onboarded before per-client naming).
+        client_qlc_name = f"cyngular_dns_{os.environ.get('CLIENT_NAME', '')}"
+        names_by_id = {c.get("Name"): c.get("Id") for c in region_query_log_configs}
+        cyngular_resolver_id = names_by_id.get(client_qlc_name) or names_by_id.get("cyngular_dns", "")
 
         if cyngular_resolver_id:
             vpc_list = ec2_client.describe_vpcs()

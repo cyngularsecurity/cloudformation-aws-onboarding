@@ -44,6 +44,8 @@ class RegionProcessor:
                     params.append(self.cyngular_bucket)
                 elif param == "cyngular_role_arn":
                     params.append(self.cyngular_role_arn)
+                elif param == "client_name":
+                    params.append(self.client_name)
                 else:
                     logger.error(
                         f"Unknown parameter {param} required for service {service}"
