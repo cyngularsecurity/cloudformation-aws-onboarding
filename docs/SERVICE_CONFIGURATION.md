@@ -46,7 +46,8 @@ When using existing buckets, also update the bucket policy to allow Cyngular acc
 
 | Variable | Description | Options | Default |
 |----------|-------------|---------|---------|
-| **EnableCloudTrail** | Create CloudTrail trail | `true`/`false` | `true` |
+| **EnableCloudTrail** | Create CloudTrail trail (set `false` if a Cyngular trail already records management events in this account/org — a second trail is billed for every event again) | `true`/`false` | `true` |
+| **EnableInsights** | Enable CloudTrail Insights on the trail (billed per event; not consumed by Cyngular) | `true`/`false` | `false` |
 | **EnableDNS** | Enable DNS logging | `true`/`false`/`bucket-name` | `true` |
 | **EnableEKS** | Enable EKS audit logging | `true`/`false` | `true` |
 | **EnableVPCFlowLogs** | Enable VPC Flow Logs | `true`/`false`/`bucket-name` | `true` |
@@ -75,6 +76,7 @@ CYNGULAR_ACCOUNT_ID="851565895544"
 
 # Services
 EnableCloudTrail="true"
+EnableInsights="false"
 EnableDNS="true"
 EnableEKS="true"
 EnableVPCFlowLogs="true"

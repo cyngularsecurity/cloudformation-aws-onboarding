@@ -76,6 +76,7 @@ deploy_stack "${CLIENT_NAME}-core" "./CFN/Core.yaml" \
   ParameterKey=ClientName,ParameterValue="$CLIENT_NAME" \
   ParameterKey=OrganizationId,ParameterValue="${ORGANIZATION_ID:-}" \
   ParameterKey=EnableCloudTrail,ParameterValue="${EnableCloudTrail:-true}" \
+  ParameterKey=EnableInsights,ParameterValue="${EnableInsights:-false}" \
   ParameterKey=EnableBucketPolicyManager,ParameterValue="${EnableBucketPolicyManager:-true}"
 
 echo "==> Services stack (${CLIENT_NAME}-services)"

@@ -23,6 +23,7 @@ Metadata:
         Parameters:
           - EnableCloudTrail
           - TrailName
+          - EnableInsights
           - EnableBucketPolicyManager
           - OrganizationId
           # - CyngularAccountId
@@ -60,16 +61,22 @@ Parameters:
     # Default: ''
 
   EnableCloudTrail:
-    Description: "Create Cyngular Trail | set to false to disable"
+    Description: "Create Cyngular Trail | set to false when this account/org already has a Cyngular trail recording management events (a second trail re-records every event as paid copies)"
     Type: String
     AllowedValues: ["true", "false"]
     Default: "true"
 
   TrailName:
-    Description: "Name of the Cyngular trail | override (e.g. cyngular-cloudtrail-<client>) when another client's trail already uses the default name in this account/region"
+    Description: "Name of the Cyngular trail | only override (e.g. cyngular-cloudtrail-<client>) if a second trail is really needed; prefer EnableCloudTrail=false when a Cyngular trail already exists here"
     Type: String
     AllowedPattern: "^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$"
     Default: "cyngular-cloudtrail"
+
+  EnableInsights:
+    Description: "Enable CloudTrail Insights (ApiCallRate/ApiErrorRate) on the Cyngular trail | billed per event analyzed; not consumed by Cyngular, keep false unless needed"
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
 
   EnableBucketPolicyManager:
     Description: "Set to true to enable the bucket policy manager for future logging; set to false if not currently desired."
@@ -80,6 +87,7 @@ Parameters:
 Conditions:
   IsOrg: !Not [!Equals [!Ref OrganizationId, ""]]
   CreateCloudTrail: !Equals [!Ref EnableCloudTrail, "true"]
+  EnableTrailInsights: !Equals [!Ref EnableInsights, "true"]
   CreateBucketPolicyManager: !Equals [!Ref EnableBucketPolicyManager, "true"]
 
 Resources:
@@ -233,9 +241,12 @@ Resources:
     Properties:
       TrailName: !Ref TrailName
       S3BucketName: !Ref CyngularS3Bucket
-      InsightSelectors:
-        - InsightType: ApiCallRateInsight
-        - InsightType: ApiErrorRateInsight
+      # Explicit [] (not NoValue) so a stack update actually turns Insights off
+      InsightSelectors: !If
+        - EnableTrailInsights
+        - - InsightType: ApiCallRateInsight
+          - InsightType: ApiErrorRateInsight
+        - []
       EventSelectors:
         - IncludeManagementEvents: true
           ExcludeManagementEventSources:
