@@ -51,6 +51,9 @@ Resources:
           Principal:
             AWS: !Sub "arn:aws:iam::${CyngularAccountId}:root"
           Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/job-function/ViewOnlyAccess"
+      - "arn:aws:iam::aws:policy/SecurityAudit"
       Tags:
       - Key: Vendor
         Value: "Cyngular Security"
